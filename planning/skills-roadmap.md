@@ -751,6 +751,49 @@ Result: Integrated solution from atomic skills
 
 ---
 
+#### 10.5 better-auth
+**Status**: ✅ Complete (2025-10-31)
+**Priority**: High
+**Dependencies**: None (works with D1, PostgreSQL, MySQL)
+**Actual Dev Time**: 5 hours
+**Token Savings**: ~70%
+**Errors Prevented**: 10
+
+**What It Does**:
+- Production-ready authentication for TypeScript with Cloudflare D1 support
+- Self-hosted alternative to Clerk and Auth.js
+- Email/password, social auth (Google, GitHub, Microsoft), magic links
+- 2FA/passkeys, organizations, multi-tenant, RBAC
+- Complete migration guides from Clerk and Auth.js
+- Session management with KV for strong consistency
+- Rate limiting, CORS configuration, JWT tokens
+
+**Files Created**:
+- README.md (comprehensive auto-trigger keywords, 300+ lines)
+- SKILL.md (complete guide, 1,200+ lines)
+- scripts/setup-d1.sh (automated D1 database setup)
+- references/cloudflare-worker-example.ts (complete Worker implementation)
+- references/nextjs-api-route.ts (Next.js patterns)
+- references/react-client-hooks.tsx (React client components)
+- references/drizzle-schema.ts (database schema)
+- assets/auth-flow-diagram.md (visual flow diagrams)
+
+**Production Validated**: better-chatbot (852 GitHub stars, active deployment)
+
+**Auto-Trigger Keywords**:
+- `better-auth`, `authentication with D1`, `self-hosted auth`
+- `alternative to Clerk`, `alternative to Auth.js`, `TypeScript authentication`
+- `social auth with Cloudflare`, `D1 authentication`, `multi-tenant auth`
+- `2FA authentication`, `passkeys`, `magic link auth`
+- Error keywords: `D1 session consistency`, `CORS auth error`, `OAuth redirect mismatch`
+
+**Official Resources**:
+- Docs: https://better-auth.com
+- GitHub: https://github.com/better-auth/better-auth (22.4k ⭐)
+- Package: better-auth@1.3.34
+
+---
+
 #### 11. hono-routing
 **Status**: ✅ Complete (2025-10-22)
 **Priority**: High

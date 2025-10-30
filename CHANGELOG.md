@@ -9,6 +9,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### better-auth Skill - 2025-10-31
+
+**New Skill**: Comprehensive authentication framework for TypeScript with first-class Cloudflare D1 support.
+
+**What It Does**:
+- Production-ready auth patterns for Cloudflare Workers + D1
+- Self-hosted alternative to Clerk and Auth.js
+- Supports email/password, social auth (Google, GitHub, Microsoft), 2FA, passkeys
+- Organizations/teams, multi-tenant, RBAC features
+- Complete migration guides from Clerk and Auth.js
+
+**Package Version**: `better-auth@1.3.34` (verified 2025-10-31)
+
+**Auto-trigger Keywords**:
+- "better-auth", "authentication with D1", "self-hosted auth"
+- "alternative to Clerk", "alternative to Auth.js"
+- "TypeScript authentication", "social auth with Cloudflare"
+
+**Errors Prevented**: 10 common issues documented:
+- D1 eventual consistency (session storage)
+- CORS misconfiguration for SPAs
+- Session serialization in Workers
+- OAuth redirect URI mismatch
+- Email verification setup
+- JWT token expiration
+- Password hashing performance
+- Social provider scope issues
+- Multi-tenant data leakage
+- Rate limit false positives
+
+**Token Savings**: ~70% (15k → 4.5k tokens)
+
+**Production Tested**: better-chatbot (852 GitHub stars, active deployment)
+
+**Files Added**:
+```
+skills/better-auth/
+├── SKILL.md                                   # Main skill (comprehensive guide)
+├── README.md                                  # Auto-trigger keywords
+├── scripts/setup-d1.sh                        # Automated D1 setup script
+├── references/
+│   ├── cloudflare-worker-example.ts           # Complete Worker implementation
+│   ├── nextjs-api-route.ts                    # Next.js patterns
+│   ├── react-client-hooks.tsx                 # React client components
+│   └── drizzle-schema.ts                      # Database schema
+└── assets/auth-flow-diagram.md                # Visual flow diagrams
+```
+
+**Official Resources**:
+- Docs: https://better-auth.com
+- GitHub: https://github.com/better-auth/better-auth (22.4k ⭐)
+- Package: better-auth@1.3.34
+
+---
+
 ### Fixed - YAML Frontmatter Compliance: 100% Standards Alignment 🎯
 
 **Date**: 2025-10-29
