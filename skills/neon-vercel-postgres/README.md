@@ -202,6 +202,13 @@ const { rows } = await sql`SELECT * FROM users WHERE id = ${userId}`;
 
 ## Bundled Resources
 
+### Templates
+- `templates/neon-basic-queries.ts` - Complete raw SQL query patterns (SELECT, INSERT, UPDATE, DELETE, transactions, pagination)
+- `templates/drizzle-schema.ts` - Production-ready Drizzle schema (users, posts, comments with relations)
+- `templates/drizzle-queries.ts` - Type-safe Drizzle query patterns (joins, aggregations, prepared statements)
+- `templates/drizzle-migrations-workflow.md` - Complete migrations guide (generate, review, apply, rollback)
+- `templates/package.json` - Dependencies and scripts for Neon + Drizzle setup
+
 ### Scripts
 - `scripts/setup-neon.sh` - Creates Neon database and outputs connection string
 - `scripts/test-connection.ts` - Verifies database connection and runs test query
@@ -216,7 +223,7 @@ const { rows } = await sql`SELECT * FROM users WHERE id = ${userId}`;
 
 ### Assets
 - `assets/schema-example.sql` - Example database schema (users, posts, comments)
-- `assets/drizzle-schema.ts` - Complete Drizzle schema template
+- `assets/drizzle-schema.ts` - Complete Drizzle schema template (also in templates/)
 - `assets/prisma-schema.prisma` - Complete Prisma schema template
 
 ---
