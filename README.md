@@ -433,6 +433,15 @@ Session handoff protocol for managing context across sessions. Prevents 3 docume
 
 ---
 
+### GitHub Automation
+
+#### **github-project-automation**
+Complete GitHub Actions automation with 12 workflow templates (CI, CD, security, maintenance), 4 issue templates (YAML with validation), 3 PR templates, security configuration (Dependabot, CodeQL), and 4 automation scripts. Prevents 18 documented errors including YAML syntax, action version pinning, secrets management, and matrix strategies. Includes interactive setup wizard and validation tools.
+
+**Triggers**: `github actions setup`, `create github workflow`, `ci/cd github`, `issue templates github`, `pull request template`, `dependabot configuration`, `codeql setup`, `github security scanning`, `workflow syntax error`, `yaml syntax error github`, `workflow not triggering`, `github actions error`, `action version pinning`, `runner version github`, `secrets not found github`, `matrix strategy error`, `yaml indentation error`, `github actions troubleshooting`, `codeql not running`, `dependabot failing`, `github context syntax`, `secrets management github`, `branch protection rules`, `codeowners file`, `continuous integration github`, `deploy cloudflare workers github`, `github actions cloudflare`, `continuous deployment github`
+
+---
+
 ## 🎯 Skill Usage Protocol
 
 ### Use this or something like it in your main user CLAUDE.md file >>>
@@ -560,7 +569,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## 📋 Skill Categories
 
-All 52 skills are production-ready and organized by domain:
+All 53 skills are production-ready and organized by domain:
 
 - **Cloudflare Platform** (26 skills) - Workers, D1, R2, KV, AI, Queues, Workflows, Durable Objects, etc.
 - **AI & Machine Learning** (10 skills) - OpenAI, Claude, Gemini, Vercel AI SDK, Thesys
@@ -569,6 +578,7 @@ All 52 skills are production-ready and organized by domain:
 - **Content Management** (2 skills) - TinaCMS, Sveltia CMS
 - **WordPress Development** (1 skill) - Plugin core with security, auto-updates, distribution
 - **Database & ORM** (4 skills) - Drizzle, Neon Postgres, Vercel KV/Blob
+- **GitHub Automation** (1 skill) - CI/CD, issue/PR templates, security scanning, automation scripts
 - **Tooling & Planning** (5 skills) - MCP servers, FastMCP, Project Planning, Scraping
 
 ---
