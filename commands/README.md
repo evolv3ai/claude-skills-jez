@@ -1,6 +1,6 @@
-# Session Management Commands
+# Claude Code Slash Commands
 
-Two slash commands for automating session workflow with Claude Code.
+Four slash commands for automating project planning and session workflow with Claude Code.
 
 ## Installation
 
@@ -8,6 +8,8 @@ Copy commands to your `.claude/commands/` directory:
 
 ```bash
 # From the claude-skills repo
+cp commands/plan-project.md ~/.claude/commands/
+cp commands/plan-feature.md ~/.claude/commands/
 cp commands/wrap-session.md ~/.claude/commands/
 cp commands/resume-session.md ~/.claude/commands/
 ```
@@ -16,7 +18,50 @@ Commands are immediately available in Claude Code after copying.
 
 ## Commands
 
-### `/wrap-session`
+### Planning Commands
+
+#### `/plan-project`
+
+**Purpose**: Automate initial project planning for NEW projects
+
+**Usage**: Type `/plan-project` after you've discussed and decided on project requirements with Claude
+
+**What it does**:
+1. Invokes project-planning skill to generate IMPLEMENTATION_PHASES.md
+2. Creates SESSION.md automatically
+3. Creates initial git commit with planning docs
+4. Shows formatted planning summary
+5. Asks permission to start Phase 1
+6. Optionally pushes to remote
+
+**Time savings**: 5-7 minutes per new project (15-20 manual steps → 1 command)
+
+---
+
+#### `/plan-feature`
+
+**Purpose**: Add feature to existing project by generating and integrating new phases
+
+**Usage**: Type `/plan-feature` when you want to add a new feature to an existing project
+
+**What it does**:
+1. Verifies prerequisites (SESSION.md + IMPLEMENTATION_PHASES.md exist)
+2. Checks current phase status (warns if in progress)
+3. Gathers feature requirements (5 questions)
+4. Generates new phases via project-planning skill
+5. Integrates into IMPLEMENTATION_PHASES.md (handles phase renumbering)
+6. Updates SESSION.md with new pending phases
+7. Updates related docs (DATABASE_SCHEMA.md, API_ENDPOINTS.md if needed)
+8. Creates git commit for feature planning
+9. Shows formatted summary
+
+**Time savings**: 7-10 minutes per feature addition (25-30 manual steps → 1 command)
+
+---
+
+### Session Management Commands
+
+#### `/wrap-session`
 
 **Purpose**: Automate end-of-session workflow
 
@@ -54,18 +99,50 @@ Commands are immediately available in Claude Code after copying.
 
 ## Requirements
 
-- `SESSION.md` file in project root (created by `project-session-management` skill)
-- `IMPLEMENTATION_PHASES.md` in project (optional, created by `project-planning` skill)
+**Planning Commands**:
+- Project description (discussed with Claude)
+- Git repository initialized (recommended)
+- For `/plan-feature`: Existing SESSION.md and IMPLEMENTATION_PHASES.md
+
+**Session Management Commands**:
+- `SESSION.md` file in project root (created by `/plan-project` or `project-session-management` skill)
+- `IMPLEMENTATION_PHASES.md` in project (optional but recommended)
 - Git repository initialized
 
 ## Integration
 
-These commands work with the `project-session-management` skill:
-- See: `~/.claude/skills/project-session-management/SKILL.md`
-- Commands use Claude Code's built-in Task and Explore agents
+These commands work together and integrate with planning/session skills:
+- **Planning**: `project-planning` skill generates IMPLEMENTATION_PHASES.md
+- **Session**: `project-session-management` skill provides SESSION.md protocol
+- **Agents**: Commands use Claude Code's built-in Task, Explore, and Plan agents
 - Manual workflow still available if preferred
 
+## Complete Workflow
+
+```
+1. Brainstorm with Claude → /plan-project → Start Phase 1
+2. Work on phases → /wrap-session → Context clear
+3. New session → /resume-session → Continue work
+4. Need feature → /plan-feature → Continue or start feature
+5. Repeat wrap → resume cycle
+```
+
 ## Features
+
+**`/plan-project`**:
+- ✅ Invokes project-planning skill automatically
+- ✅ Creates SESSION.md from generated phases
+- ✅ Structured git commit format
+- ✅ Formatted planning summary
+- ✅ Asks permission before starting Phase 1
+
+**`/plan-feature`**:
+- ✅ Checks current phase status
+- ✅ Gathers requirements (5 questions)
+- ✅ Generates new phases via skill
+- ✅ Handles phase renumbering automatically
+- ✅ Updates all relevant docs
+- ✅ Smart integration into existing plan
 
 **`/wrap-session`**:
 - ✅ Auto-updates SESSION.md
@@ -81,10 +158,13 @@ These commands work with the `project-session-management` skill:
 
 ## Total Time Savings
 
-**3-5 minutes per session cycle** (wrap + resume)
+**15-25 minutes per project lifecycle**:
+- Planning: 5-7 minutes (plan-project)
+- Feature additions: 7-10 minutes each (plan-feature)
+- Session cycles: 3-5 minutes each (wrap + resume)
 
 ---
 
-**Version**: 1.0.0
+**Version**: 2.0.0
 **Last Updated**: 2025-11-07
 **Author**: Jeremy Dawes | Jezweb

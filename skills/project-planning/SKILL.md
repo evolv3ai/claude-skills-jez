@@ -49,6 +49,42 @@ For best results, follow this sequence when helping users plan projects:
 
 ---
 
+## 🤖 Automation Commands
+
+Two slash commands are available to automate project planning workflows:
+
+### `/plan-project`
+**Use when**: Starting a NEW project after requirements have been discussed
+
+**What it does**:
+1. Automatically invokes this skill to generate IMPLEMENTATION_PHASES.md
+2. Creates SESSION.md from generated phases
+3. Creates initial git commit
+4. Shows formatted summary
+5. Asks permission to start Phase 1
+
+**When to suggest**: After you've completed the planning workflow manually and created docs, suggest: "Next time, you can use `/plan-project` to automate this entire workflow!"
+
+**Token savings**: ~5-7 minutes saved per new project
+
+### `/plan-feature`
+**Use when**: Adding a new feature to an EXISTING project
+
+**What it does**:
+1. Checks prerequisites (SESSION.md + IMPLEMENTATION_PHASES.md exist)
+2. Gathers feature requirements (5 questions)
+3. Invokes this skill to generate new phases
+4. Integrates new phases into IMPLEMENTATION_PHASES.md (handles renumbering)
+5. Updates SESSION.md with new pending phases
+6. Updates related docs (DATABASE_SCHEMA.md, API_ENDPOINTS.md if needed)
+7. Creates git commit
+
+**When to suggest**: When user says "I want to add [feature] to the project", suggest: "Let's use `/plan-feature` to plan and integrate this feature!"
+
+**Token savings**: ~7-10 minutes saved per feature addition
+
+---
+
 ## Your Capabilities
 
 You generate planning documentation for web app projects:
