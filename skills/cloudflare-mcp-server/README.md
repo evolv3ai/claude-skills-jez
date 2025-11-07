@@ -8,7 +8,7 @@
 
 A production-ready skill for **Claude Code CLI** that teaches you to build MCP servers on Cloudflare - the ONLY platform with official remote MCP support (as of 2025).
 
-**Version**: 2.0.0 | **Last Verified**: 2025-11-08
+**Version**: 2.1.0 | **Last Verified**: 2025-11-08
 
 ---
 
@@ -193,12 +193,52 @@ Your MCP server is live! 🎉
 
 ---
 
-## Included Templates
+## 🚀 Official Cloudflare Templates (Recommended Starting Point)
+
+**Before using this skill's templates**, start with Cloudflare's official starters:
+
+```bash
+# Gold standard: Authless MCP server (50 lines, production-ready)
+npm create cloudflare@latest -- my-mcp \
+  --template=cloudflare/ai/demos/remote-mcp-authless
+
+# With GitHub OAuth + Workers AI
+npm create cloudflare@latest -- my-mcp \
+  --template=cloudflare/ai/demos/remote-mcp-github-oauth
+
+# With Google OAuth
+npm create cloudflare@latest -- my-mcp \
+  --template=cloudflare/ai/demos/remote-mcp-google-oauth
+```
+
+**12+ auth variants available** (Auth0, AuthKit, Logto, Cloudflare Access, Bearer tokens, etc.)
+
+**See SKILL.md for complete template list**
+
+---
+
+## This Skill's Templates (For Learning & Error Prevention)
+
+**Use these when you need:**
+- Comprehensive error prevention (22+ documented errors)
+- Detailed comments explaining every decision
+- Integration examples (Workers AI, D1, Bearer auth)
+- Defensive patterns and validation
 
 ### TypeScript Templates
-1. **basic-mcp-server.ts** - Simple MCP server (no auth)
-2. **mcp-oauth-proxy.ts** - GitHub OAuth integration
-3. **mcp-stateful-do.ts** - Durable Objects for state
+
+**Fundamentals:**
+1. **mcp-http-fundamentals.ts** - Minimal example (URL configuration focus)
+2. **basic-mcp-server.ts** - Production starter (comprehensive comments)
+
+**Authentication:**
+3. **mcp-bearer-auth.ts** - Bearer token authentication (NEW! v2.1)
+4. **mcp-oauth-proxy.ts** - GitHub OAuth integration
+
+**Integrations:**
+5. **mcp-with-workers-ai.ts** - Image/text generation with Workers AI (NEW! v2.1)
+6. **mcp-with-d1.ts** - Database CRUD operations with D1 (NEW! v2.1)
+7. **mcp-stateful-do.ts** - Durable Objects for session state
 
 ### Configuration Templates
 1. **wrangler-basic.jsonc** - Basic Worker config
@@ -207,15 +247,24 @@ Your MCP server is live! 🎉
 4. **package.json** - Dependencies
 
 ### Reference Docs
-1. **authentication.md** - Auth patterns comparison matrix
-2. **transport.md** - SSE vs HTTP technical details
-3. **oauth-providers.md** - GitHub, Google, Azure setup guides
-4. **common-issues.md** - Error troubleshooting deep-dives
-5. **official-examples.md** - Curated Cloudflare examples
+
+**Transport & Fundamentals:**
+1. **http-transport-fundamentals.md** - URL path configuration deep-dive (NEW! v2.0)
+2. **transport-comparison.md** - SSE vs HTTP technical comparison (NEW! v2.0)
+3. **debugging-guide.md** - Complete troubleshooting flowchart (NEW! v2.0)
+
+**Authentication & Integration:**
+4. **authentication.md** - Auth patterns comparison matrix
+5. **oauth-providers.md** - GitHub, Google, Azure setup guides
+6. **common-issues.md** - Error troubleshooting deep-dives
+
+**Production Examples:**
+7. **official-examples.md** - Curated Cloudflare examples
+8. **Study production servers**: https://github.com/cloudflare/mcp-server-cloudflare (15 real-world integrations)
 
 ---
 
-## 15 Errors Prevented
+## 22 Errors Prevented
 
 This skill documents and prevents these common mistakes:
 

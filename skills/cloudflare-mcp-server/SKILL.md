@@ -7,7 +7,7 @@ description: |
 license: MIT
 allowed-tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
   last_verified: "2025-11-08"
   sdk_versions:
     mcp_sdk: "1.21.0"
@@ -40,10 +40,107 @@ This skill teaches you to build **remote MCP servers** on Cloudflare - the ONLY 
 1. **HTTP transport fundamentals** (URL path configuration, routing)
 2. **Transport selection** (SSE vs Streamable HTTP)
 3. McpAgent class patterns and tool definitions
-4. OAuth integration (all 4 auth patterns)
-5. Durable Objects for per-session state
-6. WebSocket hibernation API
-7. Complete deployment workflow
+4. OAuth integration (all 5 auth patterns)
+5. Cloudflare service integrations (Workers AI, D1, Vectorize, etc.)
+6. Durable Objects for per-session state
+7. WebSocket hibernation API
+8. Complete deployment workflow
+
+---
+
+## 🚀 Official Cloudflare Templates (Start Here!)
+
+**Before using this skill's templates**, know that Cloudflare provides **official starter templates** via `npm create`.
+
+### Recommended Starting Point
+
+**For most projects, start with Cloudflare's official authless template:**
+
+```bash
+npm create cloudflare@latest -- my-mcp-server \
+  --template=cloudflare/ai/demos/remote-mcp-authless
+
+cd my-mcp-server
+npm install
+npm run dev
+```
+
+**What you get:**
+- ✅ Minimal working MCP server (~50 lines)
+- ✅ Dual transport support (SSE + Streamable HTTP)
+- ✅ Pre-configured wrangler.jsonc
+- ✅ Ready to deploy immediately
+
+**Then customize with patterns from this skill** to avoid the 22+ common errors!
+
+---
+
+### All Available Cloudflare Templates
+
+Cloudflare maintains 14+ official MCP templates. Use these as starting points:
+
+#### Basic Templates
+
+| Template Command | Purpose | When to Use |
+|-----------------|---------|-------------|
+| `--template=cloudflare/ai/demos/remote-mcp-authless` | **Gold standard starter** - No auth, simple tools | New projects, learning, public APIs |
+| `--template=cloudflare/ai/demos/remote-mcp-github-oauth` | GitHub OAuth + Workers AI | Developer tools, GitHub integrations |
+| `--template=cloudflare/ai/demos/remote-mcp-google-oauth` | Google OAuth | Google Workspace integration |
+
+#### Advanced Authentication Templates
+
+| Template Command | Auth Method | Use Case |
+|-----------------|-------------|----------|
+| `--template=cloudflare/ai/demos/remote-mcp-auth0` | Auth0 | Enterprise SSO |
+| `--template=cloudflare/ai/demos/remote-mcp-authkit` | WorkOS AuthKit | B2B SaaS applications |
+| `--template=cloudflare/ai/demos/remote-mcp-logto` | Logto | Open-source auth |
+| `--template=cloudflare/ai/demos/remote-mcp-cf-access` | Cloudflare Access | Internal company tools |
+| `--template=cloudflare/ai/demos/mcp-server-bearer-auth` | Bearer tokens | Custom auth systems |
+
+#### Integration Examples
+
+| Template Command | Demonstrates | Cloudflare Services |
+|-----------------|--------------|---------------------|
+| `--template=cloudflare/ai/demos/remote-mcp-server-autorag` | RAG (Retrieval-Augmented Generation) | Workers AI + Vectorize |
+| `--template=cloudflare/ai/demos/python-workers-mcp` | Python MCP servers | Python Workers |
+
+---
+
+### When to Use This Skill's Templates
+
+**Use this skill's templates when:**
+- Learning how URL paths work (use `mcp-http-fundamentals.ts`)
+- Need comprehensive error prevention (all templates include warnings)
+- Want detailed comments explaining every decision
+- Building complex integrations (Workers AI, D1, Bearer auth)
+
+**This skill's templates are MORE educational** than Cloudflare's (more comments, defensive patterns, error handling).
+
+**Cloudflare's templates are FASTER to start** with (minimal, production-ready).
+
+**Best approach**: Start with Cloudflare's template, then reference this skill to avoid errors!
+
+---
+
+### Production MCP Servers (Study These!)
+
+Cloudflare maintains **15 production MCP servers** showing real-world integration patterns:
+
+**Key servers to study:**
+- `workers-bindings` - D1, KV, R2, AI, Durable Objects usage
+- `browser-rendering` - Web scraping + screenshot tools
+- `autorag` - Vectorize RAG pattern
+- `ai-gateway` - Workers AI Gateway analytics
+- `docs` - Cloudflare documentation search
+
+**Repository**: https://github.com/cloudflare/mcp-server-cloudflare
+
+**Why study these?** They show production-grade patterns for:
+- Error handling
+- Rate limiting
+- Caching strategies
+- Real API integrations
+- Security best practices
 
 ---
 
