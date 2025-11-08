@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed - auth-js skill (deprecated) ❌
+
+**Date**: 2025-11-08
+
+**Removed**: `skills/auth-js/` - Complete skill deletion
+
+**Reason**: Auth.js (NextAuth.js) is now owned by Better Auth Inc., and official documentation points users to migrate to Better Auth for new projects. The auth-js skill had multiple critical issues and maintaining both auth-js and better-auth skills created unnecessary fragmentation.
+
+**Issues Found During Review**:
+- Incorrect package versions (@auth/core: 0.41.1 documented, actual: 0.34.3)
+- Misleading v5 claims (skill claimed "v5" but used v4 stable)
+- Confusion between v4 stable (4.24.13) and v5 beta (5.0.0-beta.30)
+- Auth.js official migration guide points to Better Auth
+
+**Migration Path**:
+- Users should use the `better-auth` skill (v2.0.0) instead
+- Better Auth is more feature-rich (2FA, passkeys, organizations, RBAC)
+- Better Cloudflare D1 support via Drizzle ORM/Kysely
+- Official Auth.js docs: https://authjs.dev/getting-started/migrate-to-better-auth
+
+**Alternative Auth Skills**:
+- `better-auth` (v2.0.0) - Comprehensive, self-hosted, Cloudflare-first
+- `clerk-auth` - Managed service alternative
+- Firebase Auth - Google ecosystem alternative
+
 ### Added - Workflow Documentation & Release Safety ✅
 
 **Date**: 2025-11-07

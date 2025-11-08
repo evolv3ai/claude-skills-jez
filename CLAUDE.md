@@ -117,7 +117,7 @@ All 65 skills are production-ready and organized by domain:
 - nextjs, hono-routing, firecrawl-scraper
 
 **Auth & Security** (3 skills):
-- clerk-auth, auth-js, cloudflare-zero-trust-access
+- clerk-auth, better-auth, cloudflare-zero-trust-access
 
 **Content Management** (2 skills):
 - tinacms, sveltia-cms

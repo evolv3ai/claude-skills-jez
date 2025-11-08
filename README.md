@@ -415,13 +415,6 @@ Next.js App Router patterns and best practices. Prevents 12 documented errors.
 
 ---
 
-#### **auth-js**
-Auth.js (NextAuth) for authentication across frameworks. Prevents 10 documented errors.
-
-**Triggers**: `auth.js`, `nextauth`, `authentication`, `oauth`
-
----
-
 ### MCP & Tooling
 
 #### **typescript-mcp**
