@@ -39,6 +39,14 @@ Claude Code automatically discovers this skill when you mention:
 - frontmatter
 - yaml config
 - toml config
+- tailwind v4
+- tailwind css
+- hugo pipes
+- postcss
+- utility-first css
+- hugo tailwind
+- tailwind integration
+- hugo assets
 
 ### Error-Based Keywords
 - "SCSS support not enabled"
@@ -56,17 +64,18 @@ Claude Code automatically discovers this skill when you mention:
 
 ## What This Skill Does
 
-This skill provides comprehensive Hugo static site generator knowledge, covering project scaffolding, theme integration, Sveltia CMS setup, and Cloudflare Workers deployment. It prevents 9 documented errors and provides 4 production-ready templates (blog, docs, landing page, minimal starter).
+This skill provides comprehensive Hugo static site generator knowledge, covering project scaffolding, theme integration, Tailwind CSS v4 integration, Sveltia CMS setup, and Cloudflare Workers deployment. It prevents 15 documented errors and provides 6 production-ready templates (blog, docs, landing page, minimal starter, Tailwind minimal, Tailwind blog).
 
 ### Core Capabilities
 
 ✅ **Hugo Extended Installation** - Correct version selection, all platforms
 ✅ **Project Scaffolding** - YAML config, directory structure, best practices
 ✅ **Theme Integration** - PaperMod, Hugo Book, custom themes via Git submodules
+✅ **Tailwind CSS v4 Integration** - Full setup with Hugo Pipes and PostCSS
 ✅ **Sveltia CMS Setup** - Primary CMS recommendation with full configuration
 ✅ **Cloudflare Workers Deployment** - wrangler.jsonc config, GitHub Actions CI/CD
-✅ **Error Prevention** - All 9 common Hugo errors documented and solved
-✅ **4 Ready-to-Use Templates** - Blog, docs, landing page, minimal starter
+✅ **Error Prevention** - All 15 common Hugo + Tailwind errors documented and solved
+✅ **6 Ready-to-Use Templates** - Blog, docs, landing page, minimal starter, Tailwind variations
 ✅ **TinaCMS Alternative** - Documented but not recommended (Sveltia preferred)
 
 ---
