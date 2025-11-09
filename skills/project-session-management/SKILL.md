@@ -303,6 +303,66 @@ Next: Decide: client-side tag filtering or add SQL query parameter? Then resume 
 
 ---
 
+## Expected Uncommitted Files
+
+**Understanding the Checkpoint Cycle**: The `/wrap-session` workflow creates a chicken-and-egg situation:
+1. You need the commit hash to update SESSION.md
+2. But you get the commit hash AFTER committing
+3. So SESSION.md checkpoint hash update happens AFTER the commit
+4. Therefore SESSION.md is **always uncommitted when resuming** (BY DESIGN)
+
+### Files That Are Expected to Be Uncommitted
+
+When resuming a session, these files are intentionally left uncommitted and should NOT trigger warnings:
+
+**SESSION.md** (Project Root)
+- ✅ **Why**: Checkpoint hash updated post-commit by `/wrap-session`
+- ✅ **Always uncommitted** between sessions
+- ✅ **This is normal behavior**, not an error
+
+**CLAUDE.md** (Project Root - Optional)
+- ✅ **Why**: Often updated during development to document new patterns/learnings
+- ✅ **May be uncommitted** between sessions
+- ✅ **Not critical** to checkpoint immediately
+
+**.roomodes** (Editor/IDE State - Optional)
+- ✅ **Why**: Editor/IDE configuration file
+- ✅ **Not relevant** to session handoff
+- ✅ **Safe to ignore**
+
+### What Should Trigger Warnings
+
+Only **code/doc changes** that weren't checkpointed should trigger warnings:
+- ❌ Modified source files (`.ts`, `.tsx`, `.js`, etc.)
+- ❌ Modified configuration files (`vite.config.ts`, `wrangler.jsonc`, etc.)
+- ❌ Modified planning docs (IMPLEMENTATION_PHASES.md, ARCHITECTURE.md, etc.)
+- ❌ New untracked files that should be committed
+
+### Integration with `/continue-session`
+
+The `/continue-session` command automatically filters out expected uncommitted files:
+- ℹ️ Shows informational message when only SESSION.md/CLAUDE.md/.roomodes are uncommitted
+- ⚠️ Only warns when actual code/doc changes are uncommitted
+- ✅ Provides filtered file list (excludes expected files from warning)
+
+**Example Output** (when only SESSION.md is uncommitted):
+```
+ℹ️ SESSION.md has normal uncommitted state from last checkpoint.
+```
+
+**Example Output** (when code changes are also uncommitted):
+```
+⚠️ WARNING: Unexpected uncommitted changes detected!
+
+Uncommitted files (excluding SESSION.md, CLAUDE.md, .roomodes):
+- src/routes/tasks.ts
+- src/lib/schemas.ts
+
+These changes weren't checkpointed. Continue anyway? (y/n)
+```
+
+---
+
 ## Context Management Strategies
 
 ### When Context is Getting Full (but phase isn't done)
