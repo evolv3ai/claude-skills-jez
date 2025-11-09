@@ -1,12 +1,30 @@
 {
   "name": "tailwind-v4-shadcn",
-  "description": "Production-tested setup for Tailwind CSS v4 with shadcn/ui, Vite, and React. Use when: initializing React projects with Tailwind v4, setting up shadcn/ui, implementing dark mode, debugging CSS variable issues, fixing theme switching, migrating from Tailwind v3, or encountering color/theming problems. Covers: @theme inline pattern, CSS variable architecture, dark mode with ThemeProvider, component composition, vite.config setup, common v4 gotchas, and production-tested patterns.",
-  "version": "1.0.0",
+  "description": "Production-tested setup for Tailwind CSS v4 with shadcn/ui, Vite, and React. Use when initializing React projects with Tailwind v4, setting up shadcn/ui, implementing dark mode, debugging CSS variable issues, fixing theme switching, migrating from Tailwind v3, or encountering color/theming problems. Prevents tw-animate-css errors, duplicate @layer base issues, and includes complete dark mode support with ThemeProvider.",
+  "version": "1.0.1",
   "author": {
     "name": "Jeremy Dawes",
     "email": "jeremy@jezweb.net"
   },
   "license": "MIT",
   "repository": "https://github.com/jezweb/claude-skills",
-  "keywords": ["Tailwind v4","shadcn/ui","@tailwindcss/vite","@theme inline","dark mode","CSS variables","hsl() wrapper","components.json","React theming","theme switching","colors not working","variables broken","theme not applying","@plugin directive","typography plugin"]
+  "keywords": [
+    "tailwind-v4",
+    "tailwindcss",
+    "shadcn-ui",
+    "shadcn/ui",
+    "@tailwindcss/vite",
+    "vite",
+    "react",
+    "dark-mode",
+    "theming",
+    "@theme-inline",
+    "css-variables",
+    "tw-animate-css",
+    "components",
+    "ui-components",
+    "frontend",
+    "typescript",
+    "theme-provider"
+  ]
 }

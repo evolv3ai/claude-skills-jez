@@ -15,14 +15,14 @@ description: |
   CSS variables, hsl() wrapper, components.json, React theming, theme switching,
   colors not working, variables broken, theme not applying, @plugin directive,
   typography plugin, forms plugin, prose class, @tailwindcss/typography,
-  @tailwindcss/forms
+  @tailwindcss/forms, tw-animate-css, tailwindcss-animate deprecated
 license: MIT
 ---
 
 # Tailwind v4 + shadcn/ui Production Stack
 
 **Production-tested**: WordPress Auditor (https://wordpress-auditor.webfonts.workers.dev)
-**Last Updated**: 2025-10-29
+**Last Updated**: 2025-11-09
 **Status**: Production Ready ✅
 
 ---
@@ -104,7 +104,9 @@ export default defineConfig({
   "tailwind": {
     "config": "",              // ← CRITICAL: Empty for v4
     "css": "src/index.css",
-    "cssVariables": true
+    "baseColor": "slate",      // Base color palette
+    "cssVariables": true,
+    "prefix": ""               // No prefix for utility classes
   }
 }
 ```
@@ -448,33 +450,48 @@ See `reference/migration-guide.md` for complete v3 → v4 migration steps.
 ```json
 {
   "dependencies": {
-    "tailwindcss": "^4.1.14",
-    "@tailwindcss/vite": "^4.1.14",
+    "tailwindcss": "^4.1.17",
+    "@tailwindcss/vite": "^4.1.17",
     "clsx": "^2.1.1",
     "tailwind-merge": "^3.3.1",
     "@radix-ui/react-*": "latest",
-    "lucide-react": "^0.545.0",
+    "lucide-react": "^0.553.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
-    "@vitejs/plugin-react": "^5.0.4",
-    "vite": "^7.0.0",
-    "typescript": "~5.9.0"
+    "@types/node": "^24.10.0",
+    "@vitejs/plugin-react": "^5.1.0",
+    "vite": "^7.2.2",
+    "typescript": "~5.9.0",
+    "tw-animate-css": "^1.4.0"
   }
 }
 ```
 
-### ❌ NEVER Install These (Deprecated in v4)
+### Animation Packages (Updated Nov 2025)
 
+shadcn/ui has deprecated `tailwindcss-animate` in favor of `tw-animate-css` for Tailwind v4 compatibility.
+
+**✅ DO Install (v4-compatible)**:
 ```bash
-# These packages will cause build errors:
-npm install tailwindcss-animate  # ❌ Deprecated
-npm install tw-animate-css      # ❌ Doesn't exist
+pnpm add -D tw-animate-css
 ```
 
-**If you see import errors for these packages**, remove them and use native CSS animations or `@tailwindcss/motion` instead.
+Then add to `src/index.css`:
+```css
+@import "tailwindcss";
+@import "tw-animate-css";
+```
+
+**❌ DO NOT Install**:
+```bash
+npm install tailwindcss-animate  # Deprecated - v3 only
+```
+
+**Why**: `tw-animate-css` is the official v4-compatible replacement for animations, required by shadcn/ui components.
+
+**Reference**: https://ui.shadcn.com/docs/tailwind-v4
 
 ---
 
