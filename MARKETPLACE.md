@@ -1,6 +1,6 @@
 # Claude Skills Marketplace
 
-Welcome to the **claude-skills** marketplace - a curated collection of 60 production-tested skills for Claude Code CLI.
+Welcome to the **claude-skills** marketplace - a curated collection of 60 production-ready skills for Claude Code CLI.
 
 ## Quick Start
 
@@ -129,16 +129,18 @@ ORMs and serverless databases:
 | `vercel-kv` | Vercel KV Redis storage |
 | `vercel-blob` | Vercel Blob file storage |
 
-### Tooling & Planning (8 skills)
+### Tooling & Planning (9 skills)
 
 Development tools and workflow automation:
 
 | Skill | Description |
 |-------|-------------|
-| `typescript-mcp` | Build MCP servers with TypeScript |
-| `fastmcp` | FastMCP Python framework |
+| `project-workflow` | Complete project lifecycle with 7 slash commands |
 | `project-planning` | Generate planning docs |
 | `project-session-management` | Session handoff protocol |
+| `typescript-mcp` | Build MCP servers with TypeScript |
+| `fastmcp` | FastMCP Python framework |
+| `firecrawl-scraper` | Web scraping API integration |
 | `hugo` | Hugo static site generator |
 | `github-project-automation` | Automate GitHub Projects |
 | `open-source-contributions` | Open-source workflow best practices |

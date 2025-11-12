@@ -2,22 +2,40 @@
 
 Seven slash commands for automating project exploration, planning, session workflow, and release safety with Claude Code.
 
-## Installation
+## ⚠️ New Installation Method
 
-Copy commands to your `.claude/commands/` directory:
+These commands are now bundled as the **project-workflow** skill!
+
+### Recommended: Install via Marketplace
+
+```bash
+# Add the marketplace
+/plugin marketplace add https://github.com/jezweb/claude-skills
+
+# Install project-workflow skill (includes all 7 commands)
+/plugin install project-workflow@claude-skills
+```
+
+All commands will be automatically available in Claude Code.
+
+### Alternative: Manual Installation
+
+If you prefer manual installation, copy commands to your `.claude/commands/` directory:
 
 ```bash
 # From the claude-skills repo
-cp commands/explore-idea.md ~/.claude/commands/
-cp commands/plan-project.md ~/.claude/commands/
-cp commands/plan-feature.md ~/.claude/commands/
-cp commands/wrap-session.md ~/.claude/commands/
-cp commands/continue-session.md ~/.claude/commands/
-cp commands/workflow.md ~/.claude/commands/
-cp commands/release.md ~/.claude/commands/
+cp skills/project-workflow/commands/explore-idea.md ~/.claude/commands/
+cp skills/project-workflow/commands/plan-project.md ~/.claude/commands/
+cp skills/project-workflow/commands/plan-feature.md ~/.claude/commands/
+cp skills/project-workflow/commands/wrap-session.md ~/.claude/commands/
+cp skills/project-workflow/commands/continue-session.md ~/.claude/commands/
+cp skills/project-workflow/commands/workflow.md ~/.claude/commands/
+cp skills/project-workflow/commands/release.md ~/.claude/commands/
 ```
 
 Commands are immediately available in Claude Code after copying.
+
+**Note:** This directory (`/commands/`) is maintained for reference and manual installation. The canonical source is now `skills/project-workflow/commands/`.
 
 ## Commands
 

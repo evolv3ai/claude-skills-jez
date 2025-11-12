@@ -26,7 +26,7 @@ A curated collection of battle-tested skills for building modern web application
 /plugin install tailwind-v4-shadcn@claude-skills openai-agents@claude-skills
 ```
 
-See [MARKETPLACE.md](MARKETPLACE.md) for complete marketplace documentation including all 68 available skills.
+See [MARKETPLACE.md](MARKETPLACE.md) for complete marketplace documentation including all 60 available skills.
 
 ### Option B: Direct Installation (For Contributors & Development)
 
@@ -50,9 +50,9 @@ Skills will be available in Claude Code and automatically suggested when relevan
 
 ---
 
-## 📦 Available Skills (68 Production-Ready)
+## 📦 Available Skills (60 Production-Ready)
 
-**📋 Full Catalog**: See [MARKETPLACE.md](MARKETPLACE.md) for the complete organized list of all 68 skills by category.
+**📋 Full Catalog**: See [MARKETPLACE.md](MARKETPLACE.md) for the complete organized list of all 60 skills by category.
 
 **Below**: Featured skills with detailed descriptions and trigger keywords.
 
@@ -431,70 +431,54 @@ FastMCP Python framework for MCP server development with production features (st
 
 ---
 
-### Project Planning
+### Project Planning & Workflow
 
-#### **project-planning**
-Structured planning with IMPLEMENTATION_PHASES.md generation. Prevents 4 documented errors.
+#### **project-workflow**
+Complete project lifecycle automation with 7 integrated slash commands. Automates exploration, planning, session management, and release safety. Saves 35-55 minutes per project lifecycle.
 
-**Triggers**: `project planning`, `implementation phases`, `planning docs`
+**Triggers**: `project workflow`, `workflow commands`, `project lifecycle`, `session management`, `release safety`
 
-**Includes 3 Slash Commands**:
+**Includes 7 Slash Commands**:
 - `/explore-idea` - Pre-planning exploration: research, validate, scope management, create PROJECT_BRIEF.md
 - `/plan-project` - Automate NEW project planning (generate IMPLEMENTATION_PHASES.md, create SESSION.md, git commit)
 - `/plan-feature` - Add feature to existing project (generate phases, integrate into IMPLEMENTATION_PHASES.md, update SESSION.md)
-
-**Time Savings**: 10-15 minutes per exploration, 5-7 minutes per new project, 7-10 minutes per feature addition
-
----
-
-#### **project-session-management**
-Session handoff protocol for managing context across sessions. Prevents 3 documented errors.
-
-**Triggers**: `session management`, `session handoff`, `context management`
-
-**Includes 2 Slash Commands**:
 - `/wrap-session` - Automate end-of-session workflow (update SESSION.md, git checkpoint, handoff summary)
 - `/continue-session` - Automate start-of-session context loading (load docs, show summary, continue from "Next Action")
-
-**Time Savings**: 3-5 minutes per session cycle (automated vs manual workflow)
-
----
-
-### 🚀 Complete Planning & Session Workflow
-
-**Seven slash commands work together for complete project lifecycle automation**:
-
-**Core Workflow Commands**:
-- `/explore-idea` - Pre-planning exploration, research, validation (10-15 min saved)
-- `/plan-project` - Generate planning docs for NEW projects (5-7 min saved)
-- `/plan-feature` - Add features to existing projects (7-10 min saved)
-- `/wrap-session` - Checkpoint progress at end of session (2-3 min saved)
-- `/continue-session` - Load context at start of session (1-2 min saved)
-
-**Helper Commands**:
 - `/workflow` - Interactive guide to the workflow system
 - `/release` - Pre-release safety checks for GitHub publishing
 
+**Time Savings**: 35-55 minutes per project lifecycle
+
 **Full workflow** (with exploration):
 ```
-Rough idea → /explore-idea → [PROJECT_BRIEF.md] → /plan-project → Work → /wrap-session → /continue-session → /plan-feature
+Rough idea → /explore-idea → [PROJECT_BRIEF.md] → /plan-project → Work → /wrap-session → /continue-session → /plan-feature → /release
 ```
 
 **Quick workflow** (clear requirements):
 ```
-Clear requirements → /plan-project → Work → /wrap-session → /continue-session
+Clear requirements → /plan-project → Work → /wrap-session → /continue-session → /release
 ```
 
-**Release workflow**:
+**Installation**:
+```bash
+/plugin install project-workflow@claude-skills
 ```
-Ready to publish → /release → [Safety checks, sanitize, docs validation] → GitHub release
-```
 
-**Total time savings**: 25-40 minutes per project lifecycle (exploration + planning + session management)
+All 7 commands will be automatically available after installation.
 
-**Complete Documentation**: See `docs/JEZWEB_WORKFLOW.md` for comprehensive guide with examples, decision trees, and troubleshooting
+---
 
-**Quick Reference**: See `commands/README.md` for installation and usage details
+#### **project-planning**
+Structured planning with IMPLEMENTATION_PHASES.md generation. Prevents 4 documented errors. Used by `/plan-project` and `/plan-feature` commands.
+
+**Triggers**: `project planning`, `implementation phases`, `planning docs`
+
+---
+
+#### **project-session-management**
+Session handoff protocol for managing context across sessions. Prevents 3 documented errors. Used by `/wrap-session` and `/continue-session` commands.
+
+**Triggers**: `session management`, `session handoff`, `context management`
 
 ---
 
