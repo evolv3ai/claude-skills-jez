@@ -33,6 +33,11 @@ This skill should be automatically invoked when you mention:
 - **"better-auth endpoints"** - Auto-generated REST endpoints
 - **"better-auth API"** - Server-side API methods
 - **"auth.api methods"** - Programmatic auth operations
+- **"TanStack Start auth"** - TanStack Start integration
+- **"reactStartCookies"** - TanStack Start cookie plugin
+- **"multi-session"** - Account switching
+- **"genericOAuth"** - Custom OAuth providers
+- **"API key authentication"** - API-only auth
 
 ---
 
@@ -60,18 +65,21 @@ This skill should be automatically invoked when you mention:
 ### Patterns Included
 
 1. **Cloudflare Workers + D1** - Complete Worker setup with D1 adapter
-2. **Next.js API Routes** - Traditional server setup with PostgreSQL
+2. **Framework Integrations** - TanStack Start (reactStartCookies), Expo
 3. **React Client Integration** - Hooks and components for auth state
 4. **Protected Routes** - Middleware patterns for session verification
-5. **Social Providers** - Google, GitHub, Microsoft OAuth setup
-6. **Advanced Features** - 2FA, organizations, multi-tenant, rate limiting
+5. **Social Providers** - Google, GitHub, Microsoft OAuth setup + custom OAuth
+6. **Advanced Features** - 2FA, organizations, multi-tenant, multi-session, API keys
 7. **Migration Guides** - From Clerk and Auth.js
 8. **Database Setup** - D1 and PostgreSQL schema patterns
+9. **API Reference** - Complete documentation for 80+ auto-generated endpoints
 
-### Errors Prevented (12 Common Issues)
+### Errors Prevented (16 Common Issues)
 
 - ✅ **D1 adapter misconfiguration** (no direct d1Adapter, must use Drizzle/Kysely)
 - ✅ **Schema generation failures** (using Drizzle Kit correctly)
+- ✅ **TanStack Start cookie issues** (reactStartCookies plugin required)
+- ✅ **Plugin ordering errors** (reactStartCookies must be last)
 - ✅ D1 eventual consistency causing stale session reads
 - ✅ CORS misconfiguration for SPA applications
 - ✅ Session serialization errors in Workers
@@ -82,6 +90,8 @@ This skill should be automatically invoked when you mention:
 - ✅ Social provider scope issues (missing user data)
 - ✅ Multi-tenant data leakage
 - ✅ Rate limit false positives
+- ✅ Using wrong API approach (endpoints vs server methods)
+- ✅ Reinventing existing auto-generated endpoints
 
 ### Reference Files
 
@@ -152,10 +162,11 @@ npm install better-auth drizzle-orm drizzle-kit @cloudflare/workers-types hono
 
 ## Performance
 
-- **Token Savings**: ~72% (25k → 7k tokens)
+- **Token Savings**: ~75% (28k → 7k tokens)
 - **Time Savings**: ~97% reduction (220 hours manual → 4-8 hours with better-auth)
-- **Error Prevention**: 14 documented issues with solutions
+- **Error Prevention**: 16 documented issues with solutions
 - **API Coverage**: Complete reference for 80+ auto-generated endpoints
+- **Plugin Documentation**: TanStack Start, multiSession, genericOAuth, apiKey + 5 more
 
 ---
 
@@ -215,11 +226,11 @@ npm install pg drizzle-orm
 
 ## Version Info
 
-- **Skill Version**: 2.1.0 (Added comprehensive API Reference: 80+ endpoints + server-side methods)
+- **Skill Version**: 2.2.0 (Added TanStack Start, multiSession, genericOAuth, apiKey + 50+ documentation links)
 - **Package Version**: better-auth@1.3.34
 - **Drizzle ORM**: drizzle-orm@0.44.7, drizzle-kit@0.31.6
 - **Kysely**: kysely@0.28.8, kysely-d1@0.4.0
-- **Last Verified**: 2025-11-17
+- **Last Verified**: 2025-11-18
 - **Compatibility**: Node.js 18+, Bun 1.0+, Cloudflare Workers
 
 ---

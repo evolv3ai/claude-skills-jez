@@ -1,17 +1,17 @@
 ---
 name: better-auth
 description: |
-  Production-ready authentication framework for TypeScript with Cloudflare D1 support via Drizzle ORM or Kysely. Use this skill when building auth systems as a self-hosted alternative to Clerk or Auth.js, particularly for Cloudflare Workers projects. CRITICAL: better-auth requires Drizzle ORM or Kysely as database adapters - there is NO direct D1 adapter. Supports social providers (Google, GitHub, Microsoft, Apple), email/password, magic links, 2FA, passkeys, organizations, and RBAC. Includes comprehensive API reference for 80+ auto-generated endpoints and server-side methods. Prevents 14+ common authentication errors including D1 adapter misconfiguration, schema generation issues, session serialization, CORS, OAuth flows, JWT token handling, and API usage patterns.
+  Production-ready authentication framework for TypeScript with Cloudflare D1 support via Drizzle ORM or Kysely. Use this skill when building auth systems as a self-hosted alternative to Clerk or Auth.js, particularly for Cloudflare Workers projects. CRITICAL: better-auth requires Drizzle ORM or Kysely as database adapters - there is NO direct D1 adapter. Supports social providers (Google, GitHub, Microsoft, Apple), email/password, magic links, 2FA, passkeys, organizations, and RBAC. Includes comprehensive API reference for 80+ auto-generated endpoints, server-side methods, and complete plugin documentation (multiSession, genericOAuth, apiKey, TanStack Start integration). Prevents 14+ common authentication errors including D1 adapter misconfiguration, schema generation issues, session serialization, CORS, OAuth flows, JWT token handling, and API usage patterns.
 
-  Keywords: better-auth, authentication, cloudflare d1 auth, drizzle orm auth, kysely auth, self-hosted auth, typescript auth, clerk alternative, auth.js alternative, social login, oauth providers, session management, jwt tokens, 2fa, two-factor, passkeys, webauthn, multi-tenant auth, organizations, teams, rbac, role-based access, google auth, github auth, microsoft auth, apple auth, magic links, email password, better-auth setup, drizzle d1, kysely d1, session serialization error, cors auth, d1 adapter, better-auth endpoints, better-auth api, auth.api methods, auto-generated endpoints, server-side api
+  Keywords: better-auth, authentication, cloudflare d1 auth, drizzle orm auth, kysely auth, self-hosted auth, typescript auth, clerk alternative, auth.js alternative, social login, oauth providers, session management, jwt tokens, 2fa, two-factor, passkeys, webauthn, multi-tenant auth, organizations, teams, rbac, role-based access, google auth, github auth, microsoft auth, apple auth, magic links, email password, better-auth setup, drizzle d1, kysely d1, session serialization error, cors auth, d1 adapter, better-auth endpoints, better-auth api, auth.api methods, auto-generated endpoints, server-side api, tanstack start, reactStartCookies, multiSession, multi-session, genericOAuth, custom oauth, apiKey, api-key auth
 license: MIT
 metadata:
-  version: 2.1.0
-  last_verified: 2025-11-17
+  version: 2.2.0
+  last_verified: 2025-11-18
   production_tested: multiple (zpg6/better-auth-cloudflare, zwily/example-react-router-cloudflare-d1-drizzle-better-auth, foxlau/react-router-v7-better-auth, matthewlynch/better-auth-react-router-cloudflare-d1)
   package_version: 1.3.34
-  token_savings: ~72%
-  errors_prevented: 14
+  token_savings: ~75%
+  errors_prevented: 16
   official_docs: https://better-auth.com
   github: https://github.com/better-auth/better-auth
   breaking_changes: v2.0.0 - Corrected D1 adapter patterns (Drizzle/Kysely required)
@@ -641,6 +641,8 @@ await authClient.twoFactor.verify({
 });
 ```
 
+📚 **Official Docs**: https://www.better-auth.com/docs/plugins/2fa
+
 ---
 
 ### Organizations & Teams
@@ -685,6 +687,8 @@ const canDelete = await authClient.organization.hasPermission({
 });
 ```
 
+📚 **Official Docs**: https://www.better-auth.com/docs/plugins/organization
+
 ---
 
 ### Rate Limiting with KV
@@ -721,6 +725,232 @@ export function createAuth(db: Database, env: Env) {
   });
 }
 ```
+
+---
+
+## Framework Integrations
+
+### TanStack Start
+
+**⚠️ CRITICAL**: TanStack Start requires the `reactStartCookies` plugin to handle cookie setting properly.
+
+```typescript
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { reactStartCookies } from "better-auth/react-start";
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, { provider: "sqlite" }),
+  plugins: [
+    twoFactor(),
+    organization(),
+    reactStartCookies(), // ⚠️ MUST be LAST plugin
+  ],
+});
+```
+
+**Why it's needed**: TanStack Start uses a special cookie handling system. Without this plugin, auth functions like `signInEmail()` and `signUpEmail()` won't set cookies properly, causing authentication to fail.
+
+**Important**: The `reactStartCookies` plugin **must be the last plugin in the array**.
+
+**API Route Setup** (`/src/routes/api/auth/$.ts`):
+```typescript
+import { auth } from '@/lib/auth'
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/api/auth/$')({
+  server: {
+    handlers: {
+      GET: ({ request }) => auth.handler(request),
+      POST: ({ request }) => auth.handler(request),
+    },
+  },
+})
+```
+
+📚 **Official Docs**: https://www.better-auth.com/docs/integrations/tanstack
+
+---
+
+## Additional Plugins
+
+### Multi-Session
+
+The multi-session plugin allows users to maintain multiple active sessions across different accounts in the same browser, useful for applications where users need to switch between accounts without logging out.
+
+```typescript
+import { betterAuth } from "better-auth";
+import { multiSession } from "better-auth/plugins";
+
+export const auth = betterAuth({
+  database: /* ... */,
+  plugins: [
+    multiSession({
+      maximumSessions: 5, // Default: 5 sessions per device
+    }),
+  ],
+});
+```
+
+**Client-side**:
+```typescript
+import { createAuthClient } from "better-auth/react";
+import { multiSessionClient } from "better-auth/client/plugins";
+
+export const authClient = createAuthClient({
+  plugins: [multiSessionClient()],
+});
+
+// List all active sessions
+const sessions = await authClient.multiSession.listDeviceSessions();
+
+// Switch to different account
+await authClient.multiSession.setActiveSession({
+  sessionId: "session_123",
+});
+
+// Revoke a session
+await authClient.multiSession.revokeSession({
+  sessionId: "session_456",
+});
+```
+
+**Use cases**:
+- Users managing multiple client accounts
+- Developers testing different user roles
+- Support teams accessing customer accounts
+
+📚 **Official Docs**: https://www.better-auth.com/docs/plugins/multi-session
+
+---
+
+### Generic OAuth
+
+The Generic OAuth plugin provides a flexible way to integrate with **any** OAuth 2.0 or OpenID Connect provider, eliminating the need for provider-specific packages.
+
+```typescript
+import { betterAuth } from "better-auth";
+import { genericOAuth } from "better-auth/plugins";
+
+export const auth = betterAuth({
+  database: /* ... */,
+  plugins: [
+    genericOAuth({
+      config: [
+        {
+          providerId: "custom-provider",
+          discoveryUrl: "https://provider.com/.well-known/openid-configuration",
+          clientId: env.CUSTOM_PROVIDER_CLIENT_ID,
+          clientSecret: env.CUSTOM_PROVIDER_CLIENT_SECRET,
+          scopes: ["openid", "profile", "email"],
+        },
+      ],
+    }),
+  ],
+});
+```
+
+**Manual configuration** (without discovery URL):
+```typescript
+genericOAuth({
+  config: [
+    {
+      providerId: "custom-provider",
+      authorizationUrl: "https://provider.com/oauth/authorize",
+      tokenUrl: "https://provider.com/oauth/token",
+      userInfoUrl: "https://provider.com/oauth/userinfo",
+      clientId: env.CUSTOM_PROVIDER_CLIENT_ID,
+      clientSecret: env.CUSTOM_PROVIDER_CLIENT_SECRET,
+      scopes: ["profile", "email"],
+    },
+  ],
+})
+```
+
+**Client usage**:
+```typescript
+await authClient.signIn.social({
+  provider: "custom-provider",
+  callbackURL: "/dashboard",
+});
+```
+
+**Use cases**:
+- Integrate with enterprise identity providers
+- Connect to niche OAuth providers not supported out-of-the-box
+- Use custom OAuth servers
+
+📚 **Official Docs**: https://www.better-auth.com/docs/plugins/generic-oauth
+
+---
+
+### API Key Authentication
+
+The API Key plugin enables API key-based authentication for machine-to-machine communication or API-only access (no sessions).
+
+```typescript
+import { betterAuth } from "better-auth";
+import { apiKey } from "better-auth/plugins";
+
+export const auth = betterAuth({
+  database: /* ... */,
+  plugins: [
+    apiKey({
+      prefix: "api_", // Optional prefix for keys
+      expiresIn: 60 * 60 * 24 * 365, // 1 year (optional)
+    }),
+  ],
+});
+```
+
+**Generate API key**:
+```typescript
+const { data } = await auth.api.createApiKey({
+  body: {
+    name: "Production API Key",
+    expiresIn: 60 * 60 * 24 * 90, // 90 days
+  },
+  headers: request.headers,
+});
+
+console.log(data.apiKey); // "api_abc123xyz..."
+```
+
+**Authenticate with API key**:
+```typescript
+// In middleware or API route
+const apiKey = request.headers.get("Authorization")?.replace("Bearer ", "");
+
+const { data: user } = await auth.api.verifyApiKey({
+  apiKey,
+});
+
+if (!user) {
+  return new Response("Unauthorized", { status: 401 });
+}
+```
+
+**Use cases**:
+- Backend service-to-service authentication
+- CLI tools accessing your API
+- Mobile apps with machine credentials
+- Webhook integrations
+
+📚 **Official Docs**: https://www.better-auth.com/docs/plugins/api-key
+
+---
+
+### Other Available Plugins
+
+Better Auth provides additional plugins for advanced use cases:
+
+| Plugin | Import | Description | Docs |
+|--------|--------|-------------|------|
+| **OIDC Provider** | `better-auth/plugins` | Build your own OpenID Connect provider (become an OAuth provider for other apps) | [📚](https://www.better-auth.com/docs/plugins/oidc-provider) |
+| **SSO** | `better-auth/plugins` | Enterprise Single Sign-On with OIDC, OAuth2, and SAML 2.0 support | [📚](https://www.better-auth.com/docs/plugins/sso) |
+| **Stripe** | `better-auth/plugins` | Payment and subscription management (stable as of v1.3+) | [📚](https://www.better-auth.com/docs/plugins/stripe) |
+| **MCP** | `better-auth/plugins` | Act as OAuth provider for Model Context Protocol (MCP) clients | [📚](https://www.better-auth.com/docs/plugins/mcp) |
+| **Expo** | `better-auth/expo` | React Native/Expo integration with secure cookie management | [📚](https://www.better-auth.com/docs/integrations/expo) |
 
 ---
 
@@ -811,6 +1041,8 @@ import { twoFactor } from "better-auth/plugins";
 | `/two-factor/verify-backup-code` | POST | Use backup code for login |
 | `/two-factor/view-backup-codes` | GET | View current backup codes |
 
+📚 **Docs**: https://www.better-auth.com/docs/plugins/2fa
+
 ##### Organization Plugin (Multi-Tenant SaaS)
 
 ```typescript
@@ -876,6 +1108,8 @@ import { organization } from "better-auth/plugins";
 | `/organization/get-role` | GET | Get role details |
 | `/organization/update-role` | PUT | Modify role permissions |
 
+📚 **Docs**: https://www.better-auth.com/docs/plugins/organization
+
 ##### Admin Plugin
 
 ```typescript
@@ -898,30 +1132,32 @@ import { admin } from "better-auth/plugins";
 | `/admin/impersonate-user` | POST | Start impersonating user |
 | `/admin/stop-impersonating` | POST | End impersonation session |
 
+📚 **Docs**: https://www.better-auth.com/docs/plugins/admin
+
 ##### Other Plugin Endpoints
 
-**Passkey Plugin** (5 endpoints):
+**Passkey Plugin** (5 endpoints) - [Docs](https://www.better-auth.com/docs/plugins/passkey):
 - `/passkey/add`, `/sign-in/passkey`, `/passkey/list`, `/passkey/delete`, `/passkey/update`
 
-**Magic Link Plugin** (2 endpoints):
+**Magic Link Plugin** (2 endpoints) - [Docs](https://www.better-auth.com/docs/plugins/magic-link):
 - `/sign-in/magic-link`, `/magic-link/verify`
 
-**Username Plugin** (2 endpoints):
+**Username Plugin** (2 endpoints) - [Docs](https://www.better-auth.com/docs/plugins/username):
 - `/sign-in/username`, `/username/is-available`
 
-**Phone Number Plugin** (5 endpoints):
+**Phone Number Plugin** (5 endpoints) - [Docs](https://www.better-auth.com/docs/plugins/phone-number):
 - `/sign-in/phone-number`, `/phone-number/send-otp`, `/phone-number/verify`, `/phone-number/request-password-reset`, `/phone-number/reset-password`
 
-**Email OTP Plugin** (6 endpoints):
+**Email OTP Plugin** (6 endpoints) - [Docs](https://www.better-auth.com/docs/plugins/email-otp):
 - `/email-otp/send-verification-otp`, `/email-otp/check-verification-otp`, `/sign-in/email-otp`, `/email-otp/verify-email`, `/forget-password/email-otp`, `/email-otp/reset-password`
 
-**Anonymous Plugin** (1 endpoint):
+**Anonymous Plugin** (1 endpoint) - [Docs](https://www.better-auth.com/docs/plugins/anonymous):
 - `/sign-in/anonymous`
 
-**JWT Plugin** (2 endpoints):
+**JWT Plugin** (2 endpoints) - [Docs](https://www.better-auth.com/docs/plugins/jwt):
 - `/token` (get JWT), `/jwks` (public key for verification)
 
-**OpenAPI Plugin** (2 endpoints):
+**OpenAPI Plugin** (2 endpoints) - [Docs](https://www.better-auth.com/docs/plugins/open-api):
 - `/reference` (interactive API docs with Scalar UI)
 - `/generate-openapi-schema` (get OpenAPI spec as JSON)
 
@@ -1700,24 +1936,79 @@ Use `Read` tool to access these files when needed.
 
 ## Token Efficiency
 
-**Without this skill**: ~25,000 tokens (setup trial-and-error, debugging D1 adapter, schema generation, CORS, OAuth, discovering 80+ endpoints, implementing custom auth flows)
-**With this skill**: ~7,000 tokens (direct implementation from correct patterns + comprehensive API reference)
-**Savings**: ~72% (18,000 tokens)
+**Without this skill**: ~28,000 tokens (setup trial-and-error, debugging D1 adapter, schema generation, CORS, OAuth, discovering 80+ endpoints, implementing custom auth flows, researching plugins, TanStack Start integration)
+**With this skill**: ~7,000 tokens (direct implementation from correct patterns + comprehensive API reference + plugin documentation)
+**Savings**: ~75% (21,000 tokens)
 
-**Errors prevented**: 14 common issues documented with solutions (includes 2 API-related: using wrong approach for auth, reinventing existing endpoints)
+**Errors prevented**: 16 common issues documented with solutions (includes 2 API-related, 2 framework integration errors)
 
-**Key value add**: Complete reference for 80+ auto-generated endpoints and server-side API methods, eliminating trial-and-error endpoint discovery
+**Key value add**: Complete reference for 80+ auto-generated endpoints, server-side API methods, AND essential plugin documentation (multiSession, genericOAuth, apiKey, TanStack Start), eliminating trial-and-error plugin discovery
 
 ---
 
 ## Additional Resources
 
-- **Official Docs**: https://better-auth.com
+### Official Documentation
+
+- **Homepage**: https://better-auth.com
+- **Introduction**: https://www.better-auth.com/docs/introduction
+- **Installation**: https://www.better-auth.com/docs/installation
+- **Basic Usage**: https://www.better-auth.com/docs/basic-usage
+
+### Core Concepts
+
+- **Session Management**: https://www.better-auth.com/docs/concepts/session-management
+- **Users & Accounts**: https://www.better-auth.com/docs/concepts/users-accounts
+- **Client SDK**: https://www.better-auth.com/docs/concepts/client
+- **Plugins System**: https://www.better-auth.com/docs/concepts/plugins
+
+### Authentication Methods
+
+- **Email & Password**: https://www.better-auth.com/docs/authentication/email-password
+- **OAuth Providers**: https://www.better-auth.com/docs/concepts/oauth
+
+### Plugin Documentation
+
+**Core Plugins**:
+- **2FA (Two-Factor)**: https://www.better-auth.com/docs/plugins/2fa
+- **Organization**: https://www.better-auth.com/docs/plugins/organization
+- **Admin**: https://www.better-auth.com/docs/plugins/admin
+- **Multi-Session**: https://www.better-auth.com/docs/plugins/multi-session
+- **API Key**: https://www.better-auth.com/docs/plugins/api-key
+- **Generic OAuth**: https://www.better-auth.com/docs/plugins/generic-oauth
+
+**Passwordless Plugins**:
+- **Passkey**: https://www.better-auth.com/docs/plugins/passkey
+- **Magic Link**: https://www.better-auth.com/docs/plugins/magic-link
+- **Email OTP**: https://www.better-auth.com/docs/plugins/email-otp
+- **Phone Number**: https://www.better-auth.com/docs/plugins/phone-number
+- **Anonymous**: https://www.better-auth.com/docs/plugins/anonymous
+
+**Advanced Plugins**:
+- **Username**: https://www.better-auth.com/docs/plugins/username
+- **JWT**: https://www.better-auth.com/docs/plugins/jwt
+- **OpenAPI**: https://www.better-auth.com/docs/plugins/open-api
+- **OIDC Provider**: https://www.better-auth.com/docs/plugins/oidc-provider
+- **SSO**: https://www.better-auth.com/docs/plugins/sso
+- **Stripe**: https://www.better-auth.com/docs/plugins/stripe
+- **MCP**: https://www.better-auth.com/docs/plugins/mcp
+
+### Framework Integrations
+
+- **TanStack Start**: https://www.better-auth.com/docs/integrations/tanstack
+- **Expo (React Native)**: https://www.better-auth.com/docs/integrations/expo
+
+### Community & Support
+
 - **GitHub**: https://github.com/better-auth/better-auth (22.4k ⭐)
 - **Examples**: https://github.com/better-auth/better-auth/tree/main/examples
-- **Drizzle Docs**: https://orm.drizzle.team/docs/get-started-sqlite
-- **Kysely Docs**: https://kysely.dev/
 - **Discord**: https://discord.gg/better-auth
+- **Changelog**: https://github.com/better-auth/better-auth/releases
+
+### Related Documentation
+
+- **Drizzle ORM**: https://orm.drizzle.team/docs/get-started-sqlite
+- **Kysely**: https://kysely.dev/
 
 ---
 
@@ -1750,4 +2041,4 @@ Use `Read` tool to access these files when needed.
 
 ---
 
-**Last verified**: 2025-11-17 | **Skill version**: 2.1.0 | **Changes**: Added comprehensive API Reference section documenting 80+ auto-generated endpoints and server-side methods, updated token efficiency metrics
+**Last verified**: 2025-11-18 | **Skill version**: 2.2.0 | **Changes**: Added TanStack Start integration (reactStartCookies), multiSession, genericOAuth, apiKey plugins with examples. Added comprehensive documentation links for all plugins and core concepts. Expanded Additional Resources with 50+ documentation links.
