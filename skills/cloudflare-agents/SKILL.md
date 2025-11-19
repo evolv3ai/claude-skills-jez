@@ -1,11 +1,11 @@
 ---
 name: cloudflare-agents
 description: |
-  Comprehensive guide for the Cloudflare Agents SDK - build AI-powered autonomous agents on Workers + Durable Objects.
+  Comprehensive guide for the Cloudflare Agents SDK - build AI-powered autonomous agents on Workers + Durable Objects. INCLUDES CRITICAL ARCHITECTURAL GUIDANCE: explains when to use Agents SDK vs when to just use AI SDK (simpler), what Agents SDK provides (infrastructure, NOT AI), and how to combine with Vercel AI SDK or Workers AI.
 
-  Use when: building AI agents, creating stateful agents with WebSockets, implementing chat agents with streaming, scheduling tasks with cron/delays, running asynchronous workflows, building RAG (Retrieval Augmented Generation) systems with Vectorize, creating MCP (Model Context Protocol) servers, implementing human-in-the-loop workflows, browsing the web with Browser Rendering, managing agent state with SQL, syncing state between agents and clients, calling agents from Workers, building multi-agent systems, or encountering Agent configuration errors.
+  Use when: deciding if you need Agents SDK infrastructure, building AI agents with WebSockets + state, creating stateful agents with Durable Objects, implementing chat agents with streaming, scheduling tasks with cron/delays, running asynchronous workflows, building RAG (Retrieval Augmented Generation) systems with Vectorize, creating MCP (Model Context Protocol) servers, implementing human-in-the-loop workflows, browsing the web with Browser Rendering, managing agent state with SQL, syncing state between agents and clients, calling agents from Workers, building multi-agent systems, choosing between AI SDK and Workers AI for inference, or encountering "what are we even using Agents SDK for?" confusion.
 
-  Prevents 15+ documented issues: migrations not atomic, missing new_sqlite_classes, Agent class not exported, binding name mismatch, global uniqueness gotchas, WebSocket state handling, scheduled task callback errors, state size limits, workflow binding missing, browser binding required, vectorize index not found, MCP transport confusion, authentication bypassed, instance naming errors, and state sync failures.
+  Prevents 16+ documented issues: migrations not atomic, missing new_sqlite_classes, Agent class not exported, binding name mismatch, global uniqueness gotchas, WebSocket state handling, scheduled task callback errors, state size limits, workflow binding missing, browser binding required, vectorize index not found, MCP transport confusion, authentication bypassed, instance naming errors, state sync failures, and Workers AI streaming parsing complexity (Uint8Array/SSE format).
 
   Keywords: Cloudflare Agents, agents sdk, cloudflare agents sdk, Agent class, Durable Objects agents, stateful agents, WebSocket agents, this.setState, this.sql, this.schedule, schedule tasks, cron agents, run workflows, agent workflows, browse web, puppeteer agents, browser rendering, rag agents, vectorize agents, embeddings, mcp server, McpAgent, mcp tools, model context protocol, routeAgentRequest, getAgentByName, useAgent hook, AgentClient, agentFetch, useAgentChat, AIChatAgent, chat agents, streaming chat, human in the loop, hitl agents, multi-agent, agent orchestration, autonomous agents, long-running agents, AI SDK, Workers AI, "Agent class must extend", "new_sqlite_classes", "migrations required", "binding not found", "agent not exported", "callback does not exist", "state limit exceeded"
 license: MIT
@@ -14,7 +14,7 @@ license: MIT
 # Cloudflare Agents SDK
 
 **Status**: Production Ready ✅
-**Last Updated**: 2025-10-21
+**Last Updated**: 2025-11-19
 **Dependencies**: cloudflare-worker-base (recommended)
 **Latest Versions**: agents@latest, @modelcontextprotocol/sdk@latest
 **Production Tested**: Cloudflare's own MCP servers (https://github.com/cloudflare/mcp-server-cloudflare)
@@ -36,6 +36,142 @@ The Cloudflare Agents SDK enables building AI-powered autonomous agents that run
 - **Scale to millions** of independent agent instances globally
 
 Each agent instance is a **globally unique, stateful micro-server** that can run for seconds, minutes, or hours.
+
+---
+
+## Do You Need Agents SDK?
+
+**STOP**: Before using Agents SDK, ask yourself if you actually need it.
+
+### Use JUST Vercel AI SDK (Simpler) When:
+
+- ✅ Building a basic chat interface
+- ✅ Server-Sent Events (SSE) streaming is sufficient (one-way: server → client)
+- ✅ No persistent agent state needed (or you manage it separately with D1/KV)
+- ✅ Single-user, single-conversation scenarios
+- ✅ Just need AI responses, no complex workflows or scheduling
+
+**This covers 80% of chat applications.** For these cases, use [Vercel AI SDK](https://sdk.vercel.ai/) directly on Workers - it's simpler, requires less infrastructure, and handles streaming automatically.
+
+**Example** (no Agents SDK needed):
+```typescript
+// worker.ts - Simple chat with AI SDK only
+import { streamText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+export default {
+  async fetch(request: Request, env: Env) {
+    const { messages } = await request.json();
+
+    const result = streamText({
+      model: openai('gpt-4o-mini'),
+      messages
+    });
+
+    return result.toTextStreamResponse(); // Automatic SSE streaming
+  }
+}
+
+// client.tsx - React with built-in hooks
+import { useChat } from 'ai/react';
+
+function ChatPage() {
+  const { messages, input, handleSubmit } = useChat({ api: '/api/chat' });
+  // Done. No Agents SDK needed.
+}
+```
+
+**Result**: 100 lines of code instead of 500. No Durable Objects setup, no WebSocket complexity, no migrations.
+
+---
+
+### Use Agents SDK When You Need:
+
+- ✅ **WebSocket connections** (true bidirectional real-time communication)
+- ✅ **Durable Objects** (globally unique, stateful agent instances)
+- ✅ **Built-in state persistence** (SQLite storage up to 1GB per agent)
+- ✅ **Multi-agent coordination** (agents calling and communicating with each other)
+- ✅ **Scheduled tasks** (delays, cron expressions, recurring jobs)
+- ✅ **Human-in-the-loop workflows** (approval gates, review processes)
+- ✅ **Long-running agents** (background processing, autonomous workflows)
+- ✅ **MCP servers** with stateful tool execution
+
+**This is ~20% of applications** - when you need the infrastructure that Agents SDK provides.
+
+---
+
+### Key Understanding: What Agents SDK IS vs IS NOT
+
+**Agents SDK IS**:
+- 🏗️ **Infrastructure layer** for WebSocket connections, Durable Objects, and state management
+- 🔧 **Framework** for building stateful, autonomous agents
+- 📦 **Wrapper** around Durable Objects with lifecycle methods
+
+**Agents SDK IS NOT**:
+- ❌ **AI inference provider** (you bring your own: AI SDK, Workers AI, OpenAI, etc.)
+- ❌ **Streaming response handler** (use AI SDK for automatic parsing)
+- ❌ **LLM integration** (that's a separate concern)
+
+**Think of it this way**:
+- **Agents SDK** = The building (WebSockets, state, rooms)
+- **AI SDK / Workers AI** = The AI brain (inference, reasoning, responses)
+
+You can use them together (recommended for most cases), or use Workers AI directly (if you're willing to handle manual SSE parsing).
+
+---
+
+### Decision Flowchart
+
+```
+Building an AI application?
+│
+├─ Need WebSocket bidirectional communication? ───────┐
+│  (Client sends while server streams, agent-initiated messages)
+│
+├─ Need Durable Objects stateful instances? ──────────┤
+│  (Globally unique agents with persistent memory)
+│
+├─ Need multi-agent coordination? ────────────────────┤
+│  (Agents calling/messaging other agents)
+│
+├─ Need scheduled tasks or cron jobs? ────────────────┤
+│  (Delayed execution, recurring tasks)
+│
+├─ Need human-in-the-loop workflows? ─────────────────┤
+│  (Approval gates, review processes)
+│
+└─ If ALL above are NO ─────────────────────────────→ Use AI SDK directly
+                                                       (Much simpler approach)
+
+   If ANY above are YES ────────────────────────────→ Use Agents SDK + AI SDK
+                                                       (More infrastructure, more power)
+```
+
+---
+
+### Architecture Comparison
+
+| Feature | AI SDK Only | Agents SDK + AI SDK |
+|---------|-------------|---------------------|
+| **Setup Complexity** | 🟢 Low (npm install, done) | 🔴 Higher (Durable Objects, migrations, bindings) |
+| **Code Volume** | 🟢 ~100 lines | 🟡 ~500+ lines |
+| **Streaming** | ✅ Automatic (SSE) | ✅ Automatic (AI SDK) or manual (Workers AI) |
+| **State Management** | ⚠️ Manual (D1/KV) | ✅ Built-in (SQLite) |
+| **WebSockets** | ❌ Manual setup | ✅ Built-in |
+| **React Hooks** | ✅ useChat, useCompletion | ⚠️ Custom hooks needed |
+| **Multi-agent** | ❌ Not supported | ✅ Built-in (routeAgentRequest) |
+| **Scheduling** | ❌ External (Queue/Workflow) | ✅ Built-in (this.schedule) |
+| **Use Case** | Simple chat, completions | Complex stateful workflows |
+
+---
+
+### Still Not Sure?
+
+**Start with AI SDK.** You can always migrate to Agents SDK later if you discover you need WebSockets or Durable Objects. It's easier to add infrastructure later than to remove it.
+
+**For most developers**: If you're building a chat interface and don't have specific requirements for WebSockets, multi-agent coordination, or scheduled tasks, use AI SDK directly. You'll ship faster and with less complexity.
+
+**Proceed with Agents SDK only if** you've identified a specific need for its infrastructure capabilities.
 
 ---
 
@@ -121,6 +257,289 @@ npx wrangler@latest deploy
 ```
 
 Your agent is now running at: `https://my-agent.<subdomain>.workers.dev`
+
+---
+
+## Architecture Overview: How the Pieces Fit Together
+
+Understanding what each tool does prevents confusion and helps you choose the right combination.
+
+### The Stack
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Your Application                      │
+│                                                          │
+│  ┌────────────────┐         ┌──────────────────────┐   │
+│  │  Agents SDK    │         │   AI Inference       │   │
+│  │  (Infra Layer) │   +     │   (Brain Layer)      │   │
+│  │                │         │                      │   │
+│  │ • WebSockets   │         │  Choose ONE:         │   │
+│  │ • Durable Objs │         │  • Vercel AI SDK ✅   │   │
+│  │ • State (SQL)  │         │  • Workers AI ⚠️      │   │
+│  │ • Scheduling   │         │  • OpenAI Direct     │   │
+│  │ • Multi-agent  │         │  • Anthropic Direct  │   │
+│  └────────────────┘         └──────────────────────┘   │
+│         ↓                             ↓                │
+│  Manages connections          Generates responses      │
+│  and state                    and handles streaming    │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+              Cloudflare Workers + Durable Objects
+```
+
+### What Each Tool Provides
+
+#### 1. Agents SDK (This Skill)
+
+**Purpose**: Infrastructure for stateful, real-time agents
+
+**Provides**:
+- ✅ WebSocket connection management (bidirectional real-time)
+- ✅ Durable Objects wrapper (globally unique agent instances)
+- ✅ Built-in state persistence (SQLite up to 1GB)
+- ✅ Lifecycle methods (`onStart`, `onConnect`, `onMessage`, `onClose`)
+- ✅ Task scheduling (`this.schedule()` with cron/delays)
+- ✅ Multi-agent coordination (`routeAgentRequest()`)
+- ✅ Client libraries (`useAgent`, `AgentClient`, `agentFetch`)
+
+**Does NOT Provide**:
+- ❌ AI inference (no LLM calls)
+- ❌ Streaming response parsing (bring your own)
+- ❌ Provider integrations (OpenAI, Anthropic, etc.)
+
+**Think of it as**: The building and infrastructure (rooms, doors, plumbing) but NOT the residents (AI).
+
+---
+
+#### 2. Vercel AI SDK (Recommended for AI)
+
+**Purpose**: AI inference with automatic streaming
+
+**Provides**:
+- ✅ Automatic streaming response handling (SSE parsing done for you)
+- ✅ Multi-provider support (OpenAI, Anthropic, Google, etc.)
+- ✅ React hooks (`useChat`, `useCompletion`, `useAssistant`)
+- ✅ Unified API across providers
+- ✅ Tool calling / function calling
+- ✅ Works on Cloudflare Workers ✅
+
+**Example**:
+```typescript
+import { streamText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const result = streamText({
+  model: openai('gpt-4o-mini'),
+  messages: [...]
+});
+
+// Returns SSE stream - no manual parsing needed
+return result.toTextStreamResponse();
+```
+
+**When to use with Agents SDK**:
+- ✅ Most chat applications
+- ✅ When you want React hooks
+- ✅ When you use multiple AI providers
+- ✅ When you want clean, abstracted AI calls
+
+**Combine with Agents SDK**:
+```typescript
+import { AIChatAgent } from "agents/ai-chat-agent";
+import { streamText } from "ai";
+
+export class MyAgent extends AIChatAgent<Env> {
+  async onChatMessage(onFinish) {
+    // Agents SDK provides: WebSocket, state, this.messages
+    // AI SDK provides: Automatic streaming, provider abstraction
+
+    return streamText({
+      model: openai('gpt-4o-mini'),
+      messages: this.messages  // Managed by Agents SDK
+    }).toTextStreamResponse();
+  }
+}
+```
+
+---
+
+#### 3. Workers AI (Alternative for AI)
+
+**Purpose**: Cloudflare's on-platform AI inference
+
+**Provides**:
+- ✅ Cost-effective inference (included in Workers subscription)
+- ✅ No external API keys needed
+- ✅ Models: LLaMA 3, Qwen, Mistral, embeddings, etc.
+- ✅ Runs on Cloudflare's network (low latency)
+
+**Does NOT Provide**:
+- ❌ Automatic streaming parsing (returns raw SSE format)
+- ❌ React hooks
+- ❌ Multi-provider abstraction
+
+**Manual parsing required**:
+```typescript
+const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', {
+  messages: [...],
+  stream: true
+});
+
+// Returns raw SSE format - YOU must parse
+for await (const chunk of response) {
+  const text = new TextDecoder().decode(chunk);  // Uint8Array → string
+  if (text.startsWith('data: ')) {              // Check SSE format
+    const data = JSON.parse(text.slice(6));     // Parse JSON
+    if (data.response) {                        // Extract .response field
+      fullResponse += data.response;
+    }
+  }
+}
+```
+
+**When to use**:
+- ✅ Cost is critical (embeddings, high-volume)
+- ✅ Need Cloudflare-specific models
+- ✅ Willing to handle manual SSE parsing
+- ✅ No external dependencies allowed
+
+**Trade-off**: Save money, spend time on manual parsing.
+
+---
+
+### Recommended Combinations
+
+#### Option A: Agents SDK + Vercel AI SDK (Recommended ⭐)
+
+**Use when**: You need WebSockets/state AND want clean AI integration
+
+```typescript
+import { AIChatAgent } from "agents/ai-chat-agent";
+import { streamText } from "ai";
+import { openai } from "@ai-sdk/openai";
+
+export class ChatAgent extends AIChatAgent<Env> {
+  async onChatMessage(onFinish) {
+    return streamText({
+      model: openai('gpt-4o-mini'),
+      messages: this.messages,  // Agents SDK manages history
+      onFinish
+    }).toTextStreamResponse();
+  }
+}
+```
+
+**Pros**:
+- ✅ Best developer experience
+- ✅ Automatic streaming
+- ✅ WebSockets + state from Agents SDK
+- ✅ Clean, maintainable code
+
+**Cons**:
+- ⚠️ Requires external API keys
+- ⚠️ Additional cost for AI provider
+
+---
+
+#### Option B: Agents SDK + Workers AI
+
+**Use when**: You need WebSockets/state AND cost is critical
+
+```typescript
+import { Agent } from "agents";
+
+export class BudgetAgent extends Agent<Env> {
+  async onMessage(connection, message) {
+    const response = await this.env.AI.run('@cf/meta/llama-3-8b-instruct', {
+      messages: [...],
+      stream: true
+    });
+
+    // Manual SSE parsing required (see Workers AI section above)
+    for await (const chunk of response) {
+      // ... manual parsing ...
+    }
+  }
+}
+```
+
+**Pros**:
+- ✅ Cost-effective
+- ✅ No external dependencies
+- ✅ WebSockets + state from Agents SDK
+
+**Cons**:
+- ❌ Manual SSE parsing complexity
+- ❌ Limited model selection
+- ❌ More code to maintain
+
+---
+
+#### Option C: Just Vercel AI SDK (No Agents)
+
+**Use when**: You DON'T need WebSockets or Durable Objects
+
+```typescript
+// worker.ts - Simple Workers route
+export default {
+  async fetch(request: Request, env: Env) {
+    const { messages } = await request.json();
+
+    const result = streamText({
+      model: openai('gpt-4o-mini'),
+      messages
+    });
+
+    return result.toTextStreamResponse();
+  }
+}
+
+// client.tsx - Built-in React hooks
+import { useChat } from 'ai/react';
+
+function Chat() {
+  const { messages, input, handleSubmit } = useChat({ api: '/api/chat' });
+  return <form onSubmit={handleSubmit}>...</form>;
+}
+```
+
+**Pros**:
+- ✅ Simplest approach
+- ✅ Least code
+- ✅ Fast to implement
+- ✅ Built-in React hooks
+
+**Cons**:
+- ❌ No WebSockets (only SSE)
+- ❌ No Durable Objects state
+- ❌ No multi-agent coordination
+
+**Best for**: 80% of chat applications
+
+---
+
+### Decision Matrix
+
+| Your Needs | Recommended Stack | Complexity | Cost |
+|-----------|------------------|-----------|------|
+| Simple chat, no state | AI SDK only | 🟢 Low | $$ (AI provider) |
+| Chat + WebSockets + state | Agents SDK + AI SDK | 🟡 Medium | $$$ (infra + AI) |
+| Chat + WebSockets + budget | Agents SDK + Workers AI | 🔴 High | $ (infra only) |
+| Multi-agent workflows | Agents SDK + AI SDK | 🔴 High | $$$ (infra + AI) |
+| MCP server with tools | Agents SDK (McpAgent) | 🟡 Medium | $ (infra only) |
+
+---
+
+### Key Takeaway
+
+**Agents SDK is infrastructure, not AI.** You combine it with AI inference tools:
+
+- **For best DX**: Agents SDK + Vercel AI SDK ⭐
+- **For cost savings**: Agents SDK + Workers AI (accept manual parsing)
+- **For simplicity**: Just AI SDK (if you don't need WebSockets/state)
+
+The rest of this skill focuses on Agents SDK (the infrastructure layer). For AI inference patterns, see the `ai-sdk-core` or `cloudflare-workers-ai` skills.
 
 ---
 
@@ -1890,7 +2309,7 @@ export class OrchestratorAgent extends Agent<Env> {
 
 ## Known Issues Prevention
 
-This skill prevents **15+** documented issues:
+This skill prevents **16+** documented issues:
 
 ### Issue 1: Migrations Not Atomic
 **Error**: "Cannot gradually deploy migration"
@@ -1981,6 +2400,59 @@ This skill prevents **15+** documented issues:
 **Source**: https://developers.cloudflare.com/agents/api-reference/calling-agents/
 **Why**: Poor instance naming allows access to wrong agent
 **Prevention**: Use namespaced names like `user-${userId}`, validate ownership
+
+### Issue 16: Workers AI Streaming Requires Manual Parsing
+**Error**: "Cannot read property 'response' of undefined" or empty AI responses
+**Source**: https://developers.cloudflare.com/workers-ai/platform/streaming/
+**Why**: Workers AI returns streaming responses as `Uint8Array` in Server-Sent Events (SSE) format, not plain objects
+**Prevention**: Use `TextDecoder` + SSE parsing pattern (see "Workers AI (Alternative for AI)" section above)
+
+**The problem** - Attempting to access stream chunks directly fails:
+```typescript
+const response = await env.AI.run(model, { stream: true });
+for await (const chunk of response) {
+  console.log(chunk.response);  // ❌ undefined - chunk is Uint8Array, not object
+}
+```
+
+**The solution** - Parse SSE format manually:
+```typescript
+const response = await env.AI.run(model, { stream: true });
+for await (const chunk of response) {
+  const text = new TextDecoder().decode(chunk);  // Step 1: Uint8Array → string
+  if (text.startsWith('data: ')) {              // Step 2: Check SSE format
+    const jsonStr = text.slice(6).trim();       // Step 3: Extract JSON from "data: {...}"
+    if (jsonStr === '[DONE]') break;            // Step 4: Handle termination
+    const data = JSON.parse(jsonStr);           // Step 5: Parse JSON
+    if (data.response) {                        // Step 6: Extract .response field
+      fullResponse += data.response;
+    }
+  }
+}
+```
+
+**Better alternative**: Use Vercel AI SDK which handles this automatically:
+```typescript
+import { streamText } from 'ai';
+import { createCloudflare } from '@ai-sdk/cloudflare';
+
+const cloudflare = createCloudflare();
+const result = streamText({
+  model: cloudflare('@cf/meta/llama-3-8b-instruct', { binding: env.AI }),
+  messages
+});
+// No manual parsing needed ✅
+```
+
+**When to accept manual parsing**:
+- Cost is critical (Workers AI is cheaper)
+- No external dependencies allowed
+- Willing to maintain SSE parsing code
+
+**When to use AI SDK instead**:
+- Value developer time over compute cost
+- Want automatic streaming
+- Need multi-provider support
 
 ---
 
