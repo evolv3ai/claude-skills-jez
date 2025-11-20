@@ -1,7 +1,7 @@
 # React Hook Form + Zod Validation
 
 **Status**: Production Ready ✅
-**Last Updated**: 2025-10-23
+**Last Updated**: 2025-11-20
 **Production Tested**: Multiple production applications
 **Token Savings**: ~60%
 **Errors Prevented**: 12 documented issues
@@ -100,7 +100,7 @@ This skill prevents **12** documented issues:
 
 | Issue | Source | Prevention |
 |-------|--------|------------|
-| Zod v4 type inference errors | [#13109](https://github.com/react-hook-form/react-hook-form/issues/13109) | Correct type patterns for Zod v4 |
+| Zod v4 type inference errors | [#13109](https://github.com/react-hook-form/react-hook-form/issues/13109) (Closed) | Correct type patterns for Zod v4; resolved in v7.66.x+ |
 | Uncontrolled to controlled warning | React docs | Always set defaultValues |
 | Nested object validation errors | Common issue | Proper error path handling |
 | Array field re-renders | Performance issue | useFieldArray optimization |
@@ -183,14 +183,14 @@ function LoginForm() {
 
 ## Package Versions
 
-**Latest Tested Versions** (as of 2025-10-23):
-- react-hook-form: 7.65.0
+**Latest Tested Versions** (as of 2025-11-20):
+- react-hook-form: 7.66.1
 - zod: 4.1.12
 - @hookform/resolvers: 5.2.2
 
 **Installation**:
 ```bash
-npm install react-hook-form@7.65.0 zod@4.1.12 @hookform/resolvers@5.2.2
+npm install react-hook-form@7.66.1 zod@4.1.12 @hookform/resolvers@5.2.2
 ```
 
 ---

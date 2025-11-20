@@ -13,9 +13,9 @@ license: MIT
 # React Hook Form + Zod Validation
 
 **Status**: Production Ready ✅
-**Last Updated**: 2025-10-23
+**Last Updated**: 2025-11-20
 **Dependencies**: None (standalone)
-**Latest Versions**: react-hook-form@7.65.0, zod@4.1.12, @hookform/resolvers@5.2.2
+**Latest Versions**: react-hook-form@7.66.1, zod@4.1.12, @hookform/resolvers@5.2.2
 
 ---
 
@@ -24,7 +24,7 @@ license: MIT
 ### 1. Install Packages
 
 ```bash
-npm install react-hook-form@7.65.0 zod@4.1.12 @hookform/resolvers@5.2.2
+npm install react-hook-form@7.66.1 zod@4.1.12 @hookform/resolvers@5.2.2
 ```
 
 **Why These Packages**:
@@ -1314,9 +1314,10 @@ This skill prevents **12** documented issues:
 
 ### Issue #1: Zod v4 Type Inference Errors
 **Error**: Type inference doesn't work correctly with Zod v4
-**Source**: [GitHub Issue #13109](https://github.com/react-hook-form/react-hook-form/issues/13109)
+**Source**: [GitHub Issue #13109](https://github.com/react-hook-form/react-hook-form/issues/13109) (Closed 2025-11-01)
 **Why It Happens**: Zod v4 changed how types are inferred
 **Prevention**: Use correct type patterns: `type FormData = z.infer<typeof schema>`
+**Note**: Resolved in react-hook-form v7.66.x+. Upgrade to latest version to avoid this issue.
 
 ### Issue #2: Uncontrolled to Controlled Warning
 **Error**: "A component is changing an uncontrolled input to be controlled"
@@ -1427,5 +1428,5 @@ See the `references/` directory for deep-dive documentation:
 ---
 
 **License**: MIT
-**Last Verified**: 2025-10-23
+**Last Verified**: 2025-11-20
 **Maintainer**: Jeremy Dawes (jeremy@jezweb.net)

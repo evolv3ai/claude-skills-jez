@@ -15,7 +15,9 @@ const schema = z.object({ name: z.string() })
 type FormData = z.infer<typeof schema> // Type issues
 ```
 
-**Source**: [GitHub Issue #13109](https://github.com/react-hook-form/react-hook-form/issues/13109)
+**Source**: [GitHub Issue #13109](https://github.com/react-hook-form/react-hook-form/issues/13109) (Closed 2025-11-01)
+
+**Note**: This issue was resolved in react-hook-form v7.66.x. Upgrade to v7.66.1+ to avoid this problem.
 
 **Solution**:
 ```typescript
