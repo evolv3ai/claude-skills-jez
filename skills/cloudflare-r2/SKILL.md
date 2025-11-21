@@ -1,17 +1,7 @@
 ---
 name: cloudflare-r2
 description: |
-  Complete knowledge domain for Cloudflare R2 - S3-compatible object storage on Cloudflare's edge network.
-
-  Use when: creating R2 buckets, uploading files to R2, downloading objects, configuring R2 bindings,
-  setting up CORS, generating presigned URLs, multipart uploads, storing images/assets, managing object
-  metadata, or encountering "R2_ERROR", CORS errors, presigned URL failures, multipart upload issues,
-  or storage quota errors.
-
-  Keywords: r2, r2 storage, cloudflare r2, r2 bucket, r2 upload, r2 download, r2 binding, object storage,
-  s3 compatible, r2 cors, presigned urls, multipart upload, r2 api, r2 workers, file upload, asset storage,
-  R2_ERROR, R2Bucket, r2 metadata, custom metadata, http metadata, content-type, cache-control,
-  aws4fetch, s3 client, bulk delete, r2 list, storage class
+  Store objects with R2's S3-compatible storage on Cloudflare's edge. Use when: uploading/downloading files, configuring CORS, generating presigned URLs, multipart uploads, managing metadata, or troubleshooting R2_ERROR, CORS failures, presigned URL issues, or quota errors.
 license: MIT
 ---
 
