@@ -1,19 +1,12 @@
 ---
 name: github-project-automation
 description: |
-  This skill provides comprehensive automation for GitHub repository setup and configuration.
-  It should be used when creating new projects, setting up CI/CD pipelines, configuring issue
-  templates, enabling security scanning, or migrating existing projects to GitHub automation.
-  
-  The skill prevents 18 documented errors in GitHub Actions YAML syntax, workflow configuration,
-  issue template structure, Dependabot setup, and CodeQL security scanning. It includes 12
-  production-tested workflow templates, 4 issue templates, security configurations, and automation
-  scripts for rapid project setup.
-  
-  Use when: setting up GitHub Actions CI/CD, creating issue/PR templates, enabling Dependabot,
-  configuring CodeQL scanning, automating GitHub repository setup, fixing YAML syntax errors,
-  integrating security scanning, deploying to Cloudflare Workers via GitHub Actions, or
-  implementing multi-framework testing matrices.
+  Automate GitHub repository setup with CI/CD workflows, issue templates, Dependabot, and CodeQL security scanning.
+  Includes 12 production-tested workflows and prevents 18 errors: YAML syntax, action pinning, and configuration.
+
+  Use when: setting up GitHub Actions CI/CD, creating issue/PR templates, enabling Dependabot or CodeQL scanning,
+  deploying to Cloudflare Workers, implementing matrix testing, or troubleshooting YAML indentation, action version
+  pinning, secrets syntax, runner versions, or CodeQL configuration.
   
   Keywords: github actions, github workflow, ci/cd, issue templates, pull request templates,
   dependabot, codeql, security scanning, yaml syntax, github automation, repository setup,

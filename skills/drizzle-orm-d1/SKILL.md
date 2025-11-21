@@ -1,14 +1,12 @@
 ---
 name: drizzle-orm-d1
 description: |
-  Type-safe ORM for Cloudflare D1 databases using Drizzle. This skill provides comprehensive
-  patterns for schema definition, migrations management, type-safe queries, relations, and
-  Cloudflare Workers integration.
+  Build type-safe D1 databases with Drizzle ORM for Cloudflare Workers. Includes schema definition, migrations
+  with Drizzle Kit, relations, and D1 batch API patterns. Prevents 12 errors including SQL BEGIN failures.
 
-  Use when: building D1 database schemas, writing type-safe SQL queries, managing database
-  migrations with Drizzle Kit, defining table relations, implementing prepared statements,
-  using D1 batch API for transactions, or encountering "D1_ERROR", transaction errors,
-  foreign key constraint failures, migration apply errors, or schema inference issues.
+  Use when: defining D1 schemas, managing migrations, writing type-safe queries, implementing relations or
+  prepared statements, using batch API for transactions, or troubleshooting D1_ERROR, BEGIN TRANSACTION,
+  foreign keys, migration apply, or schema inference errors.
 
   Prevents 12 documented issues: D1 transaction errors (SQL BEGIN not supported), foreign key
   constraint failures during migrations, module import errors with Wrangler, D1 binding not found,

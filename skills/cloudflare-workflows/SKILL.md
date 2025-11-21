@@ -1,14 +1,12 @@
 ---
 name: cloudflare-workflows
 description: |
-  Complete knowledge domain for Cloudflare Workflows - durable execution framework
-  for building multi-step applications on Workers that automatically retry, persist
-  state, and run for hours or days.
+  Build durable, long-running workflows on Cloudflare Workers with automatic retries, state persistence, and
+  multi-step orchestration. Supports step.do, step.sleep, step.waitForEvent, and runs for hours to days.
 
-  Use when: creating long-running workflows, implementing retry logic, building
-  event-driven processes, scheduling multi-step tasks, coordinating between APIs,
-  or encountering "NonRetryableError", "I/O context", "workflow execution failed",
-  "serialization error", or "WorkflowEvent not found" errors.
+  Use when: creating long-running workflows, implementing retry logic, building event-driven processes,
+  coordinating API calls, scheduling multi-step tasks, or troubleshooting NonRetryableError, I/O context,
+  serialization errors, or workflow execution failures.
 
   Keywords: cloudflare workflows, workflows workers, durable execution, workflow step,
   WorkflowEntrypoint, step.do, step.sleep, workflow retries, NonRetryableError,

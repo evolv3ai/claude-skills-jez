@@ -1,7 +1,12 @@
 ---
 name: fastmcp
 description: |
-  Use this skill when building MCP (Model Context Protocol) servers with FastMCP in Python. FastMCP is a framework for creating servers that expose tools, resources, and prompts to LLMs like Claude. The skill covers server creation, tool/resource definitions, storage backends (memory/disk/Redis/DynamoDB), server lifespans, middleware system (8 built-in types), server composition (import/mount), OAuth Proxy, authentication patterns, icons, OpenAPI integration, client configuration, cloud deployment (FastMCP Cloud), error handling, and production patterns. It prevents 25+ common errors including storage misconfiguration, lifespan issues, middleware order errors, circular imports, module-level server issues, async/await confusion, OAuth security vulnerabilities, and cloud deployment failures. Includes templates for basic servers, storage backends, middleware, server composition, OAuth proxy, API integrations, testing, and self-contained production architectures.
+  Build MCP servers in Python with FastMCP framework to expose tools, resources, and prompts to LLMs. Supports
+  storage backends (memory/disk/Redis), middleware, OAuth Proxy, OpenAPI integration, and FastMCP Cloud deployment.
+
+  Use when: creating MCP servers, defining tools or resources, implementing OAuth authentication, configuring
+  storage backends for tokens/cache, adding middleware for logging/rate limiting, deploying to FastMCP Cloud,
+  or troubleshooting module-level server, storage, lifespan, middleware order, circular imports, or OAuth errors.
 
   Keywords: FastMCP, MCP server Python, Model Context Protocol Python, fastmcp framework, mcp tools, mcp resources, mcp prompts, fastmcp storage, fastmcp memory storage, fastmcp disk storage, fastmcp redis, fastmcp dynamodb, fastmcp lifespan, fastmcp middleware, fastmcp oauth proxy, server composition mcp, fastmcp import, fastmcp mount, fastmcp cloud, fastmcp deployment, mcp authentication, fastmcp icons, openapi mcp, claude mcp server, fastmcp testing, storage misconfiguration, lifespan issues, middleware order, circular imports, module-level server, async await mcp
 license: MIT

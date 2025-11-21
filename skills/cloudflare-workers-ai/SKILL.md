@@ -1,12 +1,12 @@
 ---
 name: cloudflare-workers-ai
 description: |
-  Complete knowledge domain for Cloudflare Workers AI - Run AI models on serverless GPUs across Cloudflare's global network.
+  Run LLMs and AI models on Cloudflare's global GPU network with Workers AI. Includes Llama, Flux image generation,
+  BGE embeddings, and streaming support with AI Gateway for caching and logging.
 
-  Use when: implementing AI inference on Workers, running LLM models, generating text/images with AI,
-  configuring Workers AI bindings, implementing AI streaming, using AI Gateway, integrating with
-  embeddings/RAG systems, or encountering "AI_ERROR", rate limit errors, model not found, token
-  limit exceeded, or neurons exceeded errors.
+  Use when: implementing LLM inference, generating images with Flux/Stable Diffusion, building RAG with embeddings,
+  streaming AI responses, using AI Gateway for cost tracking, or troubleshooting AI_ERROR, rate limits, model not
+  found, token limits, or neurons exceeded.
 
   Keywords: workers ai, cloudflare ai, ai bindings, llm workers, @cf/meta/llama, workers ai models,
   ai inference, cloudflare llm, ai streaming, text generation ai, ai embeddings, image generation ai,
