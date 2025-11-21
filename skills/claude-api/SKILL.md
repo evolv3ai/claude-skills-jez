@@ -1,12 +1,26 @@
 ---
 name: claude-api
 description: |
-  This skill provides comprehensive knowledge for working with the Anthropic Messages API (Claude API). It should be used when integrating Claude models into applications, implementing streaming responses, enabling prompt caching for cost savings, adding tool use (function calling), processing images with vision capabilities, or using extended thinking mode.
-
-  Use when building chatbots, AI assistants, content generation tools, or any application requiring Claude's language understanding. Covers both server-side implementations (Node.js, Cloudflare Workers, Next.js) and direct API access.
-
-  Keywords: claude api, anthropic api, messages api, @anthropic-ai/sdk, claude streaming, prompt caching, tool use, vision, extended thinking, claude 3.5 sonnet, claude 3.7 sonnet, claude sonnet 4, function calling, SSE, rate limits, 429 errors
+  Integrate Claude API with streaming, prompt caching, tool use, vision, and extended thinking. Use when: building chatbots, AI assistants, content tools in Node.js/Workers/Next.js, or troubleshooting rate_limit_error, overloaded_error, invalid_request_error, 429 errors.
 license: MIT
+metadata:
+  keywords:
+    - claude api
+    - anthropic api
+    - messages api
+    - "@anthropic-ai/sdk"
+    - claude streaming
+    - prompt caching
+    - tool use
+    - vision
+    - extended thinking
+    - claude 3.5 sonnet
+    - claude 3.7 sonnet
+    - claude sonnet 4
+    - function calling
+    - SSE
+    - rate limits
+    - 429 errors
 ---
 
 # Claude API (Anthropic Messages API)
