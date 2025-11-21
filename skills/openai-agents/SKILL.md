@@ -1,9 +1,9 @@
 ---
 name: openai-agents
 description: |
-  Use this skill when building AI applications with OpenAI Agents SDK for JavaScript/TypeScript. The skill covers both text-based agents and realtime voice agents, including multi-agent workflows (handoffs), tools with Zod schemas, input/output guardrails, structured outputs, streaming, human-in-the-loop patterns, and framework integrations for Cloudflare Workers, Next.js, and React. It prevents 9+ common errors including Zod schema type errors, MCP tracing failures, infinite loops, tool call failures, and schema mismatches. The skill includes comprehensive templates for all agent types, error handling patterns, and debugging strategies.
+  Build AI applications with OpenAI Agents SDK - text agents, voice agents (realtime), multi-agent workflows with handoffs, tools with Zod schemas, input/output guardrails, structured outputs, and streaming. Deploy to Cloudflare Workers, Next.js, or React with human-in-the-loop patterns.
 
-  Keywords: OpenAI Agents SDK, @openai/agents, @openai/agents-realtime, openai agents javascript, openai agents typescript, text agents, voice agents, realtime agents, multi-agent workflows, agent handoffs, agent tools, zod schemas agents, structured outputs agents, agent streaming, agent guardrails, input guardrails, output guardrails, human-in-the-loop, cloudflare workers agents, nextjs openai agents, react openai agents, hono agents, agent debugging, Zod schema type error, MCP tracing failure, agent infinite loop, tool call failures, schema mismatch agents
+  Use when: building text-based agents with tools and Zod schemas, creating realtime voice agents with WebRTC/WebSocket, implementing multi-agent workflows with handoffs between specialists, setting up input/output guardrails for safety, requiring human approval for critical actions, streaming agent responses, deploying agents to Cloudflare Workers or Next.js, or troubleshooting Zod schema type errors, MCP tracing failures, infinite loops (MaxTurnsExceededError), tool call failures, schema mismatches, or voice agent handoff constraints.
 license: MIT
 metadata:
   packages:

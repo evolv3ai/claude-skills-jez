@@ -1,9 +1,9 @@
 ---
 name: nextjs
 description: |
-  Use this skill for Next.js App Router patterns, Server Components, Server Actions, Cache Components, and framework-level optimizations. Covers Next.js 16 breaking changes including async params, proxy.ts migration, Cache Components with "use cache", and React 19.2 integration. For deploying to Cloudflare Workers, use the cloudflare-nextjs skill instead. This skill is deployment-agnostic and works with Vercel, AWS, self-hosted, or any platform.
+  Build full-stack React apps with Next.js 16 App Router - Server Components, Server Actions, Cache Components ("use cache"), streaming SSR, and React 19.2 integration. Master async route params, proxy.ts migration, metadata API, and Turbopack.
 
-  Keywords: Next.js 16, Next.js App Router, Next.js Pages Router, Server Components, React Server Components, Server Actions, Cache Components, use cache, Next.js 16 breaking changes, async params nextjs, proxy.ts migration, React 19.2, Next.js metadata, Next.js SEO, generateMetadata, static generation, dynamic rendering, streaming SSR, Suspense, parallel routes, intercepting routes, route groups, Next.js middleware, Next.js API routes, Route Handlers, revalidatePath, revalidateTag, next/navigation, useSearchParams, turbopack, next.config
+  Use when: building Next.js 16 apps with App Router, implementing Server Components data fetching, creating Server Actions for mutations, setting up Cache Components with "use cache", migrating from Next.js 15 to 16, configuring parallel routes with default.js, setting up proxy.ts (replaces middleware.ts), generating metadata for SEO, optimizing images with next/image, or troubleshooting async params errors (Promise types), "use cache" directive issues, parallel route 404s (missing default.js), CORS in proxy.ts, or Turbopack build failures.
 license: MIT
 metadata:
   version: 1.0.0

@@ -1,9 +1,9 @@
 ---
 name: OpenAI Apps MCP
 description: |
-  Build ChatGPT apps using stateless MCP servers on Cloudflare Workers. This skill should be used when developing applications that integrate into the ChatGPT interface through the OpenAI Apps ecosystem. Covers MCP protocol implementation with @modelcontextprotocol/sdk, OpenAI-specific metadata formats, widget serving patterns via Workers Static Assets, and deployment to Cloudflare. Prevents common errors with CORS configuration, resource URI patterns, MIME types, and SSE transport on Workers. Use this skill when building tools that extend ChatGPT functionality, serving interactive widgets in conversations, or creating MCP servers optimized for OpenAI Apps integration.
+  Build ChatGPT apps with stateless MCP servers on Cloudflare Workers. Extend ChatGPT with custom tools, serve interactive widgets (HTML/JS UI), implement MCP protocol with @modelcontextprotocol/sdk, and deploy with Workers Static Assets.
 
-  Keywords: openai apps, chatgpt app, mcp server, model context protocol, openai integration, cloudflare workers, hono routing, sse transport, widget serving, ui resources, openai metadata, stateless mcp, chatgpt tools, mcp widgets, ui://widget, text/html+skybridge, window.openai, tool invocation, outputTemplate
+  Use when: developing ChatGPT extensions through OpenAI Apps, building tools that integrate into ChatGPT conversations, serving interactive widgets in chat (maps, carousels, lists), implementing MCP servers for OpenAI Apps, deploying to Cloudflare Workers with static assets, or troubleshooting CORS policy blocking MCP endpoints (must allow chatgpt.com), widget 404 errors (missing ui://widget/ prefix), widgets displaying as plain text (wrong MIME type, need text/html+skybridge), ASSETS binding undefined, SSE connection drops after 100 seconds (missing heartbeat), ChatGPT not suggesting tools (action-oriented descriptions needed), or widget scripts blocked by CSP.
 license: MIT
 metadata:
   version: 1.0.0

@@ -1,19 +1,9 @@
 ---
 name: neon-vercel-postgres
 description: |
-  This skill provides comprehensive knowledge for integrating Neon serverless Postgres and Vercel Postgres (which is built on Neon infrastructure) into web applications. It should be used when setting up serverless Postgres databases, configuring connection pooling for edge and serverless environments, implementing database branching workflows, or troubleshooting Postgres connection issues in Cloudflare Workers, Vercel Edge Functions, or Node.js serverless functions.
+  Set up serverless Postgres with Neon or Vercel Postgres for Cloudflare Workers, Vercel Edge, and Node.js serverless functions. Configure connection pooling, implement git-like database branching, integrate Drizzle ORM or Prisma, and handle HTTP/WebSocket-based connections.
 
-  Use this skill when:
-  - Setting up Neon Postgres for Cloudflare Workers, Vercel Edge, or serverless environments
-  - Configuring Vercel Postgres for Next.js applications
-  - Implementing database branching workflows (git-like database branches)
-  - Integrating Drizzle ORM or Prisma with Neon/Vercel Postgres
-  - Debugging connection pool errors, transaction timeouts, or SSL configuration issues
-  - Migrating from D1/SQLite to Postgres or from traditional Postgres to serverless Postgres
-  - Setting up point-in-time restore (PITR) or database backups
-  - Encountering errors like "connection pool exhausted", "TCP connections not supported in serverless", or "sslmode required"
-
-  Keywords: neon postgres, @neondatabase/serverless, @vercel/postgres, serverless postgres, postgres edge, neon branching, vercel database, http postgres, websocket postgres, pooled connection, drizzle neon, prisma neon, postgres cloudflare, postgres vercel edge, sql template tag, neonctl, database branches, point in time restore, postgres migrations, serverless sql, edge database, neon api, vercel sql
+  Use when: setting up Neon Postgres for Cloudflare Workers or Vercel Edge, configuring Vercel Postgres for Next.js, implementing database branching workflows (preview environments), integrating ORMs (Drizzle or Prisma) with serverless Postgres, migrating from D1/SQLite to Postgres, setting up point-in-time restore, or troubleshooting connection pool exhausted errors, "TCP connections not supported" in Workers, SSL configuration issues (sslmode=require), transaction timeouts, or Prisma compatibility (edge vs Node.js).
 license: MIT
 ---
 

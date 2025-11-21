@@ -1,21 +1,9 @@
 ---
 name: openai-api
 description: |
-  Complete guide for OpenAI's traditional/stateless APIs: Chat Completions (GPT-5, GPT-4o), Embeddings,
-  Images (DALL-E 3), Audio (Whisper + TTS), and Moderation. Includes both Node.js SDK and fetch-based
-  approaches for maximum compatibility.
+  Build with OpenAI's stateless APIs - Chat Completions (GPT-5, GPT-4o), Embeddings, Images (DALL-E 3), Audio (Whisper + TTS), and Moderation. Includes Node.js SDK and fetch-based approaches for Cloudflare Workers.
 
-  Use when: integrating OpenAI APIs, implementing chat completions with GPT-5/GPT-4o, generating text
-  with streaming, using function calling/tools, creating structured outputs with JSON schemas,
-  implementing embeddings for RAG, generating images with DALL-E 3, transcribing audio with Whisper,
-  synthesizing speech with TTS, moderating content, deploying to Cloudflare Workers, or encountering
-  errors like rate limits (429), invalid API keys (401), function calling failures, streaming parse
-  errors, embeddings dimension mismatches, or token limit exceeded.
-
-  Keywords: openai api, chat completions, gpt-5, gpt-5-mini, gpt-5-nano, gpt-4o, gpt-4-turbo,
-  openai sdk, openai streaming, function calling, structured output, json schema, openai embeddings,
-  text-embedding-3, dall-e-3, image generation, whisper api, openai tts, text-to-speech, moderation api,
-  openai fetch, cloudflare workers openai, openai rate limit, openai 429, reasoning_effort, verbosity
+  Use when: implementing chat completions with GPT-5/GPT-4o, streaming responses with SSE, using function calling/tools, creating structured outputs with JSON schemas, generating embeddings for RAG (text-embedding-3-small/large), generating images with DALL-E 3, editing images with GPT-Image-1, transcribing audio with Whisper, synthesizing speech with TTS (11 voices), moderating content (11 safety categories), or troubleshooting rate limits (429), invalid API keys (401), function calling failures, streaming parse errors, embeddings dimension mismatches, or token limit exceeded.
 license: MIT
 ---
 

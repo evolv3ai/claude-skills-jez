@@ -1,11 +1,9 @@
 ---
 name: hono-routing
 description: |
-  This skill provides comprehensive knowledge for building type-safe APIs with Hono, focusing on routing patterns, middleware composition, request validation, RPC client/server patterns, error handling, and context management.
+  Build type-safe APIs with Hono - fast, lightweight routing for Cloudflare Workers, Deno, Bun, and Node.js. Set up routing patterns, middleware composition, request validation (Zod/Valibot/Typia/ArkType), RPC client/server with full type inference, and error handling with HTTPException.
 
-  Use when: building APIs with Hono (any runtime), setting up request validation with Zod/Valibot/Typia/ArkType validators, creating type-safe RPC client/server communication, implementing custom middleware, handling errors with HTTPException, extending Hono context with custom variables, or encountering middleware type inference issues, validation hook confusion, or RPC performance problems.
-
-  Keywords: hono, hono routing, hono middleware, hono rpc, hono validator, zod validator, valibot validator, type-safe api, hono context, hono error handling, HTTPException, c.req.valid, middleware composition, hono hooks, typed routes, hono client, middleware response not typed, hono validation failed, hono rpc type inference
+  Use when: building APIs with Hono, setting up request validation with schema libraries, creating type-safe RPC client/server communication, implementing custom middleware chains, handling errors with HTTPException, extending context with custom variables, or troubleshooting middleware type inference issues, validation hook confusion, RPC performance problems, or middleware response typing errors.
 
 license: MIT
 ---
