@@ -1,9 +1,11 @@
 ---
 name: better-auth
 description: |
-  Production-ready authentication framework for TypeScript with Cloudflare D1 support via Drizzle ORM or Kysely. Use this skill when building auth systems as a self-hosted alternative to Clerk or Auth.js, particularly for Cloudflare Workers projects. CRITICAL: better-auth requires Drizzle ORM or Kysely as database adapters - there is NO direct D1 adapter. Supports social providers (Google, GitHub, Microsoft, Apple), email/password, magic links, 2FA, passkeys, organizations, and RBAC. Includes comprehensive API reference for 80+ auto-generated endpoints, server-side methods, and complete plugin documentation (multiSession, genericOAuth, apiKey, TanStack Start integration). Prevents 13 common authentication errors including D1 adapter misconfiguration, schema generation issues, session serialization, CORS, OAuth flows, JWT token handling, API usage patterns, and nanostore state invalidation.
+  Build authentication systems for TypeScript/Cloudflare Workers with social auth, 2FA, passkeys, organizations, and RBAC. Self-hosted alternative to Clerk/Auth.js.
 
-  Keywords: better-auth, authentication, cloudflare d1 auth, drizzle orm auth, kysely auth, self-hosted auth, typescript auth, clerk alternative, auth.js alternative, social login, oauth providers, session management, jwt tokens, 2fa, two-factor, passkeys, webauthn, multi-tenant auth, organizations, teams, rbac, role-based access, google auth, github auth, microsoft auth, apple auth, magic links, email password, better-auth setup, drizzle d1, kysely d1, session serialization error, cors auth, d1 adapter, better-auth endpoints, better-auth api, auth.api methods, auto-generated endpoints, server-side api, tanstack start, reactStartCookies, multiSession, multi-session, genericOAuth, custom oauth, apiKey, api-key auth, tanstack query, react query, nanostores, session invalidation, stale session
+  IMPORTANT: Requires Drizzle ORM or Kysely for D1 - no direct D1 adapter.
+
+  Use when: self-hosting auth on Cloudflare D1, migrating from Clerk, implementing multi-tenant SaaS, or troubleshooting D1 adapter errors, session serialization, OAuth flows.
 license: MIT
 metadata:
   version: 2.2.1
