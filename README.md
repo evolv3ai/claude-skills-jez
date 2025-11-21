@@ -7,6 +7,7 @@ A curated collection of battle-tested skills for building modern web application
 
 **👋 New Here?** → Read [START_HERE.md](START_HERE.md) for quick navigation
 **🔨 Building a Skill?** → Use [QUICK_WORKFLOW.md](QUICK_WORKFLOW.md) and [templates/](templates/)
+**🤖 Teaching AI Agents?** → Share [GEMINI_GUIDE.md](GEMINI_GUIDE.md) for onboarding
 **📖 Project Context?** → See [CLAUDE.md](CLAUDE.md)
 
 ---
@@ -677,8 +678,13 @@ Each skill can be tested before installation:
 
 ## 📚 Documentation
 
-- **Planning**: See [planning/skills-roadmap.md](planning/skills-roadmap.md)
-- **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Getting Started**: [START_HERE.md](START_HERE.md) - Navigation hub
+- **Quick Workflow**: [QUICK_WORKFLOW.md](QUICK_WORKFLOW.md) - 5-minute skill creation
+- **AI Agent Onboarding**: [GEMINI_GUIDE.md](GEMINI_GUIDE.md) - Teaching other AI agents
+- **Project Context**: [CLAUDE.md](CLAUDE.md) - Standards and preferences
+- **Quality Checklist**: [ONE_PAGE_CHECKLIST.md](ONE_PAGE_CHECKLIST.md) - Verification
+- **Planning**: [planning/skills-roadmap.md](planning/skills-roadmap.md) - Roadmap
+- **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guide
 - **Individual skills**: Each skill has README.md + SKILL.md
 
 ---

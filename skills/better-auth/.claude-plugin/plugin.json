@@ -1,12 +1,12 @@
 {
   "name": "better-auth",
-  "description": "Production-ready authentication framework for TypeScript with Cloudflare D1 support via Drizzle ORM or Kysely. Self-hosted alternative to Clerk or Auth.js for Cloudflare Workers projects. CRITICAL: better-auth requires Drizzle ORM or Kysely - NO direct D1 adapter exists. Supports social providers, 2FA, passkeys, organizations, RBAC. Prevents 13 common auth errors including D1 adapter misconfiguration, nanostore session invalidation with TanStack Query, schema generation, CORS, OAuth flows, and JWT handling.",
-  "version": "2.2.1",
+  "description": "Production-ready authentication framework for TypeScript with Cloudflare D1 support via Drizzle ORM or Kysely. Use this skill when building auth systems as a self-hosted alternative to Clerk or Auth.js, particularly for Cloudflare Workers projects. CRITICAL: better-auth requires Drizzle ORM or Kysely as database adapters - there is NO direct D1 adapter. Supports social providers (Google, GitHub, Microsoft, Apple), email/password, magic links, 2FA, passkeys, organizations, and RBAC. Includes comp",
+  "version": "1.0.0",
   "author": {
     "name": "Jeremy Dawes",
     "email": "jeremy@jezweb.net"
   },
   "license": "MIT",
   "repository": "https://github.com/jezweb/claude-skills",
-  "keywords": ["better-auth","authentication","cloudflare-d1","drizzle-orm","kysely","self-hosted-auth","typescript-auth","clerk-alternative","authjs-alternative","social-auth","oauth","session-management","jwt","2fa","passkeys","tanstack-query","react-query","nanostores","session-invalidation"]
+  "keywords": ["better-auth","authentication","cloudflare d1 auth","drizzle orm auth","kysely auth","self-hosted auth","typescript auth","clerk alternative","auth.js alternative","social login","oauth providers","session management","jwt tokens","2fa","two-factor"]
 }

@@ -8,5 +8,5 @@
   },
   "license": "MIT",
   "repository": "https://github.com/jezweb/claude-skills",
-  "keywords": ["gemini-cli","google gemini","gemini command line","second opinion","model comparison","gemini-2.5-flash","gemini-2.5-pro","architectural decisions","debugging assistant","code review gemini","security audit gemini","1M context window","AI pair programming","gemini consultation","flash vs pro"]
+  "keywords": ["gemini-cli","google gemini","gemini command line","second opinion","model comparison","gemini-2.5-flash","gemini-2.5-pro","gemini-3-pro-preview","architectural decisions","debugging assistant","code review gemini","security audit gemini","1M context window","AI pair programming","gemini consultation"]
 }

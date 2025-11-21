@@ -1,31 +1,32 @@
 ## NPM Packages
 
-**Checked**: 2025-11-19 12:32:11 UTC
+**Checked**: 2025-11-19 22:28:34 UTC
 
 
-### ai-sdk-ui
+### react-hook-form-zod
 
 | Package | Current | Latest | Status |
 |---------|---------|--------|--------|
-| node | 8.0.0 | 25.2.1 | ❌ **MAJOR** (breaking) |
-| npm | 9.0.0 | 11.6.2 | ❌ **MAJOR** (breaking) |
-| packageManager | 0.0.0 | _error_ | ⚠️ Could not fetch |
-| node | 8.0.0 | 25.2.1 | ❌ **MAJOR** (breaking) |
-| npm | 9.0.0 | 11.6.2 | ❌ **MAJOR** (breaking) |
-| packageManager | 0.0.0 | _error_ | ⚠️ Could not fetch |
 
 ---
 
 ## GitHub Releases
 
-**Checked**: 2025-11-19 12:32:14 UTC
+**Checked**: 2025-11-19 22:28:34 UTC
 
+
+### react-hook-form-zod
+
+| Repository | Latest Release | Status |
+|------------|----------------|--------|
+| react-hook-form/react-hook-form | v7.66.1 | ⚠️ Check docs |
+| react-hook-form/resolvers | v5.2.2 | ✅ Documented |
 
 ---
 
 ## Skill Metadata
 
-**Checked**: 2025-11-19 12:32:14 UTC
+**Checked**: 2025-11-19 22:28:35 UTC
 
 **Stale Threshold**: 90 days
 
@@ -34,16 +35,8 @@
 
 ## AI Models
 
-**Checked**: 2025-11-19 12:32:14 UTC
+**Checked**: 2025-11-19 22:28:35 UTC
 
-
-### ai-sdk-ui
-
-| Model | Provider | Status | Notes |
-|-------|----------|--------|-------|
-| gpt-3 | OpenAI | ❓ Unknown | Not in known models list |
-| gpt-4 | OpenAI | ⚠️ **Deprecated** | Use gpt-4-turbo or gpt-5 |
-| gpt-4-turbo | OpenAI | ✅ Current | Previous generation |
 
 ---
 
@@ -51,8 +44,7 @@
 
 ### High Priority
 
-- ❌ **4 major (breaking) package update(s)** - Review migration guides before updating
-- ⚠️ **1 deprecated AI model reference(s)** - Update to current models
+✅ **No action items** - All dependencies are up-to-date!
 
 ---
 

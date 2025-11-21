@@ -66,6 +66,32 @@
 
 ---
 
+### 🤖 Teach AI Agents About This Repository
+
+**For Other AI Assistants** (Gemini, GPT, etc.):
+
+If you want to teach another AI agent how to use these skills:
+1. Share **[GEMINI_GUIDE.md](GEMINI_GUIDE.md)** - Comprehensive onboarding guide
+2. Grant access to `/home/jez/Documents/claude-skills/` directory
+3. Point them to specific skills in `skills/[skill-name]/SKILL.md`
+
+**What GEMINI_GUIDE.md Contains**:
+- Navigation priorities (which files to read first)
+- Skill structure explanation (YAML frontmatter, templates, etc.)
+- How to extract knowledge from skills
+- Tech stack context and critical rules
+- Practical examples and integration tips
+- Full skills inventory (59 production skills)
+- Command reference for accessing skills
+
+**Use Cases**:
+- Onboarding Google Gemini to use Claude Code skills
+- Teaching GPT models about production patterns
+- Creating meta-prompts for AI agents
+- Cross-platform knowledge transfer
+
+---
+
 ## Quick Reference Workflow
 
 ```
@@ -135,6 +161,7 @@
 |------|---------|--------------|
 | **START_HERE.md** (this file) | Navigation hub | Always (entry point) |
 | **CLAUDE.md** | Project context | When working on this repo |
+| **GEMINI_GUIDE.md** | AI agent onboarding | Teaching other AI agents |
 | **ONE_PAGE_CHECKLIST.md** | Quick verification | Before committing |
 | **QUICK_WORKFLOW.md** | 5-minute process | Building new skill |
 | **templates/SKILL-TEMPLATE.md** | Copy-paste starter | Building new skill |
