@@ -1,9 +1,9 @@
 ---
 name: nextjs
 description: |
-  Build full-stack React apps with Next.js 16 App Router - Server Components, Server Actions, Cache Components ("use cache"), streaming SSR, and React 19.2 integration. Master async route params, proxy.ts migration, metadata API, and Turbopack.
+  Build Next.js 16 apps with App Router, Server Components/Actions, Cache Components ("use cache"), and async route params. Includes proxy.ts (replaces middleware.ts) and React 19.2.
 
-  Use when: building Next.js 16 apps with App Router, implementing Server Components data fetching, creating Server Actions for mutations, setting up Cache Components with "use cache", migrating from Next.js 15 to 16, configuring parallel routes with default.js, setting up proxy.ts (replaces middleware.ts), generating metadata for SEO, optimizing images with next/image, or troubleshooting async params errors (Promise types), "use cache" directive issues, parallel route 404s (missing default.js), CORS in proxy.ts, or Turbopack build failures.
+  Use when: building Next.js 16 projects, or troubleshooting async params (Promise types), "use cache" directives, parallel route 404s (missing default.js), or proxy.ts CORS.
 license: MIT
 metadata:
   version: 1.0.0

@@ -1,11 +1,9 @@
 ---
 name: openai-assistants
 description: |
-  Build stateful chatbots with OpenAI Assistants API v2 - Code Interpreter (Python execution), File Search (RAG with 10,000 files), Function Calling, thread/run lifecycle, and streaming. Includes Node.js SDK and fetch approaches.
+  Build stateful chatbots with OpenAI Assistants API v2 - Code Interpreter, File Search (10k files), Function Calling. ⚠️ Sunset H1 2026; use openai-responses for new projects.
 
-  ⚠️ DEPRECATION NOTICE: Planned sunset H1 2026. Use openai-responses skill for new projects. This skill remains valuable for existing apps and migration planning.
-
-  Use when: building stateful chatbots with conversation history, implementing RAG with vector stores (10,000 files), executing Python code with Code Interpreter, using file search for document Q&A, managing thread/run lifecycle, streaming assistant responses, or troubleshooting "thread already has active run" errors, vector store indexing delays, run polling timeouts, file upload format issues, or run status failures.
+  Use when: building stateful chatbots, implementing RAG, or troubleshooting "thread has active run", vector store delays, polling timeouts, or file upload errors.
 license: MIT
 ---
 

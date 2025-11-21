@@ -1,9 +1,9 @@
 ---
 name: neon-vercel-postgres
 description: |
-  Set up serverless Postgres with Neon or Vercel Postgres for Cloudflare Workers, Vercel Edge, and Node.js serverless functions. Configure connection pooling, implement git-like database branching, integrate Drizzle ORM or Prisma, and handle HTTP/WebSocket-based connections.
+  Set up serverless Postgres with Neon or Vercel Postgres for Cloudflare Workers/Edge. Includes connection pooling, git-like branching for preview environments, and Drizzle/Prisma integration.
 
-  Use when: setting up Neon Postgres for Cloudflare Workers or Vercel Edge, configuring Vercel Postgres for Next.js, implementing database branching workflows (preview environments), integrating ORMs (Drizzle or Prisma) with serverless Postgres, migrating from D1/SQLite to Postgres, setting up point-in-time restore, or troubleshooting connection pool exhausted errors, "TCP connections not supported" in Workers, SSL configuration issues (sslmode=require), transaction timeouts, or Prisma compatibility (edge vs Node.js).
+  Use when: setting up edge Postgres, configuring database branching, or troubleshooting "TCP not supported", connection pool exhausted, SSL config (sslmode=require), or Prisma edge compatibility.
 license: MIT
 ---
 
