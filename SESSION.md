@@ -1656,6 +1656,66 @@ Build with Claude Messages API using structured outputs (v0.69.0+, Nov 2025) for
 
 ---
 
+## Cloudflare-Browser-Rendering Skill Audit ✅
+
+**Analysis Date**: 2025-11-23
+**Skill Size**: 1,572 lines (~5,240 tokens)
+**Status**: **COMPLETE** - Trimmed to 783 lines (~2,610 tokens)
+**Actual Savings**: **50.2%** (~2,630 tokens)
+
+### Research Phase Findings ✅
+
+**Cloudflare Browser Rendering Updates (2025):**
+
+1. **Playwright v1.55 GA** (Sept 25, 2025):
+   - Playwright reached General Availability
+   - Upgraded to Playwright v1.55
+   - Stagehand framework support (powered by Workers AI)
+
+2. **Playwright v1.54.1 + MCP** (July 29, 2025):
+   - Upgraded to Playwright v1.54.1
+   - Playwright MCP synced to v0.0.30
+   - Compatibility requirement: `compatibility_date: "2025-09-15"`
+
+3. **Playwright Local Dev Support** (July 24, 2025):
+   - wrangler@4.26.0+ now supports Playwright in local development
+
+4. **Puppeteer v22.13.1 Sync** (July 25, 2025):
+   - @cloudflare/puppeteer@1.0.4 synced with upstream Puppeteer v22.13.1
+
+5. **Billing GA** (August 20, 2025):
+   - Billing went live for Browser Rendering
+
+6. **REST API Enhancements** (July-Sept 2025):
+   - /content endpoint now returns page title
+   - /json endpoint supports `custom_ai` parameter
+   - /screenshot default viewport increased to 1920x1080 (from 800x600)
+   - /links endpoint: new `excludeExternalLinks` parameter
+   - X-Browser-Ms-Used response header for usage tracking
+   - /v1/sessions endpoint support in local dev
+
+7. **Web Bot Auth Headers** (June 30, 2025):
+   - Automatically included for security
+
+### Trim Strategy (1,572 → 783 lines, 50.2% reduction)
+
+**Removed (~789 lines)**:
+- Puppeteer API Reference → condensed to critical patterns + official docs link (462 lines → 54 lines)
+- Playwright API Reference → condensed with 2025 compatibility requirements (48 lines → 37 lines)
+- Session Management → kept session reuse pattern (149 lines → 82 lines)
+- Common Patterns → kept 2 critical patterns: KV caching, AI-enhanced scraping (295 lines → 75 lines, removed 4 generic patterns)
+- Pricing & Limits → condensed to key tiers + billing GA date (218 lines → 18 lines)
+- Error Handling Template → condensed to best practices (135 lines → 38 lines)
+
+**Kept**:
+✅ All 6 Known Issues Prevention patterns (XPath selectors, browser binding, timeout, concurrency, local dev, bot protection)
+✅ Quick Start guide (5-minute setup)
+✅ Session reuse pattern (critical for performance)
+✅ Production Checklist (comprehensive deployment guide)
+✅ Critical configuration requirements (nodejs_compat, keep_alive, remote binding)
+
+---
+
 ## Phase 2 Summary So Far
 
 **Skills Completed:**
@@ -1670,6 +1730,7 @@ Build with Claude Messages API using structured outputs (v0.69.0+, Nov 2025) for
 9. ✅ claude-api (1,219→530 lines, 56.5% reduction, v0.69.0 structured outputs + model deprecations + Haiku 4.5 added)
 10. ✅ clerk-auth (791→420 lines, 47% reduction, API v2025-11-10 breaking changes + PKCE + Client Trust defense added)
 11. ✅ cloudflare-agents (2,564→1,403 lines, 45% reduction, agents@0.2.23 + AI SDK v5 + MCP + architectural guidance)
+12. ✅ cloudflare-browser-rendering (1,572→783 lines, 50.2% reduction, Playwright v1.55 GA + MCP + REST API enhancements)
 
 **Skills Deleted:**
 1. ✅ claude-code-bash-patterns (1,186 lines removed - redundant with official Claude Code docs)
@@ -1678,12 +1739,12 @@ Build with Claude Messages API using structured outputs (v0.69.0+, Nov 2025) for
 1. ✅ KNOWLEDGE_GAP_AUDIT_CHECKLIST.md (comprehensive 12-step process)
 
 **Cumulative Impact:**
-- Skills audited: 11 of 59 (19%)
+- Skills audited: 12 of 59 (20%)
 - Skills deleted: 1
-- Lines removed: ~7,103 lines (5,942 from audits + 1,161 from cloudflare-agents)
-- Tokens saved: ~23,538 tokens per invocation (across 11 audited skills)
-- Average reduction: 47.6% (excluding new skill)
-- Annual savings (5 uses/month): ~1,412,280 tokens across these 11 skills
+- Lines removed: ~7,892 lines (6,731 from audits + 1,161 from cloudflare-agents)
+- Tokens saved: ~26,168 tokens per invocation (across 12 audited skills)
+- Average reduction: 47.9% (excluding new skill)
+- Annual savings (5 uses/month): ~1,570,080 tokens across these 12 skills
 
 **Next:** Continue A-Z systematic audit (next skill after cloudflare-agents)
 
