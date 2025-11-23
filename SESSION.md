@@ -1941,6 +1941,86 @@ Build with Claude Messages API using structured outputs (v0.69.0+, Nov 2025) for
 
 ---
 
+## Cloudflare-Images Skill Audit ✅
+
+**Analysis Date**: 2025-11-23
+**Skill Size**: 1,126 lines (~3,750 tokens)
+**Status**: **COMPLETE** - Trimmed to 563 lines (~1,875 tokens)
+**Actual Savings**: **50.0%** (~1,875 tokens)
+
+### Research Phase Findings ✅
+
+**Cloudflare Images Updates (2025):**
+
+1. **AI Face Cropping GA** (August 20, 2025):
+   - Generally available (was private beta in Developer Week 2024)
+   - Use `gravity=face` parameter with optional `zoom` control (0-1 range)
+   - GPU-based RetinaFace CNN model (99.4% precision)
+   - Memory efficient: ~150 MiB per instance (vs CPU prototype memory leaks)
+   - Free with transformations enabled
+   - Upcoming features: background removal, generative upscale
+
+2. **Media Transformations Origin Restrictions** (May 14, 2025):
+   - Default: same-domain only (security improvement)
+   - Configure allowed sources: Dashboard → Stream → Transformations → Select zone
+   - Prevents unauthorized cross-domain transformation abuse
+   - Uses same settings as existing Image Transformations
+
+3. **@cloudflare/workers-types** version:
+   - Current: 4.20251121.0 (November 21, 2025)
+   - Updated in skill (was generic "@latest")
+
+**Knowledge Gaps**: 3 major 2025 updates
+
+### Trim Strategy (1,126 → 563 lines, 50.0% reduction)
+
+**Removed (~563 lines, obvious knowledge duplicating official docs):**
+- Overview verbose benefits list (14 → 2 lines)
+- Quick Start verbose explanations (73 → 18 lines)
+- "The 3-Feature System" section (53 lines, organizational fluff)
+- File Upload verbose examples (70 → 2 lines, standard API pattern)
+- Upload via URL detailed explanation (21 → 1 line)
+- Direct Creator Upload verbose flow (70 → 11 lines, kept CORS fixes)
+- Image Transformations detailed options (106 → 18 lines)
+- Variants Management verbose examples (62 → 10 lines)
+- Signed URLs verbose implementation (52 → 5 lines, kept algorithm)
+- Responsive Images section (50 lines, standard HTML5)
+- Advanced Topics verbose explanations (70 → 5 lines)
+- Complete Setup Checklist (15 lines, duplicates Quick Start)
+- Package Versions verbose notes (12 → 3 lines)
+
+**Kept (unique error prevention value):**
+✅ All Critical Rules (multipart/form-data, field naming "file", backend-only /direct_upload)
+✅ All 13 documented errors with exact solutions:
+   - CORS errors (Community #345739, #368114)
+   - Error 5408 timeout (#571336)
+   - Error 400 invalid field (#487629)
+   - CORS preflight failures (#306805)
+   - Errors 9401-9413 (transformation errors with root causes)
+   - Flexible variants + signed URLs incompatibility
+   - SVG resizing limitation
+   - EXIF metadata stripping
+✅ All troubleshooting patterns (5 common problems with solutions)
+✅ Using Bundled Resources (templates, references, scripts)
+✅ AI face cropping integration (gravity=face, zoom parameter)
+✅ HMAC-SHA256 signed URL algorithm
+✅ Direct Creator Upload CORS fix (critical error prevention)
+
+### Audit Results
+
+**Metrics:**
+- Before: 1,126 lines (~3,750 tokens)
+- After: 563 lines (~1,875 tokens)
+- Savings: 563 lines (50.0% reduction), ~1,875 tokens
+- Errors prevented: 13 documented issues (100% preserved)
+- Knowledge gaps: 3 major 2025 updates added
+
+**Quality Assessment**: Excellent skill with comprehensive error prevention (13 documented issues). AI face cropping (Aug 2025) is a significant knowledge gap. Removed all obvious upload/transformation docs that duplicate official Cloudflare documentation. All unique CORS fixes and transformation error codes preserved.
+
+**Commit**: a743005
+
+---
+
 ## Phase 2 Summary So Far
 
 **Skills Completed:**
@@ -1959,6 +2039,7 @@ Build with Claude Messages API using structured outputs (v0.69.0+, Nov 2025) for
 13. ✅ cloudflare-d1 (885→505 lines, 42.9% reduction, jurisdiction support + remote bindings + automatic retries)
 14. ✅ cloudflare-durable-objects (1,754→772 lines, 56% reduction, WebSocket 32 MiB, Data Studio, @cloudflare/actors SDK, Python support, SQLite 10GB GA, Free tier)
 15. ✅ cloudflare-hyperdrive (1,060→493 lines, 53.5% reduction, Free plan, MySQL GA, 90% latency reduction, IP access control, FedRAMP, 5x cache hits, configurable connections)
+16. ✅ cloudflare-images (1,126→563 lines, 50.0% reduction, AI face cropping GA, Media Transformations origin restrictions, 13 error codes preserved)
 
 **Skills Deleted:**
 1. ✅ claude-code-bash-patterns (1,186 lines removed - redundant with official Claude Code docs)
@@ -1967,14 +2048,14 @@ Build with Claude Messages API using structured outputs (v0.69.0+, Nov 2025) for
 1. ✅ KNOWLEDGE_GAP_AUDIT_CHECKLIST.md (comprehensive 12-step process)
 
 **Cumulative Impact:**
-- Skills audited: 15 of 59 (25%)
+- Skills audited: 16 of 59 (27%)
 - Skills deleted: 1
-- Lines removed: ~9,821 lines (8,660 from audits + 1,161 from cloudflare-agents)
-- Tokens saved: ~32,605 tokens per invocation (across 15 audited skills)
-- Average reduction: 48.7% (excluding new skill)
-- Annual savings (5 uses/month): ~1,956,300 tokens across these 15 skills
+- Lines removed: ~10,384 lines (9,223 from audits + 1,161 from cloudflare-agents)
+- Tokens saved: ~34,480 tokens per invocation (across 16 audited skills)
+- Average reduction: 48.8% (excluding new skill)
+- Annual savings (5 uses/month): ~2,068,800 tokens across these 16 skills
 
-**Next:** Continue A-Z systematic audit (next skill: cloudflare-images)
+**Next:** Continue A-Z systematic audit (next skill: cloudflare-kv)
 
 ---
 
