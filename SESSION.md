@@ -1790,6 +1790,79 @@ Build with Claude Messages API using structured outputs (v0.69.0+, Nov 2025) for
 
 ---
 
+## Cloudflare-Durable-Objects Skill Audit ✅
+
+**Analysis Date**: 2025-11-23
+**Skill Size**: 1,754 lines (~5,850 tokens)
+**Status**: **COMPLETE** - Trimmed to 772 lines (~2,570 tokens)
+**Actual Savings**: **56%** (~3,280 tokens)
+
+### Research Phase Findings ✅
+
+**Cloudflare Durable Objects Updates (2025):**
+
+1. **WebSocket Message Size Increase** (Oct 25, 2025):
+   - Max WebSocket message: **1 MiB → 32 MiB** (32x increase!)
+   - Enables larger real-time data transfers
+
+2. **Data Studio UI Integration** (Oct 16, 2025):
+   - View/edit DO storage via Cloudflare dashboard UI
+   - SQLite-backed DOs only
+   - Simplifies debugging and data inspection
+
+3. **getByName() API** (Aug 21, 2025):
+   - **Shortcut method**: `env.MY_DO.getByName('name')`
+   - Replaces: `const id = env.MY_DO.idFromName('name'); const stub = env.MY_DO.get(id);`
+   - Already documented in skill! ✅
+
+4. **@cloudflare/actors Library (Beta)** (June 25, 2025):
+   - **New recommended SDK** for Durable Objects
+   - Actor programming model abstractions
+   - Features: SQL migrations, multiple alarms, storage utilities, Actor class pattern
+   - Reduces development overhead for common DO functionality
+
+5. **Python Workers Support** (May 16, 2025):
+   - Durable Objects now work with Python Workers
+   - Same capabilities: ctx.storage, SQL, fetch methods
+
+6. **SQLite GA with 10GB Storage** (April 7, 2025):
+   - SQLite moved from **beta → GA**
+   - Storage limit: **1GB → 10GB** (10x increase!)
+
+7. **Free Tier Access** (April 7, 2025):
+   - Durable Objects now available on Workers Free plan
+
+8. **PRAGMA optimize Support** (Feb 19, 2025):
+   - SQLite query performance optimization after schema changes
+
+9. **Improved Error Diagnostics** (Feb 11, 2025):
+   - Internal errors now include reference IDs for support
+
+### Trim Strategy (1,754 → 772 lines, 56% reduction)
+
+**Removed (~982 lines)**:
+- "What are Durable Objects?" overview → removed (obvious to LLM, 22 lines)
+- Quick Start → condensed (120 → 47 lines)
+- DO Class Structure → condensed (77 → 36 lines)
+- State API (SQL + KV) → condensed with 10GB update (228 → 73 lines)
+- WebSocket Hibernation → condensed with 32 MiB update (145 → 56 lines)
+- Alarms API → condensed (84 → 39 lines)
+- RPC vs HTTP Fetch → condensed (113 → 43 lines)
+- Creating Stubs/Routing → condensed (158 → 32 lines)
+- Migrations → condensed (148 → 39 lines)
+- Common Patterns → condensed to minimal snippets (192 → 45 lines)
+- Configuration & Types → condensed (69 → 29 lines)
+
+**Kept**:
+✅ All 15 Known Issues Prevention patterns (class export, migrations, hibernation, WebSocket state, location hints, etc.)
+✅ Critical Rules (hibernation, export, migrations, setTimeout gotchas)
+✅ WebSocket serializeAttachment/deserializeAttachment patterns
+✅ Migration rules and atomic deployment gotchas
+✅ Essential DO patterns (rate limiting, sessions, leader election, multi-DO coordination)
+✅ All 2025 knowledge gaps in frontmatter
+
+---
+
 ## Phase 2 Summary So Far
 
 **Skills Completed:**
@@ -1806,6 +1879,7 @@ Build with Claude Messages API using structured outputs (v0.69.0+, Nov 2025) for
 11. ✅ cloudflare-agents (2,564→1,403 lines, 45% reduction, agents@0.2.23 + AI SDK v5 + MCP + architectural guidance)
 12. ✅ cloudflare-browser-rendering (1,572→783 lines, 50.2% reduction, Playwright v1.55 GA + MCP + REST API enhancements)
 13. ✅ cloudflare-d1 (885→505 lines, 42.9% reduction, jurisdiction support + remote bindings + automatic retries)
+14. ✅ cloudflare-durable-objects (1,754→772 lines, 56% reduction, WebSocket 32 MiB, Data Studio, @cloudflare/actors SDK, Python support, SQLite 10GB GA, Free tier)
 
 **Skills Deleted:**
 1. ✅ claude-code-bash-patterns (1,186 lines removed - redundant with official Claude Code docs)
@@ -1814,12 +1888,12 @@ Build with Claude Messages API using structured outputs (v0.69.0+, Nov 2025) for
 1. ✅ KNOWLEDGE_GAP_AUDIT_CHECKLIST.md (comprehensive 12-step process)
 
 **Cumulative Impact:**
-- Skills audited: 13 of 59 (22%)
+- Skills audited: 14 of 59 (24%)
 - Skills deleted: 1
-- Lines removed: ~8,272 lines (7,111 from audits + 1,161 from cloudflare-agents)
-- Tokens saved: ~27,435 tokens per invocation (across 13 audited skills)
-- Average reduction: 47.5% (excluding new skill)
-- Annual savings (5 uses/month): ~1,646,100 tokens across these 13 skills
+- Lines removed: ~9,254 lines (8,093 from audits + 1,161 from cloudflare-agents)
+- Tokens saved: ~30,715 tokens per invocation (across 14 audited skills)
+- Average reduction: 48.5% (excluding new skill)
+- Annual savings (5 uses/month): ~1,842,900 tokens across these 14 skills
 
 **Next:** Continue A-Z systematic audit (next skill after cloudflare-agents)
 
