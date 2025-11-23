@@ -1482,6 +1482,75 @@ Build with Claude Messages API using structured outputs (v0.69.0+, Nov 2025) for
 
 ---
 
+## Clerk Auth Skill Audit ✅
+
+**Analysis Date**: 2025-11-22
+**Skill Size**: 791 lines (~2,600 tokens)
+**Status**: **COMPLETE** - Trimmed to 420 lines (~1,400 tokens)
+**Actual Savings**: **47%** (~1,200 tokens)
+
+### Research Phase Findings ✅
+
+**Clerk API & SDK Updates (Oct 22 - Nov 22, 2025):**
+
+1. **API Version 2025-11-10 (Nov 10, 2025) - BREAKING CHANGES:**
+   - Endpoint URLs: `/commerce/` → `/billing/` (30+ endpoints affected)
+   - Field terminology: `payment_source` → `payment_method` (all field names)
+   - Removed fields: Plans responses (amount, currency, payer_type)
+   - Removed endpoints: Invoices, Products endpoints completely removed
+   - Null handling standardization
+   - Official migration guide: https://clerk.com/docs/guides/development/upgrading/upgrade-guides/2025-11-10
+
+2. **PKCE Support for Custom OAuth (Nov 12, 2025):**
+   - Enhanced security for native/mobile applications
+   - Custom OIDC providers + social connections now support PKCE
+   - Solves: Cannot securely store client secrets in native apps
+
+3. **Client Trust: Credential Stuffing Defense (Nov 14, 2025):**
+   - Automatic secondary authentication for unrecognized devices
+   - Activates when user has valid password but no 2FA
+   - No configuration required, included in all Clerk plans
+
+4. **Next.js 16 Support (Nov 2025):**
+   - @clerk/nextjs v6.35.2+ includes cache invalidation improvements for Next.js 16 during sign-out
+
+5. **SDK Version Updates:**
+   - @clerk/nextjs: 6.33.3 → 6.35.4 (Nov 21, 2025)
+   - @clerk/backend: 2.17.2 → 2.23.2 (Nov 21, 2025)
+   - @clerk/clerk-react: 5.51.0 → 5.56.2 (Nov 21, 2025)
+   - @clerk/testing: 1.4.4 → 1.13.18 (Nov 21, 2025)
+
+### Audit Strategy ✅
+
+**Content Removed (~371 lines):**
+- Quick Start navigation (~18 lines)
+- React (Vite) Setup tutorial (~92 lines)
+- Next.js App Router Setup tutorial (~126 lines)
+- Cloudflare Workers Setup tutorial (~103 lines)
+- JWT Templates tutorial portions (~50 lines) - Kept size limit issue + shortcode reference only
+- Testing tutorial portions (~80 lines) - Kept test credentials + token script only
+- Critical Rules do/don't lists (~26 lines)
+
+**Content Retained:**
+- What's New section: API v2025-11-10, PKCE, Client Trust, Next.js 16 (~85 lines NEW)
+- Critical Patterns:
+  - Next.js v6 async auth() breaking change (~20 lines)
+  - Cloudflare Workers authorizedParties CSRF prevention (~15 lines)
+  - JWT 1.2KB size limit warning (~25 lines)
+  - 424242 test OTP credentials (~20 lines)
+  - 431 header error workaround for Vite dev mode (~15 lines)
+- All 11 Known Issues with exact error messages (~70 lines)
+- JWT Templates shortcodes reference table (~15 lines)
+- Testing patterns (test credentials, session token script, Playwright setup) (~80 lines)
+- Official Documentation links + updated versions (~15 lines)
+
+**Before**: 791 lines (~2,600 tokens)
+**After**: 420 lines (~1,400 tokens)
+**Removed**: 371 lines (~1,200 tokens)
+**Savings**: **47%**
+
+---
+
 ## Phase 2 Summary So Far
 
 **Skills Completed:**
@@ -1494,18 +1563,19 @@ Build with Claude Messages API using structured outputs (v0.69.0+, Nov 2025) for
 7. ✅ better-auth (2,092→1,226 lines, 41.4% reduction, v1.3/v1.4.0 breaking changes added)
 8. ✅ claude-agent-sdk (1,573→595 lines, 62.2% reduction, v0.1.45 structured outputs + plugins + hooks added)
 9. ✅ claude-api (1,219→530 lines, 56.5% reduction, v0.69.0 structured outputs + model deprecations + Haiku 4.5 added)
+10. ✅ clerk-auth (791→420 lines, 47% reduction, API v2025-11-10 breaking changes + PKCE + Client Trust defense added)
 
 **Documents Created:**
 1. ✅ KNOWLEDGE_GAP_AUDIT_CHECKLIST.md (comprehensive 12-step process)
 
 **Cumulative Impact:**
-- Skills audited: 9 of 59 (15%)
-- Lines removed: ~5,571 lines
-- Tokens saved: ~18,465 tokens per invocation (across these 9 skills)
-- Average reduction: 49.6% (excluding new skill)
-- Annual savings (5 uses/month): ~1,107,900 tokens across these 9 skills
+- Skills audited: 10 of 59 (17%)
+- Lines removed: ~5,942 lines
+- Tokens saved: ~19,665 tokens per invocation (across these 10 skills)
+- Average reduction: 48.9% (excluding new skill)
+- Annual savings (5 uses/month): ~1,179,900 tokens across these 10 skills
 
-**Next:** Continue A-Z systematic audit (next: clerk-auth)
+**Next:** Continue A-Z systematic audit (next: cloudflare-agents)
 
 ---
 
@@ -1530,15 +1600,17 @@ Build with Claude Messages API using structured outputs (v0.69.0+, Nov 2025) for
 16. ✅ Trimmed claude-agent-sdk (595 lines, 62.2% reduction, v0.1.45 structured outputs + plugins + hooks added)
 17. ✅ Audited claude-api (research phase + trim)
 18. ✅ Trimmed claude-api (530 lines, 56.5% reduction, v0.69.0 structured outputs + model deprecations + Haiku 4.5 added)
+19. ✅ Audited clerk-auth (research phase + trim)
+20. ✅ Trimmed clerk-auth (420 lines, 47% reduction, API v2025-11-10 breaking changes + PKCE + Client Trust defense added)
 
 **Next Session:**
-1. Continue A-Z systematic audit (next: clerk-auth)
+1. Continue A-Z systematic audit (next: cloudflare-agents)
 2. Follow KNOWLEDGE_GAP_AUDIT_CHECKLIST.md process
 3. Research → Audit → Trim → Commit (one skill per session)
-4. Pattern validated: ~50% average reduction across 9 skills (excluding new skill)
+4. Pattern validated: ~49% average reduction across 10 skills (excluding new skill)
 
 **Long Term:**
-- Audit remaining 53 skills alphabetically
+- Audit remaining 49 skills alphabetically
 - Update skill creation guidelines with "knowledge gap test"
 - Establish quarterly review process for skills
 - Target: 50-70% additional token savings across all skills
@@ -1548,7 +1620,7 @@ Build with Claude Messages API using structured outputs (v0.69.0+, Nov 2025) for
 ## Last Checkpoint
 
 **Date**: 2025-11-22
-**Commit**: 0066472
-**Message**: "refactor(claude-api): Knowledge-gap audit - Add v0.69.0+, trim tutorial"
+**Commit**: 4b6df99
+**Message**: "refactor(clerk-auth): Knowledge-gap audit - Add API v2025-11-10, trim tutorials"
 
-**Status**: Phase 2 in progress - 9 skills complete (claude-agent-sdk 62.2%, claude-api 56.5%, ai-sdk-core 54%, ai-sdk-ui 53%, auto-animate 51.5%, nextjs 43%, better-auth 41.4%, vectorize 37%, react-native-expo NEW), audit process documented, A-Z systematic audits continuing
+**Status**: Phase 2 in progress - 10 skills complete (claude-agent-sdk 62.2%, claude-api 56.5%, ai-sdk-core 54%, ai-sdk-ui 53%, auto-animate 51.5%, clerk-auth 47%, nextjs 43%, better-auth 41.4%, vectorize 37%, react-native-expo NEW), audit process documented, A-Z systematic audits continuing
