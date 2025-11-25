@@ -3231,6 +3231,7 @@ grep -n "^| \*\*" skills/cloudflare-r2/SKILL.md
 24. ✅ cloudflare-workers-ai (630→341 lines, 45.9% reduction, 21 major 2025 updates, 14 new models + Llama 3.3 2-4x faster + BGE 2x faster + max_tokens breaking change + pooling backwards incompatibility + complete 2025 pricing, 0 errors)
 25. ✅ drizzle-orm-d1 (1,076→290 lines, 73.0% reduction, 3 package updates, 0 major knowledge gaps, 12 D1/Drizzle errors preserved, D1 batch API + foreign key pitfalls + Wrangler integration)
 26. ✅ elevenlabs-agents (2,492→673 lines, 73.0% reduction, 5 package updates, 39 major 2025 knowledge gaps added, 17 errors preserved, Agent Testing Framework + 2025 LLM models + platform features)
+27. ✅ fastmcp (2,615→574 lines, 78.0% reduction, 1 package update fastmcp 2.13.0→2.13.1, 11 major 2025 knowledge gaps added, 25 errors preserved, v2.13.1 meta parameters + OCI auth + CVE-2025-61920 + Image.to_data_uri + module-level server + storage backends + lifespan breaking changes)
 
 **Skills Deleted:**
 1. ✅ claude-code-bash-patterns (1,186 lines removed - redundant with official Claude Code docs)
@@ -3239,14 +3240,14 @@ grep -n "^| \*\*" skills/cloudflare-r2/SKILL.md
 1. ✅ KNOWLEDGE_GAP_AUDIT_CHECKLIST.md (comprehensive 12-step process)
 
 **Cumulative Impact:**
-- Skills audited: 26 of 59 (44%)
+- Skills audited: 27 of 59 (46%)
 - Skills deleted: 1
-- Lines removed: ~18,096 lines (1,819 from elevenlabs-agents)
-- Tokens saved: ~60,222 tokens per invocation (across 26 audited skills)
-- Average reduction: 53.5% (excluding new skill)
-- Annual savings (5 uses/month): ~3,613,320 tokens across these 26 skills
+- Lines removed: ~20,137 lines (2,041 from fastmcp)
+- Tokens saved: ~67,029 tokens per invocation (across 27 audited skills)
+- Average reduction: 55.2% (excluding new skill)
+- Annual savings (5 uses/month): ~4,021,740 tokens across these 27 skills
 
-**Next:** Continue A-Z systematic audit (next skill: fastmcp)
+**Next:** Continue A-Z systematic audit (next skill: gemini-cli)
 
 ---
 
