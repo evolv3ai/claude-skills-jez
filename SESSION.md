@@ -3232,6 +3232,7 @@ grep -n "^| \*\*" skills/cloudflare-r2/SKILL.md
 25. ✅ drizzle-orm-d1 (1,076→290 lines, 73.0% reduction, 3 package updates, 0 major knowledge gaps, 12 D1/Drizzle errors preserved, D1 batch API + foreign key pitfalls + Wrangler integration)
 26. ✅ elevenlabs-agents (2,492→673 lines, 73.0% reduction, 5 package updates, 39 major 2025 knowledge gaps added, 17 errors preserved, Agent Testing Framework + 2025 LLM models + platform features)
 27. ✅ fastmcp (2,615→574 lines, 78.0% reduction, 1 package update fastmcp 2.13.0→2.13.1, 11 major 2025 knowledge gaps added, 25 errors preserved, v2.13.1 meta parameters + OCI auth + CVE-2025-61920 + Image.to_data_uri + module-level server + storage backends + lifespan breaking changes)
+28. ✅ google-gemini-api (2,136→2,173 lines, +37 lines enhancement for v1.30.0 features, package update @google/genai 1.27.0→1.30.0, 2 new features added: thinking_level parameter + FileSearch grounding, last verified 2025-11-26)
 
 **Skills Deleted:**
 1. ✅ claude-code-bash-patterns (1,186 lines removed - redundant with official Claude Code docs)
@@ -3242,14 +3243,14 @@ grep -n "^| \*\*" skills/cloudflare-r2/SKILL.md
 1. ✅ KNOWLEDGE_GAP_AUDIT_CHECKLIST.md (comprehensive 12-step process)
 
 **Cumulative Impact:**
-- Skills audited: 27 of 59 (46%)
+- Skills audited: 28 of 59 (47%)
 - Skills deleted: 3
-- Lines removed: ~20,137 lines (2,041 from fastmcp)
-- Tokens saved: ~67,029 tokens per invocation (across 27 audited skills)
-- Average reduction: 55.2% (excluding new skill)
-- Annual savings (5 uses/month): ~4,021,740 tokens across these 27 skills
+- Lines removed: ~20,100 lines (net after google-gemini-api +37 enhancement)
+- Tokens saved: ~67,029 tokens per invocation (across 27 reduction audits)
+- Average reduction: 55.2% (27 reduction audits, 1 enhancement update)
+- Annual savings (5 uses/month): ~4,021,740 tokens across reduction audits
 
-**Next:** Continue A-Z systematic audit (next skill: google-gemini-api)
+**Next:** Continue A-Z systematic audit (next skill: google-gemini-embeddings)
 
 ---
 
@@ -3316,15 +3317,17 @@ grep -n "^| \*\*" skills/cloudflare-r2/SKILL.md
 58. ✅ DELETED gemini-cli (692 lines removed - redundant with google-gemini-api skill, niche CLI tool use case)
 59. ✅ Evaluated github-project-automation (deletion decision)
 60. ✅ DELETED github-project-automation (963 lines removed - rarely used, niche repo setup use case)
+61. ✅ Audited google-gemini-api (package update + new features)
+62. ✅ Enhanced google-gemini-api (+37 lines for v1.30.0 features: thinking_level + FileSearch, package 1.27.0→1.30.0)
 
 **Next Session:**
-1. Continue A-Z systematic audit (next skill alphabetically: google-gemini-api)
+1. Continue A-Z systematic audit (next skill alphabetically: google-gemini-embeddings)
 2. Follow KNOWLEDGE_GAP_AUDIT_CHECKLIST.md process
 3. Research → Audit → Trim → Commit (one skill per session)
 4. Pattern validated: ~55.2% average reduction across 27 skills (excluding new skill)
 
 **Long Term:**
-- Audit remaining 29 skills alphabetically (27 audited + 3 deleted = 30 of 59 complete, 51%)
+- Audit remaining 28 skills alphabetically (28 audited + 3 deleted = 31 of 59 complete, 52.5%)
 - Update skill creation guidelines with "knowledge gap test"
 - Establish quarterly review process for skills
 - Target: Continue 50-70% token savings across all skills
@@ -3333,8 +3336,8 @@ grep -n "^| \*\*" skills/cloudflare-r2/SKILL.md
 
 ## Last Checkpoint
 
-**Date**: 2025-11-25
-**Commit**: 6923954
-**Message**: "refactor: Delete github-project-automation skill - rarely used niche use case"
+**Date**: 2025-11-26
+**Commit**: ae5843f
+**Message**: "skill/google-gemini-api: Update to v1.30.0 with new features"
 
-**Status**: Phase 2 in progress - 27 skills audited (46%), 3 skills deleted (claude-code-bash-patterns, gemini-cli, github-project-automation), ~20,137 lines removed from audits, ~67,029 tokens saved per invocation, 55.2% average reduction, 30 of 59 complete (51%), ready for google-gemini-api
+**Status**: Phase 2 in progress - 28 skills audited (47%), 3 skills deleted (claude-code-bash-patterns, gemini-cli, github-project-automation), ~20,100 lines removed from reduction audits, 1 enhancement update (+37 lines for new features), ~67,029 tokens saved per invocation across 27 reduction audits, 55.2% average reduction, 31 of 59 complete (52.5%), ready for google-gemini-embeddings
