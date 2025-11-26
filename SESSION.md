@@ -3247,12 +3247,12 @@ grep -n "^| \*\*" skills/cloudflare-r2/SKILL.md
 1. ✅ KNOWLEDGE_GAP_AUDIT_CHECKLIST.md (comprehensive 12-step process)
 
 **Cumulative Impact:**
-- Skills audited: 33 of 59 (55.9%)
+- Skills audited: 34 of 59 (57.6%)
 - Skills deleted: 3
-- Lines removed: ~21,331 lines (net after google-gemini-api +37 enhancement)
-- Tokens saved: ~71,272 tokens per invocation (across 32 reduction audits)
-- Average reduction: 50.2% (32 reduction audits, 1 enhancement update)
-- Annual savings (5 uses/month): ~4,276,320 tokens across reduction audits
+- Lines removed: ~22,559 lines (net after google-gemini-api +37 enhancement)
+- Tokens saved: ~75,365 tokens per invocation (across 33 reduction audits)
+- Average reduction: 50.5% (33 reduction audits, 1 enhancement update)
+- Annual savings (5 uses/month): ~4,521,900 tokens across reduction audits
 
 **Next:** Continue A-Z systematic audit (next skill after neon-vercel-postgres alphabetically)
 
@@ -3333,15 +3333,17 @@ grep -n "^| \*\*" skills/cloudflare-r2/SKILL.md
 70. ✅ REDUCTION: motion (1,047→732 lines, -315 lines, -30.1%, removed basic motion component + variants + FLIP + spring physics + generic Vite setup + accessibility basics + common UI patterns, retained Cloudflare Workers fix Dec 2024 + Next.js patterns + 10 errors)
 71. ✅ Audited neon-vercel-postgres (2 package updates: drizzle-kit 0.31.0→0.31.7, neonctl 2.16.1→2.18.1, reduction opportunity)
 72. ✅ REDUCTION: neon-vercel-postgres (1,296→922 lines, -374 lines, -28.9%, removed basic SQL patterns + generic transaction concepts + generic ORM CRUD + generic pooling theory + generic optimization + generic security best practices, retained all 15 errors + Neon branching + pooled connection string specifics + edge compatibility + Vercel env vars + Prisma edge incompatibility + template tag syntax + transaction API + auto-suspend behavior)
+73. ✅ Audited openai-api (1 package update: openai 6.7.0→6.9.1, MAJOR GPT-5.1 knowledge gap Nov 13, 2025)
+74. ✅ REDUCTION: openai-api (2,100→872 lines, -1,228 lines, -58.5%, ADDED GPT-5.1 updates + reasoning_effort 'none' + 24hr prompt caching + breaking change migration notes + new dev tools, removed generic HTTP codes + verbose message roles + verbose JSON structures + verbose streaming + verbose function calling + RAG patterns + cosine similarity + L2 normalization + verbose DALL-E/GPT-Image-1 params + verbose TTS params + verbose moderation categories + generic error handling + verbose rate limits + generic best practices, retained all errors 401/429 + GPT-5 parameters + GPT-5 limitations + text-embedding-3 dimensions + DALL-E 3 prompt revision + GPT-Image-1 multipart + gpt-4o-mini-tts voice instructions Nov 2024 + TTS streaming SSE + 11 safety categories + rate limit headers)
 
 **Next Session:**
-1. Continue A-Z systematic audit (next skill alphabetically after neon-vercel-postgres)
+1. Continue A-Z systematic audit (next skill alphabetically after openai-api)
 2. Follow KNOWLEDGE_GAP_AUDIT_CHECKLIST.md process
 3. Research → Audit → Trim → Commit (one skill per session)
-4. Pattern validated: ~50.2% average reduction across 32 skills (1 enhancement update)
+4. Pattern validated: ~50.5% average reduction across 33 skills (1 enhancement update)
 
 **Long Term:**
-- Audit remaining 23 skills alphabetically (33 audited + 3 deleted = 36 of 59 complete, 61.0%)
+- Audit remaining 22 skills alphabetically (34 audited + 3 deleted = 37 of 59 complete, 62.7%)
 - Update skill creation guidelines with "knowledge gap test"
 - Establish quarterly review process for skills
 - Target: Continue 50-70% token savings across all skills
@@ -3351,7 +3353,7 @@ grep -n "^| \*\*" skills/cloudflare-r2/SKILL.md
 ## Last Checkpoint
 
 **Date**: 2025-11-26
-**Commit**: f5bdf1d
-**Message**: "skill/neon-vercel-postgres: Reduction audit + package updates"
+**Commit**: db75762
+**Message**: "skill/openai-api: Reduction audit + GPT-5.1 updates + package update"
 
-**Status**: Phase 2 in progress - 33 skills audited (55.9%), 3 skills deleted (claude-code-bash-patterns, gemini-cli, github-project-automation), ~21,331 lines removed from reduction audits (net after google-gemini-api +37 enhancement), 32 reduction audits complete, 1 enhancement update, ~71,272 tokens saved per invocation, 50.2% average reduction, 36 of 59 complete (61.0%), ready for next skill alphabetically after neon-vercel-postgres
+**Status**: Phase 2 in progress - 34 skills audited (57.6%), 3 skills deleted (claude-code-bash-patterns, gemini-cli, github-project-automation), ~22,559 lines removed from reduction audits (net after google-gemini-api +37 enhancement), 33 reduction audits complete, 1 enhancement update, ~75,365 tokens saved per invocation, 50.5% average reduction, 37 of 59 complete (62.7%), ready for next skill alphabetically after openai-api
