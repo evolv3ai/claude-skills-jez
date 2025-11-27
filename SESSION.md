@@ -46,6 +46,12 @@
 30. ✅ google-gemini-file-search (1,163→1,018 lines, 12.5% reduction, CRITICAL FIX: package ^0.21.0→^1.30.0, removed generic RAG overview + comparison tables + standard troubleshooting, retained 8 File Search-specific errors + API patterns (only 3 weeks old Nov 5), last verified 2025-11-26)
 31. ✅ hono-routing (1,259→1,050 lines, 16.6% reduction, 5 package updates (hono 4.10.2→4.10.6, zod 4.1.12→4.1.13, valibot 1.1.0→1.2.0, @hono/zod-validator 0.7.4→0.7.5, @hono/valibot-validator 0.5.3→0.6.0), removed basic HTTP routing + generic middleware + generic error handling, retained Hono-specific APIs + RPC pattern + 8 errors, last verified 2025-11-26)
 32. ✅ motion (1,047→732 lines, 30.1% reduction, package motion@12.23.24 already latest (verified 2025-11-09), removed basic motion component + variants + FLIP + spring physics + generic Vite setup + accessibility basics + common UI patterns, retained Cloudflare Workers fix (Dec 2024 #2918) + Next.js patterns + Tailwind conflicts + AnimatePresence rules + LazyMotion + 10 errors, last verified 2025-11-26)
+33. ✅ neon-vercel-postgres (1,296→922 lines, 28.9% reduction)
+34. ✅ openai-api (2,100→872 lines, 58.5% reduction, GPT-5.1 added)
+35. ✅ openai-apps-mcp (1,000→294 lines, 71.2% reduction + enhancement)
+36. ✅ openai-assistants (1,293→286 lines, 77.9% reduction)
+37. ✅ openai-responses (1,218→334 lines, 72.6% reduction)
+38. ✅ open-source-contributions (1,233→465 lines, 62.3% reduction, 16 error patterns + Critical Workflow Rules 1-3 + PR size research + feature flags pattern)
 
 **Skills Deleted:**
 1. ✅ claude-code-bash-patterns (1,186 lines removed - redundant with official Claude Code docs)
@@ -152,25 +158,27 @@
 80. ✅ Audited openai-responses (1 MAJOR package update: openai 5.19.1+→6.9.1 Nov 17 2025, knowledge gaps: API launch March 2025 + preserved reasoning 5% TAUBench + cache 40-80% better + timeouts 60s/10min + conversation 90-day expiration + 8 polymorphic output types + MCP integration auth NOT stored + migration mappings messages→input system→developer + all 8 errors)
 81. ✅ REDUCTION: openai-responses (1,218→334 lines, -884 lines, -72.6%, removed verbose Quick Start 66→24 + lengthy comparison 38→11 + manual state mgmt example + entire Built-in Tools verbose 250+→19 + entire MCP verbose 88→21 + verbose Reasoning 49→16 + verbose Background Mode 42→18 + verbose Polymorphic Outputs 52→25 + verbose Migration 57→35 + entire Production Patterns 97 lines + entire Node.js vs Workers 70 lines + verbose Always Do/Never Do 84→13 + verbose Error Handling 244→33, retained all 8 errors: session state not persisting + MCP connection failed + code interpreter timeout + image gen rate limit + file search relevance + cost tracking confusion + conversation not found + tool output parsing + all 9 knowledge gaps: March 2025 launch + 5% TAUBench + 40-80% cache + 60s/10min timeouts + 90-day expiration + 8 polymorphic types + MCP auth + migration mappings)
 82. ✅ Created ts-agent-sdk skill (NEW skill #58, 224 lines, generates typed TypeScript SDKs for MCP servers, converts JSON-RPC curl to clean function calls, auto-detects tools + generates types/clients/examples, YAML frontmatter added, marketplace ready, symlinked to ~/.claude/skills/, 6 errors prevented: verbose JSON-RPC commands + untyped MCP calls + manual SDK maintenance + parameter validation + auth header duplication + scattered env config)
+83. ✅ Audited open-source-contributions (0 package dependencies, workflow/best practices skill, reduction opportunity)
+84. ✅ REDUCTION: open-source-contributions (1,233→465 lines, -768 lines, -62.3%, removed verbose overview + generic fork workflow + detailed Conventional Commits explanation + generic communication advice + verbose PR description examples + generic 'Following Project Conventions' + verbose PR sizing examples + 'Handling PR Rejections' + 'Be Patient' section + generic git command reference + verbose GitHub CLI examples, retained all 16 error patterns with specific file examples + Pre-PR check script workflow + Critical Workflow Rules (RULE 1, 2, 3) + PR size research numbers (50/200/400 lines, defect detection data) + specific exclusion patterns (SESSION.md, planning/*, screenshots) + response templates + pre-submission checklist + bundled resources + GitHub linking syntax (Closes #123, Fixes #456) + feature flags pattern)
 
 **Cumulative Impact:**
-- Skills audited: 37 of 58 (63.8%)
+- Skills audited: 38 of 58 (65.5%)
 - Skills created: 2 (react-native-expo #1, ts-agent-sdk #58)
 - Skills deleted: 3
 - Total skills: 58 (58 from Phase 1 - 3 deletions + 2 new = 58 active)
-- Lines removed: ~25,156 lines (net after 2 enhancement updates: google-gemini-api +37, openai-apps-mcp +6)
-- Tokens saved: ~84,051 tokens per invocation (across 36 reduction audits)
-- Average reduction: 52.5% (36 reduction audits, 2 enhancement updates, 2 new skills)
-- Annual savings (5 uses/month): ~5,043,060 tokens across reduction audits
+- Lines removed: ~25,924 lines (net after 2 enhancement updates: google-gemini-api +37, openai-apps-mcp +6)
+- Tokens saved: ~85,337 tokens per invocation (across 37 reduction audits)
+- Average reduction: 52.8% (37 reduction audits, 2 enhancement updates, 2 new skills)
+- Annual savings (5 uses/month): ~5,120,220 tokens across reduction audits
 
 **Next Session:**
-1. Continue A-Z systematic audit (next skill alphabetically after openai-responses)
+1. Continue A-Z systematic audit (next skill alphabetically after open-source-contributions)
 2. Follow KNOWLEDGE_GAP_AUDIT_CHECKLIST.md process
 3. Research → Audit → Trim → Commit (one skill per session)
-4. Pattern validated: ~52.5% average reduction across 36 skills (2 enhancement updates)
+4. Pattern validated: ~52.8% average reduction across 37 skills (2 enhancement updates)
 
 **Long Term:**
-- Audit remaining 21 skills alphabetically (37 audited of 58 total, 63.8% complete)
+- Audit remaining 20 skills alphabetically (38 audited of 58 total, 65.5% complete)
 - Update skill creation guidelines with "knowledge gap test"
 - Establish quarterly review process for skills
 - Target: Continue 50-70% token savings across all skills
@@ -180,7 +188,7 @@
 ## Last Checkpoint
 
 **Date**: 2025-11-28
-**Commit**: [pending]
-**Message**: "Workflow updates - ts-agent-sdk skill created, SESSION.md archived"
+**Commit**: 6ae249f
+**Message**: "skill/open-source-contributions: Phase 2 knowledge-gap audit (62.3% reduction)"
 
-**Status**: Phase 2 in progress - 37 skills audited (63.8%), 2 skills created (react-native-expo, ts-agent-sdk), 3 skills deleted (claude-code-bash-patterns, gemini-cli, github-project-automation), 58 total active skills, ~25,156 lines removed from reduction audits (net after 2 enhancement updates), 36 reduction audits complete (77.9% highest: openai-assistants, 72.6%: openai-responses), 2 enhancement updates, ~84,051 tokens saved per invocation, 52.5% average reduction, SESSION.md archived (3,374→189 lines, 94.4% reduction), ready for next skill alphabetically after openai-responses
+**Status**: Phase 2 in progress - 38 skills audited (65.5%), 2 skills created (react-native-expo, ts-agent-sdk), 3 skills deleted (claude-code-bash-patterns, gemini-cli, github-project-automation), 58 total active skills, ~25,924 lines removed (net after 2 enhancement updates), 37 reduction audits complete (77.9% highest: openai-assistants, 72.6%: openai-responses, 62.3% latest: open-source-contributions), 2 enhancement updates, ~85,337 tokens saved per invocation, 52.8% average reduction, ready for next skill alphabetically
