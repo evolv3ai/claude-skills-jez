@@ -278,6 +278,10 @@ After optimizing 20+ skills, these patterns work best:
 # Install all skills
 ./scripts/install-all.sh
 
+# Verify and maintain symlinks
+./scripts/check-symlinks.sh          # Check for issues
+./scripts/check-symlinks.sh --fix    # Auto-repair symlinks
+
 # Verify installation
 ls -la ~/.claude/skills/
 ```
