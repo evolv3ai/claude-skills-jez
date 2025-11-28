@@ -7,312 +7,143 @@ description: |
 license: MIT
 metadata:
   packages:
-    - "@openai/agents@0.2.1"
-    - "@openai/agents-realtime@0.2.1"
-    - "zod@^3.24.1"
+    - "@openai/agents@0.3.3"
+    - "@openai/agents-realtime@0.3.3"
+    - "zod@^4.1.13"
   frameworks: ["Cloudflare Workers", "Next.js", "React", "Node.js", "Hono"]
-  last_verified: "2025-10-26"
+  last_verified: "2025-11-28"
   production_tested: true
   token_savings: "~60%"
   errors_prevented: 9
 ---
 
-# OpenAI Agents SDK Skill
+# OpenAI Agents SDK
 
-Complete skill for building AI applications with OpenAI Agents SDK (JavaScript/TypeScript), covering text agents, realtime voice agents, multi-agent workflows, and production deployment patterns.
+Build AI applications with text agents, voice agents (realtime), multi-agent workflows, tools, guardrails, and human-in-the-loop patterns.
 
 ---
 
-## Installation & Setup
-
-Install required packages:
+## Quick Start
 
 ```bash
-npm install @openai/agents zod@3
-npm install @openai/agents-realtime  # For voice agents
+npm install @openai/agents zod@4
+npm install @openai/agents-realtime  # Voice agents
+export OPENAI_API_KEY="your-key"
 ```
 
-Set environment variable:
-
-```bash
-export OPENAI_API_KEY="your-api-key"
-```
-
-Supported runtimes:
-- Node.js 22+
-- Deno
-- Bun
-- Cloudflare Workers (experimental)
+**Runtimes**: Node.js 22+, Deno, Bun, Cloudflare Workers (experimental)
 
 ---
 
 ## Core Concepts
 
-### 1. Agents
-LLMs equipped with instructions and tools:
-
+**Agents**: LLMs with instructions + tools
 ```typescript
 import { Agent } from '@openai/agents';
-
-const agent = new Agent({
-  name: 'Assistant',
-  instructions: 'You are helpful.',
-  tools: [myTool],
-  model: 'gpt-4o-mini',
-});
+const agent = new Agent({ name: 'Assistant', tools: [myTool], model: 'gpt-4o-mini' });
 ```
 
-### 2. Tools
-Functions agents can call, with automatic schema generation:
-
+**Tools**: Functions with Zod schemas
 ```typescript
 import { tool } from '@openai/agents';
 import { z } from 'zod';
-
 const weatherTool = tool({
   name: 'get_weather',
-  description: 'Get weather for a city',
-  parameters: z.object({
-    city: z.string(),
-  }),
-  execute: async ({ city }) => {
-    return `Weather in ${city}: sunny`;
-  },
+  parameters: z.object({ city: z.string() }),
+  execute: async ({ city }) => `Weather in ${city}: sunny`,
 });
 ```
 
-### 3. Handoffs
-Multi-agent delegation:
-
+**Handoffs**: Multi-agent delegation
 ```typescript
-const specialist = new Agent({ /* ... */ });
-
-const triageAgent = Agent.create({
-  name: 'Triage',
-  instructions: 'Route to specialists',
-  handoffs: [specialist],
-});
+const triageAgent = Agent.create({ handoffs: [specialist1, specialist2] });
 ```
 
-### 4. Guardrails
-Input/output validation for safety:
-
+**Guardrails**: Input/output validation
 ```typescript
-const agent = new Agent({
-  inputGuardrails: [homeworkDetector],
-  outputGuardrails: [piiFilter],
-});
+const agent = new Agent({ inputGuardrails: [detector], outputGuardrails: [filter] });
 ```
 
-### 5. Structured Outputs
-Type-safe responses with Zod:
-
+**Structured Outputs**: Type-safe responses
 ```typescript
-const agent = new Agent({
-  outputType: z.object({
-    sentiment: z.enum(['positive', 'negative', 'neutral']),
-    confidence: z.number(),
-  }),
-});
+const agent = new Agent({ outputType: z.object({ sentiment: z.enum(['positive', 'negative']) }) });
 ```
 
 ---
 
 ## Text Agents
 
-### Basic Usage
+**Basic**: `const result = await run(agent, 'What is 2+2?')`
 
+**Streaming**:
 ```typescript
-import { run } from '@openai/agents';
-
-const result = await run(agent, 'What is 2+2?');
-console.log(result.finalOutput);
-console.log(result.usage.totalTokens);
-```
-
-### Streaming
-
-```typescript
-const stream = await run(agent, 'Tell me a story', {
-  stream: true,
-});
-
+const stream = await run(agent, 'Tell me a story', { stream: true });
 for await (const event of stream) {
-  if (event.type === 'raw_model_stream_event') {
-    const chunk = event.data?.choices?.[0]?.delta?.content || '';
-    process.stdout.write(chunk);
-  }
+  if (event.type === 'raw_model_stream_event') process.stdout.write(event.data?.choices?.[0]?.delta?.content || '');
 }
 ```
-
-**Templates**:
-- `templates/text-agents/agent-basic.ts`
-- `templates/text-agents/agent-streaming.ts`
 
 ---
 
 ## Multi-Agent Handoffs
 
-Create specialized agents and route between them:
-
 ```typescript
-const billingAgent = new Agent({
-  name: 'Billing',
-  handoffDescription: 'For billing and payment questions',
-  tools: [processRefundTool],
-});
-
-const techAgent = new Agent({
-  name: 'Technical',
-  handoffDescription: 'For technical issues',
-  tools: [createTicketTool],
-});
-
-const triageAgent = Agent.create({
-  name: 'Triage',
-  instructions: 'Route customers to the right specialist',
-  handoffs: [billingAgent, techAgent],
-});
+const billingAgent = new Agent({ name: 'Billing', handoffDescription: 'For billing questions', tools: [refundTool] });
+const techAgent = new Agent({ name: 'Technical', handoffDescription: 'For tech issues', tools: [ticketTool] });
+const triageAgent = Agent.create({ name: 'Triage', handoffs: [billingAgent, techAgent] });
 ```
-
-**Templates**:
-- `templates/text-agents/agent-handoffs.ts`
-
-**References**:
-- `references/agent-patterns.md` - LLM vs code orchestration
 
 ---
 
 ## Guardrails
 
-### Input Guardrails
-
-Validate input before processing:
-
+**Input**: Validate before processing
 ```typescript
-const homeworkGuardrail: InputGuardrail = {
-  name: 'Homework Detection',
-  execute: async ({ input, context }) => {
-    const result = await run(guardrailAgent, input);
-    return {
-      tripwireTriggered: result.finalOutput.isHomework,
-      outputInfo: result.finalOutput,
-    };
-  },
+const guardrail: InputGuardrail = {
+  execute: async ({ input }) => ({ tripwireTriggered: detectHomework(input) })
 };
-
-const agent = new Agent({
-  inputGuardrails: [homeworkGuardrail],
-});
+const agent = new Agent({ inputGuardrails: [guardrail] });
 ```
 
-### Output Guardrails
-
-Filter responses:
-
-```typescript
-const piiGuardrail: OutputGuardrail = {
-  name: 'PII Detection',
-  execute: async ({ agentOutput }) => {
-    const phoneRegex = /\b\d{3}[-. ]?\d{3}[-. ]?\d{4}\b/;
-    return {
-      tripwireTriggered: phoneRegex.test(agentOutput as string),
-      outputInfo: { detected: 'phone_number' },
-    };
-  },
-};
-```
-
-**Templates**:
-- `templates/text-agents/agent-guardrails-input.ts`
-- `templates/text-agents/agent-guardrails-output.ts`
+**Output**: Filter responses (PII detection, content safety)
 
 ---
 
 ## Human-in-the-Loop
 
-Require approval for specific actions:
-
 ```typescript
-const refundTool = tool({
-  name: 'process_refund',
-  requiresApproval: true,  // ← Requires human approval
-  execute: async ({ amount }) => {
-    return `Refunded $${amount}`;
-  },
-});
+const refundTool = tool({ name: 'process_refund', requiresApproval: true, execute: async ({ amount }) => `Refunded $${amount}` });
 
-// Handle approval requests
 let result = await runner.run(input);
-
-while (result.interruption) {
-  if (result.interruption.type === 'tool_approval') {
-    const approved = await promptUser(result.interruption);
-    result = approved
-      ? await result.state.approve(result.interruption)
-      : await result.state.reject(result.interruption);
-  }
+while (result.interruption?.type === 'tool_approval') {
+  result = await promptUser(result.interruption) ? result.state.approve(result.interruption) : result.state.reject(result.interruption);
 }
 ```
-
-**Templates**:
-- `templates/text-agents/agent-human-approval.ts`
 
 ---
 
 ## Realtime Voice Agents
 
-### Creating Voice Agents
-
+**Create**:
 ```typescript
-import { RealtimeAgent, tool } from '@openai/agents-realtime';
-
+import { RealtimeAgent } from '@openai/agents-realtime';
 const voiceAgent = new RealtimeAgent({
-  name: 'Voice Assistant',
-  instructions: 'Keep responses concise for voice',
-  tools: [weatherTool],
   voice: 'alloy', // alloy, echo, fable, onyx, nova, shimmer
   model: 'gpt-4o-realtime-preview',
+  tools: [weatherTool],
 });
 ```
 
-### Browser Session (React)
-
+**Browser Session**:
 ```typescript
 import { RealtimeSession } from '@openai/agents-realtime';
-
-const session = new RealtimeSession(voiceAgent, {
-  apiKey: sessionApiKey, // From your backend!
-  transport: 'webrtc', // or 'websocket'
-});
-
-session.on('connected', () => console.log('Connected'));
-session.on('audio.transcription.completed', (e) => console.log('User:', e.transcript));
-session.on('agent.audio.done', (e) => console.log('Agent:', e.transcript));
-
+const session = new RealtimeSession(voiceAgent, { apiKey: sessionApiKey, transport: 'webrtc' });
 await session.connect();
 ```
 
-**CRITICAL**: Never send your main OPENAI_API_KEY to the browser! Generate ephemeral session tokens server-side.
+**CRITICAL**: Never send OPENAI_API_KEY to browser! Generate ephemeral session tokens server-side.
 
-### Voice Agent Handoffs
-
-Voice agents support handoffs with constraints:
-- **Cannot change voice** during handoff
-- **Cannot change model** during handoff
-- Conversation history automatically passed
-
-```typescript
-const specialist = new RealtimeAgent({
-  voice: 'nova', // Must match parent
-  /* ... */
-});
-
-const triageAgent = new RealtimeAgent({
-  voice: 'nova',
-  handoffs: [specialist],
-});
-```
+**Voice Handoffs**: Voice/model must match across agents (cannot change during handoff)
 
 **Templates**:
 - `templates/realtime-agents/realtime-agent-basic.ts`
@@ -326,75 +157,22 @@ const triageAgent = new RealtimeAgent({
 
 ## Framework Integration
 
-### Cloudflare Workers (Experimental)
-
+**Cloudflare Workers** (experimental):
 ```typescript
-import { Agent, run } from '@openai/agents';
-
 export default {
   async fetch(request: Request, env: Env) {
-    const { message } = await request.json();
-
     process.env.OPENAI_API_KEY = env.OPENAI_API_KEY;
-
-    const agent = new Agent({
-      name: 'Assistant',
-      instructions: 'Be helpful and concise',
-      model: 'gpt-4o-mini',
-    });
-
-    const result = await run(agent, message, {
-      maxTurns: 5,
-    });
-
-    return new Response(JSON.stringify({
-      response: result.finalOutput,
-      tokens: result.usage.totalTokens,
-    }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-  },
+    const agent = new Agent({ name: 'Assistant', model: 'gpt-4o-mini' });
+    const result = await run(agent, (await request.json()).message);
+    return Response.json({ response: result.finalOutput, tokens: result.usage.totalTokens });
+  }
 };
 ```
+**Limitations**: No voice agents, 30s CPU limit, 128MB memory
 
-**Limitations**:
-- No realtime voice agents
-- CPU time limits (30s max)
-- Memory constraints (128MB)
+**Next.js**: `app/api/agent/route.ts` → `POST` handler with `run(agent, message)`
 
-**Templates**:
-- `templates/cloudflare-workers/worker-text-agent.ts`
-- `templates/cloudflare-workers/worker-agent-hono.ts`
-
-**References**:
-- `references/cloudflare-integration.md`
-
-### Next.js App Router
-
-```typescript
-// app/api/agent/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { Agent, run } from '@openai/agents';
-
-export async function POST(request: NextRequest) {
-  const { message } = await request.json();
-
-  const agent = new Agent({
-    name: 'Assistant',
-    instructions: 'Be helpful',
-  });
-
-  const result = await run(agent, message);
-
-  return NextResponse.json({
-    response: result.finalOutput,
-  });
-}
-```
-
-**Templates**:
-- `templates/nextjs/api-agent-route.ts`
-- `templates/nextjs/api-realtime-route.ts`
+**Templates**: `cloudflare-workers/`, `nextjs/`
 
 ---
 
@@ -486,86 +264,19 @@ const agent = new Agent({
 
 ## Orchestration Patterns
 
-### LLM-Based
-
-Agent decides routing autonomously:
-
-```typescript
-const manager = Agent.create({
-  instructions: 'Analyze request and route to appropriate agent',
-  handoffs: [agent1, agent2, agent3],
-});
-```
-
-**Pros**: Adaptive, handles complexity
-**Cons**: Less predictable, higher tokens
-
-### Code-Based
-
-Explicit control flow:
-
-```typescript
-const summary = await run(summarizerAgent, text);
-const sentiment = await run(sentimentAgent, summary.finalOutput);
-
-if (sentiment.finalOutput.score < 0.3) {
-  await run(escalationAgent, text);
-}
-```
-
-**Pros**: Predictable, lower cost
-**Cons**: Less flexible
-
-### Parallel
-
-Run multiple agents concurrently:
-
-```typescript
-const [summary, keywords, entities] = await Promise.all([
-  run(summarizerAgent, text),
-  run(keywordAgent, text),
-  run(entityAgent, text),
-]);
-```
-
-**Template**: `templates/text-agents/agent-parallel.ts`
-
-**References**: `references/agent-patterns.md`
+**LLM-Based**: Agent decides routing autonomously (adaptive, higher tokens)
+**Code-Based**: Explicit control flow with conditionals (predictable, lower cost)
+**Parallel**: `Promise.all([run(agent1, text), run(agent2, text)])` (concurrent execution)
 
 ---
 
-## Debugging & Tracing
-
-Enable verbose logging:
+## Debugging
 
 ```typescript
-process.env.DEBUG = '@openai/agents:*';
-```
-
-Access execution details:
-
-```typescript
+process.env.DEBUG = '@openai/agents:*';  // Verbose logging
 const result = await run(agent, input);
-
-console.log('Tokens:', result.usage.totalTokens);
-console.log('Turns:', result.history.length);
-console.log('Current Agent:', result.currentAgent?.name);
+console.log(result.usage.totalTokens, result.history.length, result.currentAgent?.name);
 ```
-
-**Template**: `templates/shared/tracing-setup.ts`
-
----
-
-## When to Use This Skill
-
-✅ **Use when**:
-- Building multi-agent workflows
-- Creating voice AI applications
-- Implementing tool-calling patterns
-- Requiring input/output validation (guardrails)
-- Needing human approval gates
-- Orchestrating complex AI tasks
-- Deploying to Cloudflare Workers or Next.js
 
 ❌ **Don't use when**:
 - Simple OpenAI API calls (use `openai-api` skill instead)
