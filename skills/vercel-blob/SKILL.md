@@ -5,337 +5,116 @@ description: |
 
   Use when implementing file uploads (images, PDFs, videos), managing user-generated content, or troubleshooting missing tokens, size limit errors, or client upload failures.
 license: MIT
+metadata:
+  version: 1.1.0
+  last_updated: 2025-11-28
+  package_version: "@vercel/blob@2.0.0"
+  production_tested: true
 ---
 
-# Vercel Blob (Object Storage)
+# Vercel Blob
 
-**Status**: Production Ready
-**Last Updated**: 2025-10-29
-**Dependencies**: None
-**Latest Versions**: `@vercel/blob@2.0.0`
+**Last Updated**: 2025-11-28
+**Version**: @vercel/blob@2.0.0
 
 ---
 
-## Quick Start (3 Minutes)
-
-### 1. Create Blob Store
+## Quick Start
 
 ```bash
-# In Vercel dashboard: Storage → Create Database → Blob
-vercel env pull .env.local
-```
-
-Creates: `BLOB_READ_WRITE_TOKEN`
-
-### 2. Install
-
-```bash
+# Create Blob store: Vercel Dashboard → Storage → Blob
+vercel env pull .env.local  # Creates BLOB_READ_WRITE_TOKEN
 npm install @vercel/blob
 ```
 
-### 3. Upload File (Server Action)
-
+**Server Upload**:
 ```typescript
 'use server';
-
 import { put } from '@vercel/blob';
 
 export async function uploadFile(formData: FormData) {
   const file = formData.get('file') as File;
-
-  const blob = await put(file.name, file, {
-    access: 'public' // or 'private'
-  });
-
-  return blob.url; // https://xyz.public.blob.vercel-storage.com/file.jpg
-}
-```
-
-**CRITICAL:**
-- Use client upload tokens for direct client uploads (don't expose `BLOB_READ_WRITE_TOKEN`)
-- Set correct `access` level (`public` vs `private`)
-- Files are automatically distributed via CDN
-
----
-
-## The 5-Step Setup Process
-
-### Step 1: Create Blob Store
-
-**Vercel Dashboard**:
-1. Project → Storage → Create Database → Blob
-2. Copy `BLOB_READ_WRITE_TOKEN`
-
-**Local Development**:
-```bash
-vercel env pull .env.local
-```
-
-Creates `.env.local`:
-```bash
-BLOB_READ_WRITE_TOKEN="vercel_blob_rw_xxx"
-```
-
-**Key Points:**
-- Free tier: 100GB bandwidth/month
-- File size limit: 500MB per file
-- Automatic CDN distribution
-- Public files are cached globally
-
----
-
-### Step 2: Server-Side Upload
-
-**Next.js Server Action:**
-```typescript
-'use server';
-
-import { put } from '@vercel/blob';
-
-export async function uploadAvatar(formData: FormData) {
-  const file = formData.get('avatar') as File;
-
-  // Validate file
-  if (!file.type.startsWith('image/')) {
-    throw new Error('Only images allowed');
-  }
-
-  if (file.size > 5 * 1024 * 1024) {
-    throw new Error('Max file size: 5MB');
-  }
-
-  // Upload
-  const blob = await put(`avatars/${Date.now()}-${file.name}`, file, {
-    access: 'public',
-    addRandomSuffix: false
-  });
-
-  return {
-    url: blob.url,
-    pathname: blob.pathname
-  };
-}
-```
-
-**API Route (Edge Runtime):**
-```typescript
-import { put } from '@vercel/blob';
-
-export const runtime = 'edge';
-
-export async function POST(request: Request) {
-  const formData = await request.formData();
-  const file = formData.get('file') as File;
-
   const blob = await put(file.name, file, { access: 'public' });
-
-  return Response.json(blob);
+  return blob.url;
 }
 ```
 
+**CRITICAL**: Never expose `BLOB_READ_WRITE_TOKEN` to client. Use `handleUpload()` for client uploads.
+
 ---
 
-### Step 3: Client-Side Upload (Presigned URLs)
+## Client Upload (Secure)
 
-**Create Upload Token (Server Action):**
+**Server Action** (generates presigned token):
 ```typescript
 'use server';
-
-import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
+import { handleUpload } from '@vercel/blob/client';
 
 export async function getUploadToken(filename: string) {
-  const jsonResponse = await handleUpload({
+  return await handleUpload({
     body: {
       type: 'blob.generate-client-token',
-      payload: {
-        pathname: `uploads/${filename}`,
-        access: 'public',
-        onUploadCompleted: {
-          callbackUrl: `${process.env.NEXT_PUBLIC_URL}/api/upload-complete`
-        }
-      }
+      payload: { pathname: `uploads/${filename}`, access: 'public' }
     },
     request: new Request('https://dummy'),
-    onBeforeGenerateToken: async (pathname) => {
-      // Optional: validate user permissions
-      return {
-        allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp'],
-        maximumSizeInBytes: 5 * 1024 * 1024 // 5MB
-      };
-    },
-    onUploadCompleted: async ({ blob, tokenPayload }) => {
-      console.log('Upload completed:', blob.url);
-    }
+    onBeforeGenerateToken: async (pathname) => ({
+      allowedContentTypes: ['image/jpeg', 'image/png'],
+      maximumSizeInBytes: 5 * 1024 * 1024
+    })
   });
-
-  return jsonResponse;
 }
 ```
 
-**Client Upload:**
+**Client Component**:
 ```typescript
 'use client';
-
 import { upload } from '@vercel/blob/client';
-import { getUploadToken } from './actions';
 
-export function UploadForm() {
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const file = (form.elements.namedItem('file') as HTMLInputElement).files?.[0];
-
-    if (!file) return;
-
-    const tokenResponse = await getUploadToken(file.name);
-
-    const blob = await upload(file.name, file, {
-      access: 'public',
-      handleUploadUrl: tokenResponse.url
-    });
-
-    console.log('Uploaded:', blob.url);
-  }
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <input type="file" name="file" required />
-      <button type="submit">Upload</button>
-    </form>
-  );
-}
-```
-
----
-
-### Step 4: List, Download, Delete
-
-**List Files:**
-```typescript
-import { list } from '@vercel/blob';
-
-const { blobs } = await list({
-  prefix: 'avatars/',
-  limit: 100
-});
-
-// Returns: { url, pathname, size, uploadedAt, ... }[]
-```
-
-**List with Pagination:**
-```typescript
-let cursor: string | undefined;
-const allBlobs = [];
-
-do {
-  const { blobs, cursor: nextCursor } = await list({
-    prefix: 'uploads/',
-    cursor
-  });
-  allBlobs.push(...blobs);
-  cursor = nextCursor;
-} while (cursor);
-```
-
-**Download File:**
-```typescript
-// Files are publicly accessible if access: 'public'
-const url = 'https://xyz.public.blob.vercel-storage.com/file.pdf';
-const response = await fetch(url);
-const blob = await response.blob();
-```
-
-**Delete File:**
-```typescript
-import { del } from '@vercel/blob';
-
-await del('https://xyz.public.blob.vercel-storage.com/file.jpg');
-
-// Or delete multiple
-await del([url1, url2, url3]);
-```
-
----
-
-### Step 5: Streaming & Multipart
-
-**Streaming Upload:**
-```typescript
-import { put } from '@vercel/blob';
-import { createReadStream } from 'fs';
-
-const stream = createReadStream('./large-file.mp4');
-
-const blob = await put('videos/large-file.mp4', stream, {
+const tokenResponse = await getUploadToken(file.name);
+const blob = await upload(file.name, file, {
   access: 'public',
-  contentType: 'video/mp4'
+  handleUploadUrl: tokenResponse.url
 });
 ```
 
-**Multipart Upload (Large Files >500MB):**
+---
+
+## File Management
+
+**List/Delete**:
+```typescript
+import { list, del } from '@vercel/blob';
+
+// List with pagination
+const { blobs, cursor } = await list({ prefix: 'uploads/', cursor });
+
+// Delete
+await del(blobUrl);
+```
+
+**Multipart (>500MB)**:
 ```typescript
 import { createMultipartUpload, uploadPart, completeMultipartUpload } from '@vercel/blob';
 
-// 1. Start multipart upload
-const upload = await createMultipartUpload('large-video.mp4', {
-  access: 'public'
-});
-
-// 2. Upload parts (chunks)
-const partSize = 100 * 1024 * 1024; // 100MB chunks
-const parts = [];
-
-for (let i = 0; i < totalParts; i++) {
-  const chunk = getChunk(i, partSize);
-  const part = await uploadPart(chunk, {
-    uploadId: upload.uploadId,
-    partNumber: i + 1
-  });
-  parts.push(part);
-}
-
-// 3. Complete upload
-const blob = await completeMultipartUpload({
-  uploadId: upload.uploadId,
-  parts
-});
+const upload = await createMultipartUpload('large-video.mp4', { access: 'public' });
+// Upload chunks in loop...
+await completeMultipartUpload({ uploadId: upload.uploadId, parts });
 ```
 
 ---
 
 ## Critical Rules
 
-### Always Do
+**Always**:
+- ✅ Use `handleUpload()` for client uploads (never expose `BLOB_READ_WRITE_TOKEN`)
+- ✅ Validate file type/size before upload
+- ✅ Use pathname organization (`avatars/`, `uploads/`)
+- ✅ Add timestamp/UUID to filenames (avoid collisions)
 
-✅ **Use client upload tokens for client-side uploads** - Never expose `BLOB_READ_WRITE_TOKEN` to client
-
-✅ **Set correct access level** - `public` (CDN) or `private` (authenticated access)
-
-✅ **Validate file types and sizes** - Before upload, check MIME type and size
-
-✅ **Use pathname organization** - `avatars/`, `uploads/`, `documents/` for structure
-
-✅ **Handle upload errors** - Network failures, size limits, token expiration
-
-✅ **Clean up old files** - Delete unused files to manage storage costs
-
-✅ **Set content-type explicitly** - For correct browser handling (videos, PDFs)
-
-### Never Do
-
-❌ **Never expose `BLOB_READ_WRITE_TOKEN` to client** - Use `handleUpload()` for client uploads
-
-❌ **Never skip file validation** - Always validate type, size, content before upload
-
-❌ **Never upload files >500MB without multipart** - Use multipart upload for large files
-
-❌ **Never use generic filenames** - `file.jpg` collides, use `${timestamp}-${name}` or UUID
-
-❌ **Never assume uploads succeed** - Always handle errors (network, quota, etc.)
-
-❌ **Never store sensitive data unencrypted** - Encrypt before upload if needed
-
-❌ **Never forget to delete temporary files** - Old uploads consume quota
+**Never**:
+- ❌ Expose `BLOB_READ_WRITE_TOKEN` to client
+- ❌ Upload >500MB without multipart
+- ❌ Skip file validation
 
 ---
 
@@ -405,192 +184,27 @@ This skill prevents **10 documented issues**:
 
 ---
 
-## Configuration Files Reference
-
-### package.json
-
-```json
-{
-  "dependencies": {
-    "@vercel/blob": "^2.0.0"
-  }
-}
-```
-
-### .env.local
-
-```bash
-BLOB_READ_WRITE_TOKEN="vercel_blob_rw_xxxxx"
-```
-
----
-
 ## Common Patterns
 
-### Pattern 1: Avatar Upload
-
+**Avatar Upload with Replacement**:
 ```typescript
 'use server';
-
 import { put, del } from '@vercel/blob';
 
 export async function updateAvatar(userId: string, formData: FormData) {
   const file = formData.get('avatar') as File;
+  if (!file.type.startsWith('image/')) throw new Error('Only images allowed');
 
-  // Validate
-  if (!file.type.startsWith('image/')) {
-    throw new Error('Only images allowed');
-  }
-
-  // Delete old avatar
   const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
-  if (user?.avatarUrl) {
-    await del(user.avatarUrl);
-  }
+  if (user?.avatarUrl) await del(user.avatarUrl); // Delete old
 
-  // Upload new
-  const blob = await put(`avatars/${userId}.jpg`, file, {
-    access: 'public',
-    contentType: file.type
-  });
-
-  // Update database
+  const blob = await put(`avatars/${userId}.jpg`, file, { access: 'public' });
   await db.update(users).set({ avatarUrl: blob.url }).where(eq(users.id, userId));
-
   return blob.url;
 }
 ```
 
-### Pattern 2: Protected File Upload
-
+**Protected Upload** (`access: 'private'`):
 ```typescript
-'use server';
-
-import { put } from '@vercel/blob';
-import { auth } from '@/lib/auth';
-
-export async function uploadDocument(formData: FormData) {
-  const session = await auth();
-  if (!session) throw new Error('Unauthorized');
-
-  const file = formData.get('document') as File;
-
-  // Upload as private
-  const blob = await put(`documents/${session.user.id}/${file.name}`, file, {
-    access: 'private' // Requires authentication to access
-  });
-
-  // Store in database with user reference
-  await db.insert(documents).values({
-    userId: session.user.id,
-    url: blob.url,
-    filename: file.name,
-    size: file.size
-  });
-
-  return blob;
-}
+const blob = await put(`documents/${userId}/${file.name}`, file, { access: 'private' });
 ```
-
-### Pattern 3: Image Gallery with Pagination
-
-```typescript
-import { list } from '@vercel/blob';
-
-export async function getGalleryImages(cursor?: string) {
-  const { blobs, cursor: nextCursor } = await list({
-    prefix: 'gallery/',
-    limit: 20,
-    cursor
-  });
-
-  const images = blobs.map(blob => ({
-    url: blob.url,
-    uploadedAt: blob.uploadedAt,
-    size: blob.size
-  }));
-
-  return { images, nextCursor };
-}
-```
-
----
-
-## Dependencies
-
-**Required**:
-- `@vercel/blob@^2.0.0` - Vercel Blob SDK
-
-**Optional**:
-- `sharp@^0.33.0` - Image processing before upload
-- `zod@^3.24.0` - File validation schemas
-
----
-
-## Official Documentation
-
-- **Vercel Blob**: https://vercel.com/docs/storage/vercel-blob
-- **Client Upload**: https://vercel.com/docs/storage/vercel-blob/client-upload
-- **SDK Reference**: https://vercel.com/docs/storage/vercel-blob/using-blob-sdk
-- **GitHub**: https://github.com/vercel/storage
-
----
-
-## Package Versions (Verified 2025-10-29)
-
-```json
-{
-  "dependencies": {
-    "@vercel/blob": "^2.0.0"
-  }
-}
-```
-
----
-
-## Production Example
-
-- **E-commerce**: Product images, user uploads (500K+ files)
-- **Blog Platform**: Featured images, author avatars
-- **SaaS**: Document uploads, PDF generation, CSV exports
-- **Errors**: 0 (all 10 known issues prevented)
-
----
-
-## Troubleshooting
-
-### Problem: `BLOB_READ_WRITE_TOKEN is not defined`
-**Solution**: Run `vercel env pull .env.local`, ensure `.env.local` in `.gitignore`.
-
-### Problem: File size exceeded (>500MB)
-**Solution**: Use multipart upload with `createMultipartUpload()` API.
-
-### Problem: Client upload fails with token error
-**Solution**: Ensure using `handleUpload()` server-side, don't expose read/write token to client.
-
-### Problem: Files not deleting
-**Solution**: Use exact URL from `put()` response, check `del()` return value.
-
----
-
-## Complete Setup Checklist
-
-- [ ] Blob store created in Vercel dashboard
-- [ ] `BLOB_READ_WRITE_TOKEN` environment variable set
-- [ ] `@vercel/blob` package installed
-- [ ] File validation implemented (type, size)
-- [ ] Client upload uses `handleUpload()` (not direct token)
-- [ ] Content-type set for uploads
-- [ ] Access level correct (`public` vs `private`)
-- [ ] Deletion of old files implemented
-- [ ] List pagination handles cursor
-- [ ] Tested file upload/download/delete locally and in production
-
----
-
-**Questions? Issues?**
-
-1. Check official docs: https://vercel.com/docs/storage/vercel-blob
-2. Verify environment variables are set
-3. Ensure using client upload tokens for client-side uploads
-4. Monitor storage usage in Vercel dashboard
