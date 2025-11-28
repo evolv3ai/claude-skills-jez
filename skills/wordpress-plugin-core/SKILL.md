@@ -9,261 +9,119 @@ license: MIT
 
 # WordPress Plugin Development (Core)
 
-**Status**: Production Ready
-**Last Updated**: 2025-11-06
-**Dependencies**: None (WordPress 5.9+, PHP 7.4+)
-**Latest Versions**: WordPress 6.7+, PHP 8.0+ recommended
+**Last Updated**: 2025-11-28
+**Latest Versions**: WordPress 6.8+, PHP 8.0+ recommended
+**Dependencies**: None (WordPress 5.9+, PHP 7.4+ minimum)
 
 ---
 
-## Quick Start (10 Minutes)
+## Quick Start
 
-### 1. Choose Your Plugin Structure
+**Architecture Patterns**: Simple (functions only, <5 functions) | OOP (medium plugins) | PSR-4 (modern/large, recommended 2025+)
 
-WordPress plugins can use three architecture patterns:
-
-- **Simple** (functions only) - For small plugins with <5 functions
-- **OOP** (Object-Oriented) - For medium plugins with related functionality
-- **PSR-4** (Namespaced + Composer autoload) - For large/modern plugins
-
-**Why this matters:**
-- Simple plugins are easiest to start but don't scale well
-- OOP provides organization without modern PHP features
-- PSR-4 is the modern standard (2025) and most maintainable
-
-### 2. Create Plugin Header
-
-Every plugin MUST have a header comment in the main file:
-
+**Plugin Header** (only Plugin Name required):
 ```php
 <?php
 /**
- * Plugin Name:       My Awesome Plugin
- * Plugin URI:        https://example.com/my-plugin/
- * Description:       Brief description of what this plugin does.
- * Version:           1.0.0
+ * Plugin Name: My Plugin
+ * Version: 1.0.0
  * Requires at least: 5.9
- * Requires PHP:      7.4
- * Author:            Your Name
- * Author URI:        https://yoursite.com/
- * License:           GPL v2 or later
- * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       my-plugin
- * Domain Path:       /languages
+ * Requires PHP: 7.4
+ * Text Domain: my-plugin
  */
 
-// Exit if accessed directly
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
+if ( ! defined( 'ABSPATH' ) ) exit;
 ```
 
-**CRITICAL:**
-- Plugin Name is the ONLY required field
-- Text Domain must match plugin slug exactly (for translations)
-- Always add ABSPATH check to prevent direct file access
-
-### 3. Implement The Security Foundation
-
-Before writing ANY functionality, implement these 5 security essentials:
-
+**Security Foundation** (5 essentials before writing functionality):
 ```php
-// 1. Unique Prefix (4-5 chars minimum)
+// 1. Unique Prefix
 define( 'MYPL_VERSION', '1.0.0' );
-
-function mypl_init() {
-    // Your code
-}
+function mypl_init() { /* code */ }
 add_action( 'init', 'mypl_init' );
 
 // 2. ABSPATH Check (every PHP file)
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
+if ( ! defined( 'ABSPATH' ) ) exit;
 
-// 3. Nonces for Forms
-<input type="hidden" name="mypl_nonce" value="<?php echo wp_create_nonce( 'mypl_action' ); ?>" />
+// 3. Nonces
+wp_nonce_field( 'mypl_action', 'mypl_nonce' );
+wp_verify_nonce( $_POST['mypl_nonce'], 'mypl_action' );
 
 // 4. Sanitize Input, Escape Output
 $clean = sanitize_text_field( $_POST['input'] );
 echo esc_html( $output );
 
-// 5. Prepared Statements for Database
+// 5. Prepared Statements
 global $wpdb;
-$results = $wpdb->get_results(
-    $wpdb->prepare(
-        "SELECT * FROM {$wpdb->prefix}table WHERE id = %d",
-        $id
-    )
-);
+$wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}table WHERE id = %d", $id ) );
 ```
 
 ---
 
-## The 5-Step Security Foundation
+## Security Foundation (Detailed)
 
-WordPress plugin security has THREE components that must ALL be present:
-
-### Step 1: Use Unique Prefix for Everything
-
-**Why**: Prevents naming conflicts with other plugins and WordPress core.
-
-**Rules**:
-- 4-5 characters minimum
-- Apply to: functions, classes, constants, options, transients, meta keys, global variables
-- Avoid: `wp_`, `__`, `_`, "WordPress"
+### Unique Prefix (4-5 chars minimum)
+Apply to: functions, classes, constants, options, transients, meta keys. Avoid: `wp_`, `__`, `_`.
 
 ```php
-// GOOD
-function mypl_function_name() {}
-class MyPL_Class_Name {}
-define( 'MYPL_CONSTANT', 'value' );
-add_option( 'mypl_option', 'value' );
-set_transient( 'mypl_cache', $data, HOUR_IN_SECONDS );
-
-// BAD
-function function_name() {}  // No prefix, will conflict
-class Settings {}  // Too generic
+function mypl_function() {}  // ✅
+class MyPL_Class {}          // ✅
+function init() {}           // ❌ Will conflict
 ```
 
-### Step 2: Check Capabilities, Not Just Admin Status
-
-**ERROR**: Using `is_admin()` for permission checks
-
+### Capabilities Check (Not is_admin())
 ```php
-// WRONG - Anyone can access admin area URLs
-if ( is_admin() ) {
-    // Delete user data - SECURITY HOLE
-}
+// ❌ WRONG - Security hole
+if ( is_admin() ) { /* delete data */ }
 
-// CORRECT - Check user capability
-if ( current_user_can( 'manage_options' ) ) {
-    // Delete user data - Now secure
-}
+// ✅ CORRECT
+if ( current_user_can( 'manage_options' ) ) { /* delete data */ }
 ```
 
-**Common Capabilities**:
-- `manage_options` - Administrator
-- `edit_posts` - Editor/Author
-- `publish_posts` - Author
-- `edit_pages` - Editor
-- `read` - Subscriber
+Common: `manage_options` (Admin), `edit_posts` (Editor/Author), `read` (Subscriber)
 
-### Step 3: The Security Trinity
-
-**Input → Processing → Output** each require different functions:
-
+### Security Trinity (Input → Processing → Output)
 ```php
-// SANITIZATION (Input) - Clean user data
+// Sanitize INPUT
 $name = sanitize_text_field( $_POST['name'] );
 $email = sanitize_email( $_POST['email'] );
-$url = esc_url_raw( $_POST['url'] );
 $html = wp_kses_post( $_POST['content'] );  // Allow safe HTML
-$key = sanitize_key( $_POST['option'] );
-$ids = array_map( 'absint', $_POST['ids'] );  // Array of integers
+$ids = array_map( 'absint', $_POST['ids'] );
 
-// VALIDATION (Logic) - Verify it meets requirements
-if ( ! is_email( $email ) ) {
-    wp_die( 'Invalid email' );
-}
+// Validate LOGIC
+if ( ! is_email( $email ) ) wp_die( 'Invalid' );
 
-// ESCAPING (Output) - Make safe for display
+// Escape OUTPUT
 echo esc_html( $name );
 echo '<a href="' . esc_url( $url ) . '">';
 echo '<div class="' . esc_attr( $class ) . '">';
-echo '<textarea>' . esc_textarea( $content ) . '</textarea>';
 ```
 
-**Critical Rule**: Sanitize on INPUT, escape on OUTPUT. Never trust user data.
-
-### Step 4: Nonces (CSRF Protection)
-
-**What**: One-time tokens that prove requests came from your site.
-
-**Form Pattern**:
-
+### Nonces (CSRF Protection)
 ```php
-// Generate nonce in form
-<form method="post">
-    <?php wp_nonce_field( 'mypl_action', 'mypl_nonce' ); ?>
-    <input type="text" name="data" />
-    <button type="submit">Submit</button>
-</form>
+// Form
+<?php wp_nonce_field( 'mypl_action', 'mypl_nonce' ); ?>
+if ( ! wp_verify_nonce( $_POST['mypl_nonce'], 'mypl_action' ) ) wp_die( 'Failed' );
 
-// Verify nonce in handler
-if ( ! isset( $_POST['mypl_nonce'] ) || ! wp_verify_nonce( $_POST['mypl_nonce'], 'mypl_action' ) ) {
-    wp_die( 'Security check failed' );
-}
-
-// Now safe to proceed
-$data = sanitize_text_field( $_POST['data'] );
-```
-
-**AJAX Pattern**:
-
-```javascript
-// JavaScript
-jQuery.ajax({
-    url: ajaxurl,
-    data: {
-        action: 'mypl_ajax_action',
-        nonce: mypl_ajax_object.nonce,
-        data: formData
-    }
-});
-```
-
-```php
-// PHP Handler
-function mypl_ajax_handler() {
-    check_ajax_referer( 'mypl-ajax-nonce', 'nonce' );
-
-    // Safe to proceed
-    wp_send_json_success( array( 'message' => 'Success' ) );
-}
-add_action( 'wp_ajax_mypl_ajax_action', 'mypl_ajax_handler' );
-
-// Localize script with nonce
+// AJAX
+check_ajax_referer( 'mypl-ajax-nonce', 'nonce' );
 wp_localize_script( 'mypl-script', 'mypl_ajax_object', array(
     'ajaxurl' => admin_url( 'admin-ajax.php' ),
     'nonce'   => wp_create_nonce( 'mypl-ajax-nonce' ),
 ) );
 ```
 
-### Step 5: Prepared Statements for Database
-
-**CRITICAL**: Always use `$wpdb->prepare()` for queries with user input.
-
+### Prepared Statements
 ```php
-global $wpdb;
+// ❌ SQL Injection
+$wpdb->get_results( "SELECT * FROM table WHERE id = {$_GET['id']}" );
 
-// WRONG - SQL Injection vulnerability
-$results = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}table WHERE id = {$_GET['id']}" );
+// ✅ Prepared (%s=String, %d=Integer, %f=Float)
+$wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}table WHERE id = %d", $_GET['id'] ) );
 
-// CORRECT - Prepared statement
-$results = $wpdb->get_results(
-    $wpdb->prepare(
-        "SELECT * FROM {$wpdb->prefix}table WHERE id = %d",
-        $_GET['id']
-    )
-);
-```
-
-**Placeholders**:
-- `%s` - String
-- `%d` - Integer
-- `%f` - Float
-
-**LIKE Queries** (Special Case):
-
-```php
+// LIKE Queries
 $search = '%' . $wpdb->esc_like( $term ) . '%';
-$results = $wpdb->get_results(
-    $wpdb->prepare(
-        "SELECT * FROM {$wpdb->prefix}posts WHERE post_title LIKE %s",
-        $search
-    )
-);
+$wpdb->get_results( $wpdb->prepare( "... WHERE title LIKE %s", $search ) );
 ```
 
 ---
@@ -643,691 +501,159 @@ add_action( 'rest_api_init', function() {
 
 ## Plugin Architecture Patterns
 
-### Pattern 1: Simple Plugin (Functions Only)
-
-**When to use**: Small plugins with <5 functions, no complex state
-
+### Simple (Functions Only)
+Small plugins (<5 functions):
 ```php
-<?php
-/**
- * Plugin Name: Simple Plugin
- */
-
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
-
-function mypl_init() {
-    // Your code here
-}
+function mypl_init() { /* code */ }
 add_action( 'init', 'mypl_init' );
-
-function mypl_admin_menu() {
-    add_options_page(
-        'My Plugin',
-        'My Plugin',
-        'manage_options',
-        'my-plugin',
-        'mypl_settings_page'
-    );
-}
-add_action( 'admin_menu', 'mypl_admin_menu' );
-
-function mypl_settings_page() {
-    ?>
-    <div class="wrap">
-        <h1>My Plugin Settings</h1>
-    </div>
-    <?php
-}
 ```
 
-### Pattern 2: OOP Plugin
-
-**When to use**: Medium plugins with related functionality, need organization
-
+### OOP (Singleton)
+Medium plugins:
 ```php
-<?php
-/**
- * Plugin Name: OOP Plugin
- */
-
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
-
 class MyPL_Plugin {
-
     private static $instance = null;
-
     public static function get_instance() {
-        if ( null === self::$instance ) {
-            self::$instance = new self();
-        }
+        if ( null === self::$instance ) self::$instance = new self();
         return self::$instance;
     }
-
     private function __construct() {
-        $this->define_constants();
-        $this->init_hooks();
-    }
-
-    private function define_constants() {
-        define( 'MYPL_VERSION', '1.0.0' );
-        define( 'MYPL_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-        define( 'MYPL_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-    }
-
-    private function init_hooks() {
         add_action( 'init', array( $this, 'init' ) );
-        add_action( 'admin_menu', array( $this, 'admin_menu' ) );
-    }
-
-    public function init() {
-        // Initialization code
-    }
-
-    public function admin_menu() {
-        add_options_page(
-            'My Plugin',
-            'My Plugin',
-            'manage_options',
-            'my-plugin',
-            array( $this, 'settings_page' )
-        );
-    }
-
-    public function settings_page() {
-        ?>
-        <div class="wrap">
-            <h1>My Plugin Settings</h1>
-        </div>
-        <?php
     }
 }
-
-// Initialize plugin
-function mypl() {
-    return MyPL_Plugin::get_instance();
-}
-mypl();
+MyPL_Plugin::get_instance();
 ```
 
-### Pattern 3: PSR-4 Plugin (Modern, Recommended)
-
-**When to use**: Large/modern plugins, team development, 2025+ best practice
-
-**Directory Structure**:
+### PSR-4 (Modern, Recommended 2025+)
+Large/team plugins:
 ```
 my-plugin/
-├── my-plugin.php       # Main file
-├── composer.json       # Autoloading config
-├── src/                # PSR-4 autoloaded classes
-│   ├── Admin.php
-│   ├── Frontend.php
-│   └── Settings.php
-├── languages/
-└── uninstall.php
-```
+├── my-plugin.php
+├── composer.json → "psr-4": { "MyPlugin\\": "src/" }
+└── src/Admin.php
 
-**composer.json**:
-```json
-{
-    "name": "my-vendor/my-plugin",
-    "autoload": {
-        "psr-4": {
-            "MyPlugin\\": "src/"
-        }
-    },
-    "require": {
-        "php": ">=7.4"
-    }
-}
-```
-
-**my-plugin.php**:
-```php
-<?php
-/**
- * Plugin Name: PSR-4 Plugin
- */
-
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
-
-// Composer autoloader
+// my-plugin.php
 require_once __DIR__ . '/vendor/autoload.php';
-
 use MyPlugin\Admin;
-use MyPlugin\Frontend;
-
-class MyPlugin {
-
-    private static $instance = null;
-
-    public static function get_instance() {
-        if ( null === self::$instance ) {
-            self::$instance = new self();
-        }
-        return self::$instance;
-    }
-
-    private function __construct() {
-        $this->init();
-    }
-
-    private function init() {
-        new Admin();
-        new Frontend();
-    }
-}
-
-MyPlugin::get_instance();
-```
-
-**src/Admin.php**:
-```php
-<?php
-
-namespace MyPlugin;
-
-class Admin {
-
-    public function __construct() {
-        add_action( 'admin_menu', array( $this, 'add_menu' ) );
-    }
-
-    public function add_menu() {
-        add_options_page(
-            'My Plugin',
-            'My Plugin',
-            'manage_options',
-            'my-plugin',
-            array( $this, 'settings_page' )
-        );
-    }
-
-    public function settings_page() {
-        ?>
-        <div class="wrap">
-            <h1>My Plugin Settings</h1>
-        </div>
-        <?php
-    }
-}
+new Admin();
 ```
 
 ---
 
 ## Common Patterns
 
-### Pattern 1: Custom Post Types
-
+**Custom Post Types** (CRITICAL: Flush rewrite rules on activation):
 ```php
-function mypl_register_cpt() {
-    register_post_type( 'book', array(
-        'labels' => array(
-            'name'          => 'Books',
-            'singular_name' => 'Book',
-            'add_new_item'  => 'Add New Book',
-        ),
-        'public'       => true,
-        'has_archive'  => true,
-        'show_in_rest' => true,  // Gutenberg support
-        'supports'     => array( 'title', 'editor', 'thumbnail', 'excerpt' ),
-        'rewrite'      => array( 'slug' => 'books' ),
-        'menu_icon'    => 'dashicons-book',
-    ) );
-}
-add_action( 'init', 'mypl_register_cpt' );
-
-// CRITICAL: Flush rewrite rules on activation
-function mypl_activate() {
+register_post_type( 'book', array( 'public' => true, 'show_in_rest' => true ) );
+register_activation_hook( __FILE__, function() {
     mypl_register_cpt();
     flush_rewrite_rules();
-}
-register_activation_hook( __FILE__, 'mypl_activate' );
-
-function mypl_deactivate() {
-    flush_rewrite_rules();
-}
-register_deactivation_hook( __FILE__, 'mypl_deactivate' );
-```
-
-### Pattern 2: Custom Taxonomies
-
-```php
-function mypl_register_taxonomy() {
-    register_taxonomy( 'genre', 'book', array(
-        'labels' => array(
-            'name'          => 'Genres',
-            'singular_name' => 'Genre',
-        ),
-        'hierarchical' => true,  // Like categories
-        'show_in_rest' => true,
-        'rewrite'      => array( 'slug' => 'genre' ),
-    ) );
-}
-add_action( 'init', 'mypl_register_taxonomy' );
-```
-
-### Pattern 3: Meta Boxes
-
-```php
-function mypl_add_meta_box() {
-    add_meta_box(
-        'book_details',
-        'Book Details',
-        'mypl_meta_box_html',
-        'book',
-        'normal',
-        'high'
-    );
-}
-add_action( 'add_meta_boxes', 'mypl_add_meta_box' );
-
-function mypl_meta_box_html( $post ) {
-    $isbn = get_post_meta( $post->ID, '_book_isbn', true );
-
-    wp_nonce_field( 'mypl_save_meta', 'mypl_meta_nonce' );
-    ?>
-    <label for="book_isbn">ISBN:</label>
-    <input type="text" id="book_isbn" name="book_isbn" value="<?php echo esc_attr( $isbn ); ?>" />
-    <?php
-}
-
-function mypl_save_meta( $post_id ) {
-    // Security checks
-    if ( ! isset( $_POST['mypl_meta_nonce'] )
-         || ! wp_verify_nonce( $_POST['mypl_meta_nonce'], 'mypl_save_meta' ) ) {
-        return;
-    }
-
-    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-        return;
-    }
-
-    if ( ! current_user_can( 'edit_post', $post_id ) ) {
-        return;
-    }
-
-    // Save data
-    if ( isset( $_POST['book_isbn'] ) ) {
-        update_post_meta(
-            $post_id,
-            '_book_isbn',
-            sanitize_text_field( $_POST['book_isbn'] )
-        );
-    }
-}
-add_action( 'save_post_book', 'mypl_save_meta' );
-```
-
-### Pattern 4: Settings API
-
-```php
-function mypl_add_menu() {
-    add_options_page(
-        'My Plugin Settings',
-        'My Plugin',
-        'manage_options',
-        'my-plugin',
-        'mypl_settings_page'
-    );
-}
-add_action( 'admin_menu', 'mypl_add_menu' );
-
-function mypl_register_settings() {
-    register_setting( 'mypl_options', 'mypl_api_key', array(
-        'type'              => 'string',
-        'sanitize_callback' => 'sanitize_text_field',
-        'default'           => '',
-    ) );
-
-    add_settings_section(
-        'mypl_section',
-        'API Settings',
-        'mypl_section_callback',
-        'my-plugin'
-    );
-
-    add_settings_field(
-        'mypl_api_key',
-        'API Key',
-        'mypl_field_callback',
-        'my-plugin',
-        'mypl_section'
-    );
-}
-add_action( 'admin_init', 'mypl_register_settings' );
-
-function mypl_section_callback() {
-    echo '<p>Configure your API settings.</p>';
-}
-
-function mypl_field_callback() {
-    $value = get_option( 'mypl_api_key' );
-    ?>
-    <input type="text" name="mypl_api_key" value="<?php echo esc_attr( $value ); ?>" />
-    <?php
-}
-
-function mypl_settings_page() {
-    if ( ! current_user_can( 'manage_options' ) ) {
-        return;
-    }
-    ?>
-    <div class="wrap">
-        <h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
-        <form method="post" action="options.php">
-            <?php
-            settings_fields( 'mypl_options' );
-            do_settings_sections( 'my-plugin' );
-            submit_button();
-            ?>
-        </form>
-    </div>
-    <?php
-}
-```
-
-### Pattern 5: REST API Endpoints
-
-```php
-add_action( 'rest_api_init', function() {
-    register_rest_route( 'myplugin/v1', '/data', array(
-        'methods'             => WP_REST_Server::READABLE,
-        'callback'            => 'mypl_rest_callback',
-        'permission_callback' => function() {
-            return current_user_can( 'edit_posts' );
-        },
-        'args'                => array(
-            'id' => array(
-                'required'          => true,
-                'validate_callback' => function( $param ) {
-                    return is_numeric( $param );
-                },
-                'sanitize_callback' => 'absint',
-            ),
-        ),
-    ) );
 } );
-
-function mypl_rest_callback( $request ) {
-    $id = $request->get_param( 'id' );
-
-    // Process...
-
-    return new WP_REST_Response( array(
-        'success' => true,
-        'data'    => $data,
-    ), 200 );
-}
 ```
 
-### Pattern 6: AJAX Handlers (Legacy)
-
+**Custom Taxonomies**:
 ```php
-// Enqueue script with localized data
-function mypl_enqueue_ajax_script() {
-    wp_enqueue_script( 'mypl-ajax', plugins_url( 'js/ajax.js', __FILE__ ), array( 'jquery' ), '1.0', true );
+register_taxonomy( 'genre', 'book', array( 'hierarchical' => true, 'show_in_rest' => true ) );
+```
 
-    wp_localize_script( 'mypl-ajax', 'mypl_ajax_object', array(
-        'ajaxurl' => admin_url( 'admin-ajax.php' ),
-        'nonce'   => wp_create_nonce( 'mypl-ajax-nonce' ),
-    ) );
-}
-add_action( 'wp_enqueue_scripts', 'mypl_enqueue_ajax_script' );
+**Meta Boxes**:
+```php
+add_meta_box( 'book_details', 'Book Details', 'mypl_meta_box_html', 'book' );
+// Save: Check nonce, DOING_AUTOSAVE, current_user_can('edit_post')
+update_post_meta( $post_id, '_book_isbn', sanitize_text_field( $_POST['book_isbn'] ) );
+```
 
-// AJAX handler (logged-in users)
-function mypl_ajax_handler() {
-    check_ajax_referer( 'mypl-ajax-nonce', 'nonce' );
+**Settings API**:
+```php
+register_setting( 'mypl_options', 'mypl_api_key', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+add_settings_section( 'mypl_section', 'API Settings', 'callback', 'my-plugin' );
+add_settings_field( 'mypl_api_key', 'API Key', 'field_callback', 'my-plugin', 'mypl_section' );
+```
 
-    $data = sanitize_text_field( $_POST['data'] );
+**REST API** (10x faster than admin-ajax.php):
+```php
+register_rest_route( 'myplugin/v1', '/data', array(
+    'methods'             => 'POST',
+    'callback'            => 'mypl_rest_callback',
+    'permission_callback' => fn() => current_user_can( 'edit_posts' ),
+) );
+```
 
-    // Process...
-
-    wp_send_json_success( array( 'message' => 'Success' ) );
-}
+**AJAX** (Legacy, use REST API for new projects):
+```php
 add_action( 'wp_ajax_mypl_action', 'mypl_ajax_handler' );
-
-// AJAX handler (logged-out users)
-add_action( 'wp_ajax_nopriv_mypl_action', 'mypl_ajax_handler' );
+check_ajax_referer( 'mypl-ajax-nonce', 'nonce' );
+wp_send_json_success( array( 'message' => 'Success' ) );
 ```
 
-**JavaScript (js/ajax.js)**:
-```javascript
-jQuery(document).ready(function($) {
-    $('#my-button').on('click', function() {
-        $.ajax({
-            url: mypl_ajax_object.ajaxurl,
-            type: 'POST',
-            data: {
-                action: 'mypl_action',
-                nonce: mypl_ajax_object.nonce,
-                data: 'value'
-            },
-            success: function(response) {
-                console.log(response.data.message);
-            }
-        });
-    });
-});
-```
-
-### Pattern 7: Custom Database Tables
-
+**Custom Tables**:
 ```php
-function mypl_create_tables() {
-    global $wpdb;
-
-    $table_name = $wpdb->prefix . 'mypl_data';
-    $charset_collate = $wpdb->get_charset_collate();
-
-    $sql = "CREATE TABLE $table_name (
-        id bigint(20) NOT NULL AUTO_INCREMENT,
-        user_id bigint(20) NOT NULL,
-        data text NOT NULL,
-        created datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
-        PRIMARY KEY  (id),
-        KEY user_id (user_id)
-    ) $charset_collate;";
-
-    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-    dbDelta( $sql );
-
-    add_option( 'mypl_db_version', '1.0' );
-}
-
-// Create tables on activation
-register_activation_hook( __FILE__, 'mypl_create_tables' );
+global $wpdb;
+$sql = "CREATE TABLE {$wpdb->prefix}mypl_data (id bigint AUTO_INCREMENT PRIMARY KEY, ...)";
+require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+dbDelta( $sql );
 ```
 
-### Pattern 8: Transients for Caching
-
+**Transients** (Caching):
 ```php
-function mypl_get_expensive_data() {
-    // Try to get cached data
-    $data = get_transient( 'mypl_expensive_data' );
-
-    if ( false === $data ) {
-        // Not cached - regenerate
-        $data = perform_expensive_operation();
-
-        // Cache for 12 hours
-        set_transient( 'mypl_expensive_data', $data, 12 * HOUR_IN_SECONDS );
-    }
-
-    return $data;
+$data = get_transient( 'mypl_data' );
+if ( false === $data ) {
+    $data = expensive_operation();
+    set_transient( 'mypl_data', $data, 12 * HOUR_IN_SECONDS );
 }
-
-// Clear cache when data changes
-function mypl_clear_cache() {
-    delete_transient( 'mypl_expensive_data' );
-}
-add_action( 'save_post', 'mypl_clear_cache' );
 ```
 
 ---
 
-## Using Bundled Resources
+## Bundled Resources
 
-### Templates (templates/)
+**Templates**: `plugin-simple/`, `plugin-oop/`, `plugin-psr4/`, `examples/meta-box.php`, `examples/settings-page.php`, `examples/custom-post-type.php`, `examples/rest-endpoint.php`, `examples/ajax-handler.php`
 
-Use these production-ready templates to scaffold plugins quickly:
+**Scripts**: `scaffold-plugin.sh`, `check-security.sh`, `validate-headers.sh`
 
-- `templates/plugin-simple/` - Simple plugin with functions
-- `templates/plugin-oop/` - Object-oriented plugin structure
-- `templates/plugin-psr4/` - Modern PSR-4 plugin with Composer
-- `templates/examples/meta-box.php` - Meta box implementation
-- `templates/examples/settings-page.php` - Settings API page
-- `templates/examples/custom-post-type.php` - CPT registration
-- `templates/examples/rest-endpoint.php` - REST API endpoint
-- `templates/examples/ajax-handler.php` - AJAX implementation
-
-**When Claude should use these**: When creating new plugins or implementing specific functionality patterns.
-
-### Scripts (scripts/)
-
-- `scripts/scaffold-plugin.sh` - Interactive plugin scaffolding
-- `scripts/check-security.sh` - Security audit for common issues
-- `scripts/validate-headers.sh` - Verify plugin headers
-
-**Example Usage:**
-```bash
-# Scaffold new plugin
-./scripts/scaffold-plugin.sh my-plugin simple
-
-# Check for security issues
-./scripts/check-security.sh my-plugin.php
-
-# Validate plugin headers
-./scripts/validate-headers.sh my-plugin.php
-```
-
-### References (references/)
-
-Detailed documentation that Claude can load when needed:
-
-- `references/security-checklist.md` - Complete security audit checklist
-- `references/hooks-reference.md` - Common WordPress hooks and filters
-- `references/sanitization-guide.md` - All sanitization/escaping functions
-- `references/wpdb-patterns.md` - Database query patterns
-- `references/common-errors.md` - Extended error prevention guide
-
-**When Claude should load these**: When dealing with security issues, choosing the right hook, sanitizing specific data types, writing database queries, or debugging common errors.
+**References**: `security-checklist.md`, `hooks-reference.md`, `sanitization-guide.md`, `wpdb-patterns.md`, `common-errors.md`
 
 ---
 
 ## Advanced Topics
 
-### Internationalization (i18n)
-
+**i18n** (Internationalization):
 ```php
-// Load text domain
-function mypl_load_textdomain() {
-    load_plugin_textdomain( 'my-plugin', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
-}
-add_action( 'plugins_loaded', 'mypl_load_textdomain' );
-
-// Translatable strings
-__( 'Text', 'my-plugin' );  // Returns translated string
-_e( 'Text', 'my-plugin' );  // Echoes translated string
-_n( 'One item', '%d items', $count, 'my-plugin' );  // Plural forms
-esc_html__( 'Text', 'my-plugin' );  // Translate and escape
-esc_html_e( 'Text', 'my-plugin' );  // Translate, escape, and echo
+load_plugin_textdomain( 'my-plugin', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+__( 'Text', 'my-plugin' );  // Return translated
+_e( 'Text', 'my-plugin' );  // Echo translated
+esc_html__( 'Text', 'my-plugin' );  // Translate + escape
 ```
 
-### WP-CLI Commands
-
+**WP-CLI**:
 ```php
 if ( defined( 'WP_CLI' ) && WP_CLI ) {
-
-    class MyPL_CLI_Command {
-
-        /**
-         * Process data
-         *
-         * ## EXAMPLES
-         *
-         *     wp mypl process --limit=100
-         *
-         * @param array $args
-         * @param array $assoc_args
-         */
-        public function process( $args, $assoc_args ) {
-            $limit = isset( $assoc_args['limit'] ) ? absint( $assoc_args['limit'] ) : 10;
-
-            WP_CLI::line( "Processing $limit items..." );
-
-            // Process...
-
-            WP_CLI::success( 'Processing complete!' );
-        }
-    }
-
     WP_CLI::add_command( 'mypl', 'MyPL_CLI_Command' );
 }
 ```
 
-### Scheduled Events (Cron)
-
+**Cron Events**:
 ```php
-// Schedule event on activation
-function mypl_activate() {
-    if ( ! wp_next_scheduled( 'mypl_daily_task' ) ) {
-        wp_schedule_event( time(), 'daily', 'mypl_daily_task' );
-    }
-}
-register_activation_hook( __FILE__, 'mypl_activate' );
-
-// Clear event on deactivation
-function mypl_deactivate() {
-    wp_clear_scheduled_hook( 'mypl_daily_task' );
-}
-register_deactivation_hook( __FILE__, 'mypl_deactivate' );
-
-// Hook to scheduled event
-function mypl_do_daily_task() {
-    // Perform task
-}
+register_activation_hook( __FILE__, fn() => wp_schedule_event( time(), 'daily', 'mypl_daily_task' ) );
+register_deactivation_hook( __FILE__, fn() => wp_clear_scheduled_hook( 'mypl_daily_task' ) );
 add_action( 'mypl_daily_task', 'mypl_do_daily_task' );
 ```
 
-### Plugin Dependencies Check
-
+**Plugin Dependencies**:
 ```php
-add_action( 'admin_init', function() {
-    // Check for WooCommerce
-    if ( ! class_exists( 'WooCommerce' ) ) {
-        deactivate_plugins( plugin_basename( __FILE__ ) );
-
-        add_action( 'admin_notices', function() {
-            echo '<div class="error"><p><strong>My Plugin</strong> requires WooCommerce to be installed and active.</p></div>';
-        } );
-
-        if ( isset( $_GET['activate'] ) ) {
-            unset( $_GET['activate'] );
-        }
-    }
-} );
+if ( ! class_exists( 'WooCommerce' ) ) {
+    deactivate_plugins( plugin_basename( __FILE__ ) );
+    add_action( 'admin_notices', fn() => echo '<div class="error"><p>Requires WooCommerce</p></div>' );
+}
 ```
 
 ---
 
 ## Distribution & Auto-Updates
 
-### Enabling GitHub Auto-Updates
-
-Plugins hosted outside WordPress.org can still provide automatic updates using **Plugin Update Checker** by YahnisElsts. This is the recommended solution for most use cases.
-
-**Quick Start:**
-
+**GitHub Auto-Updates** (Plugin Update Checker by YahnisElsts):
 ```php
-// 1. Install library (git submodule or Composer)
-git submodule add https://github.com/YahnisElsts/plugin-update-checker.git
-
+// 1. Install: git submodule add https://github.com/YahnisElsts/plugin-update-checker.git
 // 2. Add to main plugin file
 require plugin_dir_path( __FILE__ ) . 'plugin-update-checker/plugin-update-checker.php';
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
@@ -1337,85 +663,27 @@ $updateChecker = PucFactory::buildUpdateChecker(
     __FILE__,
     'your-plugin-slug'
 );
+$updateChecker->getVcsApi()->enableReleaseAssets();  // Use GitHub Releases
 
-// Use GitHub Releases (recommended)
-$updateChecker->getVcsApi()->enableReleaseAssets();
-
-// For private repos, use token from wp-config.php
+// Private repos: Define token in wp-config.php
 if ( defined( 'YOUR_PLUGIN_GITHUB_TOKEN' ) ) {
     $updateChecker->setAuthentication( YOUR_PLUGIN_GITHUB_TOKEN );
 }
 ```
 
-**Deployment:**
-
+**Deployment**:
 ```bash
-# 1. Update version in plugin header
-# 2. Commit and tag
-git add my-plugin.php
-git commit -m "Bump version to 1.0.1"
-git tag 1.0.1
-git push origin main
-git push origin 1.0.1
-
-# 3. Create GitHub Release (optional but recommended)
-# - Upload pre-built ZIP file (exclude .git, tests, etc.)
-# - Add release notes for users
+git tag 1.0.1 && git push origin main && git push origin 1.0.1
+# Create GitHub Release with ZIP (exclude .git, tests)
 ```
 
-**Key Features:**
+**Alternatives**: Git Updater (no coding), Custom Update Server (full control), Freemius (commercial)
 
-✅ Works with GitHub, GitLab, BitBucket, or custom servers
-✅ Supports public and private repositories
-✅ Uses GitHub Releases or tags for versioning
-✅ Secure HTTPS-based updates
-✅ Optional license key integration
-✅ Professional release notes and changelogs
-✅ ~100KB library footprint
+**Security**: Use HTTPS, never hardcode tokens, validate licenses, rate limit update checks
 
-**Alternative Solutions:**
+**CRITICAL**: ZIP must contain plugin folder: `plugin.zip/my-plugin/my-plugin.php`
 
-1. **Git Updater** (user-installable plugin, no coding required)
-2. **Custom Update Server** (full control, requires hosting)
-3. **Freemius** (commercial, includes licensing and payments)
-
-**Comprehensive Resources:**
-
-- **Complete Guide**: See `references/github-auto-updates.md` (21 pages, all approaches)
-- **Implementation Examples**: See `examples/github-updater.php` (10 examples)
-- **Security Best Practices**: Checksums, signing, token storage, rate limiting
-- **Template Integration**: All 3 plugin templates include setup instructions
-
-**Security Considerations:**
-
-- ✅ Always use HTTPS for repository URLs
-- ✅ Never hardcode authentication tokens (use wp-config.php)
-- ✅ Implement license validation before offering updates
-- ✅ Optional: Add checksums for file verification
-- ✅ Rate limit update checks to avoid API throttling
-- ✅ Clear cached update data after installation
-
-**When to Use Each Approach:**
-
-| Use Case | Recommended Solution |
-|----------|---------------------|
-| Open source, public repo | Plugin Update Checker |
-| Private plugin, client work | Plugin Update Checker + private repo |
-| Commercial plugin | Freemius or Custom Server |
-| Multi-platform Git hosting | Git Updater |
-| Custom licensing needs | Custom Update Server |
-
-**ZIP Structure Requirement:**
-
-```
-plugin.zip
-└── my-plugin/       ← Plugin folder MUST be inside ZIP
-    ├── my-plugin.php
-    ├── readme.txt
-    └── ...
-```
-
-Incorrect structure will cause WordPress to create a random folder name and break the plugin!
+**Resources**: See `references/github-auto-updates.md`, `examples/github-updater.php`
 
 ---
 
@@ -1448,41 +716,17 @@ Incorrect structure will cause WordPress to create a random folder name and brea
 
 ## Troubleshooting
 
-### Problem: Plugin causes fatal error
-**Solution**:
-1. Enable WP_DEBUG in wp-config.php
-2. Check error log at wp-content/debug.log
-3. Verify all class/function names are prefixed
-4. Check for missing dependencies
+**Fatal Error**: Enable WP_DEBUG, check wp-content/debug.log, verify prefixed names, check dependencies
 
-### Problem: 404 errors on custom post type pages
-**Solution**: Flush rewrite rules
-```php
-// Temporarily add to wp-admin
-flush_rewrite_rules();
-// Remove after visiting wp-admin once
-```
+**404 on CPT**: Flush rewrite rules via Settings → Permalinks → Save
 
-### Problem: Nonce verification always fails
-**Solution**:
-1. Check nonce name matches in field and verification
-2. Verify using correct action name
-3. Ensure nonce hasn't expired (24 hour default)
+**Nonce Fails**: Check nonce name/action match, verify not expired (24h default)
 
-### Problem: AJAX returns 0 or -1
-**Solution**:
-1. Verify action name matches hook: `wp_ajax_{action}`
-2. Check nonce is being sent and verified
-3. Ensure handler function exists and is hooked correctly
+**AJAX Returns 0/-1**: Verify action name matches `wp_ajax_{action}`, check nonce sent/verified
 
-### Problem: Sanitization stripping HTML
-**Solution**: Use `wp_kses_post()` instead of `sanitize_text_field()` to allow safe HTML
+**HTML Stripped**: Use `wp_kses_post()` not `sanitize_text_field()` for safe HTML
 
-### Problem: Database queries not working
-**Solution**:
-1. Always use `$wpdb->prepare()` for queries with variables
-2. Check table name includes `$wpdb->prefix`
-3. Verify column names and syntax
+**Query Fails**: Use `$wpdb->prepare()`, check `$wpdb->prefix`, verify syntax
 
 ---
 
