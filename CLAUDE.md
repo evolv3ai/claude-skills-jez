@@ -4,7 +4,7 @@
 **Purpose**: Production-ready skills for Claude Code CLI
 **Owner**: Jeremy Dawes (Jez) | Jezweb
 **Status**: Active Development | 58 Skills Complete (13 archived)
-**Last Updated**: 2025-11-28
+**Last Updated**: 2025-11-29
 
 ---
 
@@ -56,13 +56,40 @@ claude-skills/
 ├── CHANGELOG.md                  # Version history
 ├── LICENSE                       # MIT License
 │
-├── skills/                       # ← All production skills (59 total)
+├── skills/                       # ← All production skills (58 total)
 │   ├── tailwind-v4-shadcn/       # Gold standard example
 │   ├── cloudflare-worker-base/   # Foundation skill
 │   ├── ai-sdk-core/              # AI integration
 │   ├── openai-agents/            # OpenAI Agents SDK
 │   ├── project-planning/         # Planning automation
-│   └── [54 more skills...]       # Run ls skills/ for full list
+│   ├── project-session-management/ # Session handoff protocol
+│   ├── project-workflow/         # Slash commands (canonical source)
+│   │   └── commands/             # /explore-idea, /plan-project, etc.
+│   └── [52 more skills...]       # Run ls skills/ for full list
+│
+├── commands/                     # ← Slash commands (symlinked to ~/.claude/commands/)
+│   ├── brief.md                  # /brief - Context preservation
+│   ├── explore-idea.md           # /explore-idea - Pre-planning exploration
+│   ├── plan-project.md           # /plan-project - Initial planning
+│   ├── plan-feature.md           # /plan-feature - Feature addition
+│   ├── wrap-session.md           # /wrap-session - End-of-session workflow
+│   ├── continue-session.md       # /continue-session - Resume session
+│   ├── workflow.md               # /workflow - Interactive guide
+│   ├── release.md                # /release - Pre-release safety checks
+│   └── README.md                 # Commands documentation
+│
+├── .claude/                      # Claude Code local settings
+│   └── settings.local.json       # Local preferences (not committed)
+│
+├── .claude-plugin/               # Marketplace metadata
+│   └── marketplace.json          # Auto-generated plugin manifest
+│
+├── docs/                         # Documentation
+│   └── JEZWEB_WORKFLOW.md        # Comprehensive workflow guide
+│
+├── tools/                        # Utility scripts
+│   ├── statusline/               # Custom statusline scripts
+│   └── statusline-npm/           # NPM-based statusline
 │
 ├── archive/                      # Archived skills (preserved in branches)
 │   └── low-priority-skills/      # 13 skills archived 2025-11-17
@@ -99,6 +126,37 @@ claude-skills/
 └── examples/                     # Working example projects
     └── cloudflare-worker-base-test/
 ```
+
+### Symlink Workflow
+
+**Skills**: Symlinked from `skills/` → `~/.claude/skills/`
+**Commands**: Symlinked from `commands/` → `~/.claude/commands/`
+
+**Installing Skills:**
+```bash
+./scripts/install-skill.sh <skill-name>      # Symlink single skill
+./scripts/install-all.sh                     # Symlink all skills
+./scripts/check-symlinks.sh                  # Verify symlinks
+./scripts/check-symlinks.sh --fix            # Repair broken symlinks
+```
+
+**Installing Commands:**
+```bash
+# Commands must be manually symlinked:
+ln -s /home/jez/Documents/claude-skills/commands/<command>.md ~/.claude/commands/<command>.md
+
+# Example:
+ln -s /home/jez/Documents/claude-skills/commands/brief.md ~/.claude/commands/brief.md
+```
+
+**Adding New Commands:**
+
+1. Create command in `/commands/<command-name>.md`
+2. Symlink to `~/.claude/commands/<command-name>.md`
+3. Command is immediately available in Claude Code
+4. Commit to git for version control
+
+**Note**: Commands in `skills/project-workflow/commands/` are the canonical source for workflow commands, but `/commands/` directory mirrors them for manual installation and development.
 
 ---
 
