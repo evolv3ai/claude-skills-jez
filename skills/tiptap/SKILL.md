@@ -158,6 +158,13 @@ const editor = useEditor({
     Image.configure({
       inline: true,
       allowBase64: false, // ⚠️ Prevent base64 bloat
+      resize: {
+        enabled: true,
+        directions: ['top-right', 'bottom-right', 'bottom-left', 'top-left'],
+        minWidth: 100,
+        minHeight: 100,
+        alwaysPreserveAspectRatio: true,
+      },
     }),
     Link.configure({
       openOnClick: false,
@@ -365,16 +372,22 @@ import { Markdown } from '@tiptap/markdown'
 const editor = useEditor({
   extensions: [StarterKit, Markdown],
   content: '# Hello World\n\nThis is **Markdown**!',
-  contentType: 'markdown',  // ⚠️ Important: specify content type
+  contentType: 'markdown',  // ⚠️ CRITICAL: Must specify or content parsed as HTML
   immediatelyRender: false,
 })
 
 // Get markdown from editor
-const markdownOutput = editor?.storage.markdown.getMarkdown()
+const markdownOutput = editor.getMarkdown()
+
+// Insert markdown content
+editor.commands.setContent('## New heading', { contentType: 'markdown' })
+editor.commands.insertContent('**Bold** text', { contentType: 'markdown' })
 ```
 
 **When to use**: Storing content as markdown, displaying/editing rich text
-**Install**: `npm install @tiptap/markdown`
+**Install**: `npm install @tiptap/markdown@3.11.1`
+**Status**: Beta (released Oct 2025, API stable but may change)
+**CRITICAL**: Always specify `contentType: 'markdown'` when setting markdown content
 
 ### Pattern 3: Form Integration with react-hook-form
 

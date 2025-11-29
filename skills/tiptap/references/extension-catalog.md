@@ -1,6 +1,7 @@
 # Tiptap Extension Catalog
 
 **Last Updated**: 2025-11-29
+**Last Verified**: 2025-11-29 (package versions, markdown API, Image resize option)
 
 Comprehensive catalog of official and community Tiptap extensions.
 
@@ -48,6 +49,13 @@ Comprehensive catalog of official and community Tiptap extensions.
   Image.configure({
     inline: true,
     allowBase64: false,
+    resize: {
+      enabled: true, // NEW: Drag-and-drop resizing
+      directions: ['top-right', 'bottom-right', 'bottom-left', 'top-left'],
+      minWidth: 100,
+      minHeight: 100,
+      alwaysPreserveAspectRatio: true,
+    },
     HTMLAttributes: {
       class: 'rounded-lg',
     },
@@ -239,17 +247,38 @@ Popular third-party extensions:
 ### Markdown
 
 **@tiptap/markdown** (Official, Recommended)
-- Markdown parser and serializer
+- Bidirectional markdown parser and serializer
 - npm: `@tiptap/markdown@3.11.1`
 - Import: `import { Markdown } from '@tiptap/markdown'`
-- Status: Stable (v3+)
+- Released: October 15, 2025 (v3.7.0)
+- Status: Beta (API stable but may evolve)
+- Uses MarkedJS for CommonMark-compliant parsing
 - Docs: https://tiptap.dev/docs/editor/markdown
 
+```typescript
+import { Editor } from '@tiptap/core'
+import StarterKit from '@tiptap/starter-kit'
+import { Markdown } from '@tiptap/markdown'
+
+const editor = new Editor({
+  extensions: [StarterKit, Markdown],
+  content: '# Hello World\n\nThis is **Markdown**!',
+  contentType: 'markdown', // ⚠️ CRITICAL: Must specify
+})
+
+// Get markdown output
+const markdown = editor.getMarkdown()
+
+// Insert markdown
+editor.commands.setContent('## New', { contentType: 'markdown' })
+```
+
 **tiptap-markdown** (Community, Legacy)
-- Community markdown package
+- Community markdown package (pre-official)
 - npm: `tiptap-markdown@0.9.0`
 - GitHub: https://github.com/aguingand/tiptap-markdown
-- Note: Maintainer not planning v1 release, consider official package
+- Status: Maintainer not planning v1, recommends official package
+- Recommendation: Use official `@tiptap/markdown` instead
 
 ---
 
