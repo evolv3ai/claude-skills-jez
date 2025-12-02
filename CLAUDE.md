@@ -52,7 +52,6 @@ claude-skills/
 ├── README.md                     # Public-facing overview
 ├── CONTRIBUTING.md               # Contribution guidelines
 ├── MARKETPLACE.md                # Marketplace installation guide
-├── CLOUDFLARE_SKILLS_AUDIT.md    # Example compliance audit
 ├── ATOMIC-SKILLS-SUMMARY.md      # Skill philosophy
 ├── CHANGELOG.md                  # Version history
 ├── SESSION.md                    # Working session state (gitignored)
@@ -512,8 +511,7 @@ Use [ONE_PAGE_CHECKLIST.md](ONE_PAGE_CHECKLIST.md) to verify:
 Compare against:
 1. [planning/claude-code-skill-standards.md](planning/claude-code-skill-standards.md) - Our standards
 2. [planning/STANDARDS_COMPARISON.md](planning/STANDARDS_COMPARISON.md) - Official vs ours
-3. [CLOUDFLARE_SKILLS_AUDIT.md](CLOUDFLARE_SKILLS_AUDIT.md) - Example audit
-4. https://github.com/anthropics/skills - Official reference
+3. https://github.com/anthropics/skills - Official reference
 
 ---
 
