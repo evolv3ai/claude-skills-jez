@@ -66,10 +66,22 @@ For each documentation file, check:
 - References to "upcoming", "soon", "planned" from old dates
 - Completed phases still marked as "in progress"
 
-**Size Warnings:**
-- Files over 500 lines: suggest splitting or archiving
-- SESSION.md over 200 lines: suggest compressing completed phases
-- CLAUDE.md over 400 lines: suggest trimming or moving to docs/
+**Organization & Maintainability:**
+- Look for structural issues, not arbitrary line counts
+- Well-organized large files are better than cramped small ones
+
+Warning signs to flag:
+- No table of contents or clear section headers in long files
+- Outdated sections mixed with current content
+- Redundant information repeated across sections
+- Wall-of-text blocks without structure
+- Completed phases in SESSION.md not compressed to summaries
+- Reference material in CLAUDE.md that's rarely needed in-context (move to docs/)
+
+Healthy patterns (don't flag these):
+- CLAUDE.md with clear navigation, organized sections, even if 800+ lines
+- SESSION.md with detailed current phase + compressed completed phases
+- Large files that are actively maintained and well-structured
 
 **Orphaned Files:**
 - Files in docs/ not referenced anywhere
@@ -88,7 +100,7 @@ Present findings organized by severity:
 - [ ] Broken link: docs/API.md references `./auth.md` (file missing)
 
 ### Warnings
-- [ ] SESSION.md: 347 lines (recommend <200, archive completed phases)
+- [ ] SESSION.md: Completed phases not compressed (5 detailed phases could be summaries)
 - [ ] docs/old-architecture.md: Not referenced anywhere (orphaned?)
 - [ ] CHANGELOG.md: No entry for recent commits
 
