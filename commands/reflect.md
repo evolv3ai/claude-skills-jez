@@ -64,24 +64,36 @@ Review the current conversation and identify:
    - Undocumented behaviors
    - "Turns out you can do X by..."
 
+6. **Rule Candidates**
+   - Syntax corrections (Claude suggested X, but Y is correct)
+   - Version-specific patterns (v3 → v4 differences)
+   - File-scoped behaviors (always do X in these file types)
+   - "When editing [file pattern], always use [pattern]"
+
 ### Phase 2: Categorize by Destination
 
 Route each learning to the most appropriate destination:
 
 | Knowledge Type | Destination | Criteria |
 |----------------|-------------|----------|
-| Universal workflow | `~/.claude/CLAUDE.md` | Applies across ALL projects |
-| Project-specific | `./CLAUDE.md` | Only relevant to THIS project |
+| **Syntax correction** | `.claude/rules/[name].md` | Claude suggested wrong pattern |
+| **File-scoped pattern** | `.claude/rules/[name].md` | Applies to specific file types |
+| **Technology pattern** | `.claude/rules/` OR skill | Prompt: project-only or all projects? |
+| Project workflow | `./CLAUDE.md` | Project-specific process/convention |
+| **Personal preference** | `~/.claude/CLAUDE.md` | Account IDs, workflow quirks, spelling preferences |
 | Skill improvement | `~/.claude/skills/X/SKILL.md` | Improves a specific skill |
 | Complex process | `docs/learnings.md` | Multi-step, worth documenting |
 | Session context | `SESSION.md` | Temporary, this session only |
 | **Repeatable process** | **Script or command** | **Will do this again, automate it** |
 
 **Routing Heuristics**:
-- If it would help ANY future project → Global CLAUDE.md
-- If it's about a specific technology with a skill → That skill
+- If it's a **correction pattern** (Claude suggested wrong syntax) → Project rule (`.claude/rules/`)
+- If it's **file-scoped** (applies to *.ts, *.css, etc.) → Project rule (`.claude/rules/`)
+- If it's **technology-wide** AND you have that skill → Prompt: "Project only or update skill?"
+- If it's a **personal preference** (spelling, account IDs, etc.) → User CLAUDE.md (`~/.claude/CLAUDE.md`)
+- If it's about **how this project works** → Project CLAUDE.md (`./CLAUDE.md`)
+- If it's about a specific technology with a skill → That skill's SKILL.md
 - If it's complex enough to need its own section → docs/learnings.md
-- If it's project-specific nuance → Project CLAUDE.md
 - If it's just context for next session → SESSION.md
 - **If we'll do this again → Suggest script, command, or structured workflow**
 
@@ -145,6 +157,12 @@ Show the user what was found in this format:
 1. **[What was found]**: [Why it matters]
    → Proposed destination: [file path]
 
+### Rule Candidates
+1. **[Pattern Name]**: [What Claude suggested vs what works]
+   - Paths: `[file patterns this applies to]`
+   → Proposed: `.claude/rules/[name].md`
+   → Also update skill? [Yes if technology-wide, otherwise No]
+
 ### Automation Opportunities
 1. **[Process name]**: [What we did manually]
    - Steps: ~[N] steps
@@ -177,6 +195,43 @@ After user confirms:
 3. Add the knowledge in a format matching the file's style
 4. For new files (like docs/learnings.md), create with proper structure
 5. Show diff/summary of what was added
+
+### Phase 4b: Create Rules (if applicable)
+
+For each rule candidate the user approved:
+
+1. **Create directory if needed**:
+   ```bash
+   mkdir -p .claude/rules
+   ```
+
+2. **Determine file paths** to scope the rule:
+   - What file types does this apply to?
+   - Examples: `**/*.css`, `**/*.tsx`, `wrangler.jsonc`, `src/server/**/*.ts`
+
+3. **Generate rule file** with proper format:
+   ```markdown
+   ---
+   paths: "[comma-separated glob patterns]"
+   ---
+
+   # [Descriptive Name]
+
+   [1-2 sentences explaining why this rule exists]
+
+   ## [Category Name]
+
+   | If Claude suggests... | Use instead... |
+   |----------------------|----------------|
+   | `[wrong pattern]` | `[correct pattern]` |
+   ```
+
+4. **Create file** at `.claude/rules/[name].md`
+
+5. **If user indicated "all projects with this tech"**:
+   - Check if skill exists at `~/.claude/skills/[skill-name]/`
+   - If exists, also create/update `~/.claude/skills/[skill-name]/rules/[name].md`
+   - Note: Skill rules need same format but apply to all future projects
 
 ## Output Formats by Destination
 
@@ -222,6 +277,29 @@ Add to "Notes" or "Context" section:
 **Session Note**: [Brief learning that's relevant to next session]
 ```
 
+### For .claude/rules/ (Project Rules)
+Create new file with YAML frontmatter:
+```markdown
+---
+paths: "**/*.tsx", "**/*.jsx", "src/components/**"
+---
+
+# [Rule Name]
+
+[Brief context for why this rule exists]
+
+## Corrections
+
+| If Claude suggests... | Use instead... |
+|----------------------|----------------|
+| `[wrong pattern]` | `[correct pattern]` |
+| `[wrong pattern]` | `[correct pattern]` |
+
+## Context
+
+[Optional: Additional explanation if needed]
+```
+
 ## Examples
 
 ### Example 1: Skill Development Workflow
@@ -253,6 +331,22 @@ Add to "Notes" or "Context" section:
 **Discovered**: "Before releases we always: run gitleaks, check for SESSION.md, verify .gitignore, run npm audit"
 
 **Routing**: Suggest creating `scripts/pre-release-check.sh` or `/release` command
+
+### Example 7: Syntax Correction (Rule Candidate)
+**Discovered**: "Claude kept suggesting `@tailwind base` but Tailwind v4 uses `@import 'tailwindcss'`"
+
+**Routing**: Create `.claude/rules/tailwind-v4.md` with paths `**/*.css`
+- This is a correction pattern, not a workflow
+- It's file-scoped (CSS files)
+- Ask: "This project only, or update tailwind-v4-shadcn skill for all projects?"
+
+### Example 8: Personal Preference (User CLAUDE.md)
+**Discovered**: "User prefers Australian English spelling"
+
+**Routing**: Add to `~/.claude/CLAUDE.md` under preferences
+- This is a personal preference, not a correction pattern
+- Applies to ALL projects regardless of tech stack
+- NOT a rule (rules are file-scoped corrections)
 
 ## Important Guidelines
 
