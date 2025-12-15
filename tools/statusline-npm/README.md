@@ -1,25 +1,27 @@
 # 🧱 ContextBricks
 
-**Real-time context tracking with brick visualization for Claude Code CLI**
+**Git-aware statusline for Claude Code CLI**
 
 [![npm version](https://img.shields.io/npm/v/contextbricks.svg)](https://www.npmjs.com/package/contextbricks)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A custom status line for Claude Code that displays accurate token usage with a beautiful brick visualization, plus git integration and session metrics.
+A custom status line for Claude Code with rich git integration and session metrics.
 
-![ContextBricks Status Line](https://raw.githubusercontent.com/jezweb/claude-skills/main/tools/statusline/assets/context-bricks.png)
+> ⚠️ **v3.0.0 Notice**: Context tracking is **temporarily disabled** due to [Anthropic API bug #13783](https://github.com/anthropics/claude-code/issues/13783). The `context_window` API provides cumulative session tokens that never reset after compaction, making context percentages meaningless. The code is preserved and will be re-enabled when Anthropic fixes the API.
 
 ## ✨ Features
 
-- 🎯 **Native context_window support** (Claude Code 2.0.65+) - accurate token data
-- 📦 **Compaction detection** (v2.1+) - shows real context usage after automatic compaction
-- 🔄 **Backwards compatible** - falls back to transcript parsing for older versions
-- 🧱 **Brick visualization** showing context usage at a glance
 - 🔧 **Git integration**: repo:branch [commit] message | github-repo *↑↓
 - ⏱️ **Session duration**: track how long you've been working
 - 💰 **Session cost**: API users see spending (hidden for Max subscribers)
-- 📊 **Session metrics**: model name, lines changed, free space
+- 📊 **Session metrics**: model name, lines changed
 - ⚡ **Zero config**: Auto-detects everything, just install and go
+
+### Temporarily Disabled (pending Anthropic fix)
+
+- ~~🧱 **Brick visualization** showing context usage at a glance~~
+- ~~🎯 **Native context_window support** - accurate token data~~
+- ~~📦 **Compaction detection** - shows real context usage after compaction~~
 
 ## 🚀 Quick Start
 
