@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Claude Code Custom Status Line
-# v3.1.0 - Context tracking RE-ENABLED with current_usage API
+# v3.2.0 - Context tracking RE-ENABLED with current_usage API
 # Shows: Model | Repo:Branch [commit] message | GitHub | git status | lines changed
 #        Context bricks | percentage | duration | cost
 #
@@ -144,7 +144,7 @@ fi
 free_bricks=$((total_bricks - used_bricks))
 
 # Build brick line with single colour (cyan for used, dim white for free)
-brick_line="ctx ["
+brick_line="["
 
 # Used bricks (cyan)
 for ((i=0; i<used_bricks; i++)); do
