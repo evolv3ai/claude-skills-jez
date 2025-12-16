@@ -72,30 +72,58 @@ Review the current conversation and identify:
 
 ### Phase 2: Categorize by Destination
 
+**IMPORTANT**: Rules are the preferred destination for most technical learnings. CLAUDE.md files should only contain personal preferences and high-level workflow guidance - NOT technology-specific corrections.
+
 Route each learning to the most appropriate destination:
 
 | Knowledge Type | Destination | Criteria |
 |----------------|-------------|----------|
-| **Syntax correction** | `.claude/rules/[name].md` | Claude suggested wrong pattern |
-| **File-scoped pattern** | `.claude/rules/[name].md` | Applies to specific file types |
-| **Technology pattern** | `.claude/rules/` OR skill | Prompt: project-only or all projects? |
+| **Syntax correction** | Rules (project or user) | Claude suggested wrong pattern |
+| **File-scoped pattern** | Rules (project or user) | Applies to specific file types |
+| **Technology correction** | Rules (user-level) | Applies across all projects using this tech |
+| **Technology pattern** | Rules OR skill | Prompt: project-only, user-level rule, or skill? |
 | Project workflow | `./CLAUDE.md` | Project-specific process/convention |
-| **Personal preference** | `~/.claude/CLAUDE.md` | Account IDs, workflow quirks, spelling preferences |
+| **Personal preference** | `~/.claude/CLAUDE.md` | Account IDs, spelling, timezone - NOT tech corrections |
 | Skill improvement | `~/.claude/skills/X/SKILL.md` | Improves a specific skill |
 | Complex process | `docs/learnings.md` | Multi-step, worth documenting |
 | Session context | `SESSION.md` | Temporary, this session only |
 | **Repeatable process** | **Script or command** | **Will do this again, automate it** |
 
-**Routing Heuristics**:
-- If it's a **correction pattern** (Claude suggested wrong syntax) → Project rule (`.claude/rules/`)
-- If it's **file-scoped** (applies to *.ts, *.css, etc.) → Project rule (`.claude/rules/`)
-- If it's **technology-wide** AND you have that skill → Prompt: "Project only or update skill?"
-- If it's a **personal preference** (spelling, account IDs, etc.) → User CLAUDE.md (`~/.claude/CLAUDE.md`)
-- If it's about **how this project works** → Project CLAUDE.md (`./CLAUDE.md`)
-- If it's about a specific technology with a skill → That skill's SKILL.md
-- If it's complex enough to need its own section → docs/learnings.md
-- If it's just context for next session → SESSION.md
-- **If we'll do this again → Suggest script, command, or structured workflow**
+**Rule Scope Decision**:
+
+| Scope | Location | When to Use |
+|-------|----------|-------------|
+| Project-only | `.claude/rules/[name].md` | Unique to this project's setup |
+| User-level (all projects) | `~/.claude/rules/[name].md` | Applies to ALL your projects using this tech |
+| Skill-bundled | `~/.claude/skills/X/rules/[name].md` | Standard correction, ship with skill |
+
+**Routing Heuristics (Priority Order)**:
+
+1. **Correction patterns** (Claude suggested wrong syntax) → **Rules FIRST**
+   - Ask: "This project only, or all your projects?"
+   - Project-only → `.claude/rules/`
+   - All projects → `~/.claude/rules/`
+
+2. **File-scoped patterns** (applies to *.ts, *.css, etc.) → **Rules**
+   - These should NEVER go in CLAUDE.md
+   - Rules are file-triggered; CLAUDE.md is always loaded
+
+3. **Technology-specific knowledge** → **User-level rules** or **Skill**
+   - If you have the skill AND it's a general correction → Update skill's rules/
+   - If no skill or project-specific → User-level rule at `~/.claude/rules/`
+
+4. **Personal preferences** (spelling, timezone, accounts) → `~/.claude/CLAUDE.md`
+   - These are the ONLY things that belong in user CLAUDE.md
+   - Tech corrections do NOT belong here
+
+5. **Project conventions** (how this specific project works) → `./CLAUDE.md`
+   - Folder structure, naming conventions, deployment targets
+
+6. **If we'll do this again** → Script, command, or workflow automation
+
+**Anti-Pattern to Avoid**:
+❌ Adding technology corrections to CLAUDE.md (bloats it, always loaded, not file-scoped)
+✅ Adding technology corrections to rules (file-triggered, focused, portable)
 
 ### Phase 2b: Identify Automation Opportunities
 
@@ -335,10 +363,10 @@ paths: "**/*.tsx", "**/*.jsx", "src/components/**"
 ### Example 7: Syntax Correction (Rule Candidate)
 **Discovered**: "Claude kept suggesting `@tailwind base` but Tailwind v4 uses `@import 'tailwindcss'`"
 
-**Routing**: Create `.claude/rules/tailwind-v4.md` with paths `**/*.css`
+**Routing**: Create rule with paths `**/*.css`
 - This is a correction pattern, not a workflow
 - It's file-scoped (CSS files)
-- Ask: "This project only, or update tailwind-v4-shadcn skill for all projects?"
+- Ask: "This project only (`./claude/rules/`), all your projects (`~/.claude/rules/`), or update tailwind-v4-shadcn skill?"
 
 ### Example 8: Personal Preference (User CLAUDE.md)
 **Discovered**: "User prefers Australian English spelling"
@@ -347,6 +375,23 @@ paths: "**/*.tsx", "**/*.jsx", "src/components/**"
 - This is a personal preference, not a correction pattern
 - Applies to ALL projects regardless of tech stack
 - NOT a rule (rules are file-scoped corrections)
+
+### Example 9: Technology Correction (User-Level Rule, NOT CLAUDE.md)
+**Discovered**: "Drizzle timestamp mode stores seconds not milliseconds - Date.now() causes dates 55,000 years in future"
+
+**Routing**: Create `~/.claude/rules/drizzle-timestamps.md` with paths `**/*.ts`, `drizzle/**`
+- ❌ WRONG: Add to user CLAUDE.md (bloats it, always loaded)
+- ✅ RIGHT: User-level rule (file-triggered, focused)
+- This applies to ALL projects using Drizzle, not just one
+- Rule triggers only when editing relevant files
+
+### Example 10: Multi-Project Tech Pattern (User-Level Rule)
+**Discovered**: "Lucide dynamic imports get tree-shaken in production - need explicit icon map"
+
+**Routing**: Create `~/.claude/rules/lucide-tree-shaking.md` with paths `**/*.tsx`
+- Applies across all React projects using Lucide
+- File-scoped (only triggers in TSX files)
+- Goes in `~/.claude/rules/` NOT `~/.claude/CLAUDE.md`
 
 ## Important Guidelines
 
