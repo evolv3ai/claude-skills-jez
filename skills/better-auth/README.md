@@ -40,6 +40,18 @@ This skill should be automatically invoked when you mention:
 - **"API key authentication"** - API-only auth
 - **"TanStack Query session"** - Session state with React Query
 - **"nanostores auth"** - Nanostore session invalidation
+- **"OAuth 2.1 provider"** - Build your own OAuth server
+- **"OAuth provider for MCP"** - MCP server authentication
+- **"better-auth MCP"** - MCP plugin (deprecated, use OAuth provider)
+- **"admin impersonation"** - Admin impersonate user feature
+- **"user impersonation"** - View as another user
+- **"admin ban user"** - User management
+- **"better-auth admin"** - Admin dashboard patterns
+- **"custom RBAC"** - Role-based access control
+- **"createAccessControl"** - Permission system
+- **"allowImpersonatingAdmins"** - Admin security setting
+- **"Hono better-auth"** - Hono integration
+- **"better-auth Hono"** - Hono framework setup
 
 ---
 
@@ -196,7 +208,10 @@ npm install better-auth drizzle-orm drizzle-kit @cloudflare/workers-types hono
 
 - **Docs**: https://better-auth.com
 - **GitHub**: https://github.com/better-auth/better-auth (22.4k ⭐)
-- **Package**: `better-auth@1.3.34`
+- **Package**: `better-auth@1.4.10`
+- **OAuth 2.1 Provider**: https://www.better-auth.com/docs/plugins/oauth-provider
+- **Admin Plugin**: https://www.better-auth.com/docs/plugins/admin
+- **Hono Example**: https://hono.dev/examples/better-auth-on-cloudflare
 - **Examples**: https://github.com/better-auth/better-auth/tree/main/examples
 
 ---

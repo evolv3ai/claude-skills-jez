@@ -1,11 +1,11 @@
 ---
 name: better-auth
 description: |
-  Build authentication systems for TypeScript/Cloudflare Workers with social auth, 2FA, passkeys, organizations, and RBAC. Self-hosted alternative to Clerk/Auth.js.
+  Build authentication systems for TypeScript/Cloudflare Workers with social auth, 2FA, passkeys, organizations, RBAC, and OAuth 2.1 provider capabilities. Self-hosted alternative to Clerk/Auth.js.
 
-  IMPORTANT: Requires Drizzle ORM or Kysely for D1 - no direct D1 adapter. v1.4.0 (Nov 2025) adds stateless sessions, ESM-only (breaking), JWT key rotation, SCIM provisioning. v1.3 adds SSO/SAML, multi-team support.
+  IMPORTANT: Requires Drizzle ORM or Kysely for D1 - no direct D1 adapter. v1.4.10 (Dec 2025) adds OAuth 2.1 Provider plugin (MCP deprecated), admin impersonation prevention, background tasks, Patreon/Kick/Vercel OAuth providers. v1.4.0 adds ESM-only (breaking), stateless sessions, SCIM.
 
-  Use when: self-hosting auth on Cloudflare D1, migrating from Clerk, implementing multi-tenant SaaS, or troubleshooting D1 adapter errors, session serialization, OAuth flows, TanStack Start cookie issues, nanostore session invalidation.
+  Use when: self-hosting auth on Cloudflare D1, building OAuth provider for MCP servers, implementing multi-tenant SaaS, admin dashboards with impersonation, or troubleshooting D1 adapter errors, session serialization, OAuth flows, nanostore invalidation.
 allowed-tools:
   - Read
   - Write
@@ -17,8 +17,8 @@ allowed-tools:
 
 # better-auth - D1 Adapter & Error Prevention Guide
 
-**Package**: better-auth@1.4.0 (Nov 22, 2025)
-**Breaking Changes**: ESM-only (v1.4.0), Multi-team table changes (v1.3), D1 requires Drizzle/Kysely (no direct adapter)
+**Package**: better-auth@1.4.10 (Dec 31, 2025)
+**Breaking Changes**: ESM-only (v1.4.0), Admin impersonation prevention default (v1.4.6), Multi-team table changes (v1.3), D1 requires Drizzle/Kysely (no direct adapter)
 
 ---
 
@@ -29,6 +29,33 @@ better-auth **DOES NOT** have `d1Adapter()`. You **MUST** use:
 - **Kysely**: `new Kysely({ dialect: new D1Dialect({ database: env.DB }) })`
 
 See Issue #1 below for details.
+
+---
+
+## What's New in v1.4.10 (Dec 31, 2025)
+
+**Major Features:**
+- **OAuth 2.1 Provider plugin** - Build your own OAuth provider (replaces MCP plugin)
+- **Patreon OAuth provider** - Social sign-in with Patreon
+- **Kick OAuth provider** - With refresh token support
+- **Vercel OAuth provider** - Sign in with Vercel
+- **Global `backgroundTasks` config** - Deferred actions for better performance
+- **Form data support** - Email authentication with fetch metadata fallback
+- **Stripe enhancements** - Flexible subscription lifecycle, `disableRedirect` option
+
+**Admin Plugin Updates:**
+- ⚠️ **Breaking**: Impersonation of admins disabled by default (v1.4.6)
+- Support role with permission-based user updates
+- Role type inference improvements
+
+**Security Fixes:**
+- SAML XML parser hardening with configurable size constraints
+- SAML assertion timestamp validation with per-provider clock skew
+- SSO domain-verified provider trust
+- Deprecated algorithm rejection
+- Line nonce enforcement
+
+📚 **Docs**: https://www.better-auth.com/changelogs
 
 ---
 
@@ -156,17 +183,78 @@ export const Route = createFileRoute('/api/auth/$')({
 
 ---
 
-## Available Plugins (v1.3+)
+## Available Plugins (v1.4+)
 
 Better Auth provides plugins for advanced authentication features:
 
 | Plugin | Import | Description | Docs |
 |--------|--------|-------------|------|
-| **OIDC Provider** | `better-auth/plugins` | Build your own OpenID Connect provider (become an OAuth provider for other apps) | [📚](https://www.better-auth.com/docs/plugins/oidc-provider) |
+| **OAuth 2.1 Provider** | `better-auth/plugins` | Build OAuth 2.1 provider with PKCE, JWT tokens, consent flows (replaces MCP & OIDC plugins) | [📚](https://www.better-auth.com/docs/plugins/oauth-provider) |
 | **SSO** | `better-auth/plugins` | Enterprise Single Sign-On with OIDC, OAuth2, and SAML 2.0 support | [📚](https://www.better-auth.com/docs/plugins/sso) |
-| **Stripe** | `better-auth/plugins` | Payment and subscription management (stable as of v1.3+) | [📚](https://www.better-auth.com/docs/plugins/stripe) |
-| **MCP** | `better-auth/plugins` | Act as OAuth provider for Model Context Protocol (MCP) clients | [📚](https://www.better-auth.com/docs/plugins/mcp) |
-| **Expo** | `better-auth/expo` | React Native/Expo integration with secure cookie management | [📚](https://www.better-auth.com/docs/integrations/expo) |
+| **Stripe** | `better-auth/plugins` | Payment and subscription management with flexible lifecycle handling | [📚](https://www.better-auth.com/docs/plugins/stripe) |
+| **MCP** | `better-auth/plugins` | ⚠️ **Deprecated** - Use OAuth 2.1 Provider instead | [📚](https://www.better-auth.com/docs/plugins/mcp) |
+| **Expo** | `better-auth/expo` | React Native/Expo with `webBrowserOptions` and last-login-method tracking | [📚](https://www.better-auth.com/docs/integrations/expo) |
+
+### OAuth 2.1 Provider Plugin (New in v1.4.9)
+
+Build your own OAuth provider for MCP servers, third-party apps, or API access:
+
+```typescript
+import { betterAuth } from "better-auth";
+import { oauthProvider } from "better-auth/plugins";
+import { jwt } from "better-auth/plugins";
+
+export const auth = betterAuth({
+  plugins: [
+    jwt(), // Required for token signing
+    oauthProvider({
+      // Token expiration (seconds)
+      accessTokenExpiresIn: 3600,      // 1 hour
+      refreshTokenExpiresIn: 2592000,  // 30 days
+      authorizationCodeExpiresIn: 600, // 10 minutes
+    }),
+  ],
+});
+```
+
+**Key Features:**
+- **OAuth 2.1 compliant** - PKCE mandatory, S256 only, no implicit flow
+- **Three grant types**: `authorization_code`, `refresh_token`, `client_credentials`
+- **JWT or opaque tokens** - Configurable token format
+- **Dynamic client registration** - RFC 7591 compliant
+- **Consent management** - Skip consent for trusted clients
+- **OIDC UserInfo endpoint** - `/oauth2/userinfo` with scope-based claims
+
+**Required Well-Known Endpoints:**
+
+```typescript
+// app/api/.well-known/oauth-authorization-server/route.ts
+export async function GET() {
+  return Response.json({
+    issuer: process.env.BETTER_AUTH_URL,
+    authorization_endpoint: `${process.env.BETTER_AUTH_URL}/api/auth/oauth2/authorize`,
+    token_endpoint: `${process.env.BETTER_AUTH_URL}/api/auth/oauth2/token`,
+    // ... other metadata
+  });
+}
+```
+
+**Create OAuth Client:**
+
+```typescript
+const client = await auth.api.createOAuthClient({
+  body: {
+    name: "My MCP Server",
+    redirectURLs: ["https://claude.ai/callback"],
+    type: "public", // or "confidential"
+  },
+});
+// Returns: { clientId, clientSecret (if confidential) }
+```
+
+📚 **Full Docs**: https://www.better-auth.com/docs/plugins/oauth-provider
+
+⚠️ **Note**: This plugin is in active development and may not be suitable for production use yet.
 
 ---
 
@@ -330,6 +418,17 @@ import { organization } from "better-auth/plugins";
 
 ```typescript
 import { admin } from "better-auth/plugins";
+
+// v1.4.10 configuration options
+admin({
+  defaultRole: "user",
+  adminRoles: ["admin"],
+  adminUserIds: ["user_abc123"], // Always grant admin to specific users
+  impersonationSessionDuration: 3600, // 1 hour (seconds)
+  allowImpersonatingAdmins: false, // ⚠️ Default changed in v1.4.6
+  defaultBanReason: "Violation of Terms of Service",
+  bannedUserMessage: "Your account has been suspended",
+})
 ```
 
 | Endpoint | Method | Description |
@@ -340,13 +439,47 @@ import { admin } from "better-auth/plugins";
 | `/admin/set-user-password` | POST | Change user password |
 | `/admin/update-user` | PUT | Modify user details |
 | `/admin/remove-user` | DELETE | Delete user account |
-| `/admin/ban-user` | POST | Ban user account |
+| `/admin/ban-user` | POST | Ban user account (with optional expiry) |
 | `/admin/unban-user` | POST | Unban user |
 | `/admin/list-user-sessions` | GET | Get user's active sessions |
 | `/admin/revoke-user-session` | DELETE | End specific user session |
 | `/admin/revoke-user-sessions` | DELETE | End all user sessions |
 | `/admin/impersonate-user` | POST | Start impersonating user |
 | `/admin/stop-impersonating` | POST | End impersonation session |
+
+**⚠️ Breaking Change (v1.4.6)**: `allowImpersonatingAdmins` now defaults to `false`. Set to `true` explicitly if you need admin-on-admin impersonation.
+
+**Custom Roles with Permissions (v1.4.10):**
+
+```typescript
+import { createAccessControl } from "better-auth/plugins/access";
+
+// Define resources and permissions
+const ac = createAccessControl({
+  user: ["create", "read", "update", "delete", "ban", "impersonate"],
+  project: ["create", "read", "update", "delete", "share"],
+} as const);
+
+// Create custom roles
+const supportRole = ac.newRole({
+  user: ["read", "ban"],      // Can view and ban users
+  project: ["read"],          // Can view projects
+});
+
+const managerRole = ac.newRole({
+  user: ["read", "update"],
+  project: ["create", "read", "update", "delete"],
+});
+
+// Use in plugin
+admin({
+  ac,
+  roles: {
+    support: supportRole,
+    manager: managerRole,
+  },
+})
+```
 
 📚 **Docs**: https://www.better-auth.com/docs/plugins/admin
 
@@ -1170,27 +1303,42 @@ await refetch()
 ## Version Compatibility
 
 **Tested with**:
-- `better-auth@1.3.34`
+- `better-auth@1.4.10`
 - `drizzle-orm@0.44.7`
 - `drizzle-kit@0.31.6`
 - `kysely@0.28.8`
 - `kysely-d1@0.4.0`
 - `@cloudflare/workers-types@latest`
-- `hono@4.0.0`
+- `hono@4.7.0`
 - Node.js 18+, Bun 1.0+
 
-**Breaking changes**: Check changelog when upgrading: https://github.com/better-auth/better-auth/releases
+**Breaking changes**:
+- v1.4.6: `allowImpersonatingAdmins` defaults to `false`
+- v1.4.0: ESM-only (no CommonJS)
+- v1.3.0: Multi-team table structure change
+
+Check changelog: https://github.com/better-auth/better-auth/releases
+
+---
+
+## Community Resources
+
+**Cloudflare-specific guides:**
+- [zpg6/better-auth-cloudflare](https://github.com/zpg6/better-auth-cloudflare) - Drizzle + D1 reference
+- [Hono + better-auth on Cloudflare](https://hono.dev/examples/better-auth-on-cloudflare) - Official Hono example
+- [React Router + Cloudflare D1](https://dev.to/atman33/setup-better-auth-with-react-router-cloudflare-d1-2ad4) - React Router v7 guide
+- [SvelteKit + Cloudflare D1](https://medium.com/@dasfacc/sveltekit-better-auth-using-cloudflare-d1-and-drizzle-91d9d9a6d0b4) - SvelteKit guide
 
 ---
 
 **Token Efficiency**:
-- **Without skill**: ~28,000 tokens (D1 adapter errors, TanStack Start cookies, nanostore invalidation, OAuth flows, API discovery)
-- **With skill**: ~5,600 tokens (focused on errors + breaking changes + API reference)
-- **Savings**: ~80% (~22,400 tokens)
+- **Without skill**: ~30,000 tokens (D1 adapter errors, OAuth provider setup, admin RBAC, MCP deprecation, API discovery)
+- **With skill**: ~6,000 tokens (focused on errors + breaking changes + OAuth 2.1 Provider + API reference)
+- **Savings**: ~80% (~24,000 tokens)
 
 **Errors prevented**: 13 documented issues with exact solutions
-**Key value**: D1 adapter requirement, v1.4.0/v1.3 breaking changes, TanStack Start fix, nanostore pattern, 80+ endpoint reference
+**Key value**: D1 adapter requirement, OAuth 2.1 Provider (MCP deprecated), admin impersonation breaking change, v1.4.x updates, 80+ endpoint reference
 
 ---
 
-**Last verified**: 2025-11-22 | **Skill version**: 3.0.0 | **Changes**: Added v1.4.0 (ESM-only, stateless sessions, SCIM) and v1.3 (SSO/SAML, multi-team) knowledge gaps. Removed tutorial/setup (~700 lines). Focused on error prevention + breaking changes + API reference.
+**Last verified**: 2025-12-31 | **Skill version**: 4.0.0 | **Changes**: Updated to v1.4.10. Added OAuth 2.1 Provider plugin (MCP deprecated). Added admin impersonation breaking change. Added Hono integration template. Added new social providers (Patreon, Kick, Vercel). Added custom RBAC pattern.
