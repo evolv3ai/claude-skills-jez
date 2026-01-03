@@ -1,11 +1,11 @@
 ---
 name: better-auth
 description: |
-  Build authentication systems for TypeScript/Cloudflare Workers with social auth, 2FA, passkeys, organizations, RBAC, and OAuth 2.1 provider capabilities. Self-hosted alternative to Clerk/Auth.js.
+  Build authentication systems for TypeScript/Cloudflare Workers with social auth, 2FA, passkeys, organizations, RBAC, OAuth 2.1 provider, and 15+ plugins. Self-hosted alternative to Clerk/Auth.js.
 
-  IMPORTANT: Requires Drizzle ORM or Kysely for D1 - no direct D1 adapter. v1.4.10 (Dec 2025) adds OAuth 2.1 Provider plugin (MCP deprecated), admin impersonation prevention, background tasks, Patreon/Kick/Vercel OAuth providers. v1.4.0 adds ESM-only (breaking), stateless sessions, SCIM.
+  IMPORTANT: Requires Drizzle ORM or Kysely for D1 - no direct D1 adapter. Workers require nodejs_compat flag. v1.4.10 adds OAuth 2.1 Provider (MCP deprecated), Bearer tokens, Google One Tap, SCIM, Anonymous auth, rate limiting, Patreon/Kick/Vercel providers.
 
-  Use when: self-hosting auth on Cloudflare D1, building OAuth provider for MCP servers, implementing multi-tenant SaaS, admin dashboards with impersonation, or troubleshooting D1 adapter errors, session serialization, OAuth flows, nanostore invalidation.
+  Use when: self-hosting auth on Cloudflare D1, building OAuth provider for MCP servers, multi-tenant SaaS, admin dashboards, API key auth, guest users, or troubleshooting D1 adapter errors, session caching, rate limits, database hooks.
 allowed-tools:
   - Read
   - Write
@@ -255,6 +255,317 @@ const client = await auth.api.createOAuthClient({
 📚 **Full Docs**: https://www.better-auth.com/docs/plugins/oauth-provider
 
 ⚠️ **Note**: This plugin is in active development and may not be suitable for production use yet.
+
+---
+
+### Additional Plugins Reference
+
+| Plugin | Description | Docs |
+|--------|-------------|------|
+| **Bearer** | API token auth (alternative to cookies for APIs) | [📚](https://www.better-auth.com/docs/plugins/bearer) |
+| **One Tap** | Google One Tap frictionless sign-in | [📚](https://www.better-auth.com/docs/plugins/one-tap) |
+| **SCIM** | Enterprise user provisioning (SCIM 2.0) | [📚](https://www.better-auth.com/docs/plugins/scim) |
+| **Anonymous** | Guest user access without PII | [📚](https://www.better-auth.com/docs/plugins/anonymous) |
+| **Username** | Username-based sign-in (alternative to email) | [📚](https://www.better-auth.com/docs/plugins/username) |
+| **Generic OAuth** | Custom OAuth providers with PKCE | [📚](https://www.better-auth.com/docs/plugins/generic-oauth) |
+| **Multi-Session** | Multiple accounts in same browser | [📚](https://www.better-auth.com/docs/plugins/multi-session) |
+| **API Key** | Token-based auth with rate limits | [📚](https://www.better-auth.com/docs/plugins/api-key) |
+
+#### Bearer Token Plugin
+
+For API-only authentication (mobile apps, CLI tools, third-party integrations):
+
+```typescript
+import { bearer } from "better-auth/plugins";
+import { bearerClient } from "better-auth/client/plugins";
+
+// Server
+export const auth = betterAuth({
+  plugins: [bearer()],
+});
+
+// Client - Store token after sign-in
+const { token } = await authClient.signIn.email({ email, password });
+localStorage.setItem("auth_token", token);
+
+// Client - Configure fetch to include token
+const authClient = createAuthClient({
+  plugins: [bearerClient()],
+  fetchOptions: {
+    auth: { type: "Bearer", token: () => localStorage.getItem("auth_token") },
+  },
+});
+```
+
+#### Google One Tap Plugin
+
+Frictionless single-tap sign-in for users already signed into Google:
+
+```typescript
+import { oneTap } from "better-auth/plugins";
+import { oneTapClient } from "better-auth/client/plugins";
+
+// Server
+export const auth = betterAuth({
+  plugins: [oneTap()],
+});
+
+// Client
+authClient.oneTap({
+  onSuccess: (session) => {
+    window.location.href = "/dashboard";
+  },
+});
+```
+
+**Requirement**: Configure authorized JavaScript origins in Google Cloud Console.
+
+#### Anonymous Plugin
+
+Guest access without requiring email/password:
+
+```typescript
+import { anonymous } from "better-auth/plugins";
+
+// Server
+export const auth = betterAuth({
+  plugins: [
+    anonymous({
+      emailDomainName: "anon.example.com", // temp@{id}.anon.example.com
+      onLinkAccount: async ({ anonymousUser, newUser }) => {
+        // Migrate anonymous user data to linked account
+        await migrateUserData(anonymousUser.id, newUser.id);
+      },
+    }),
+  ],
+});
+
+// Client
+await authClient.signIn.anonymous();
+// Later: user can link to real account via signIn.social/email
+```
+
+#### Generic OAuth Plugin
+
+Add custom OAuth providers not in the built-in list:
+
+```typescript
+import { genericOAuth } from "better-auth/plugins";
+
+export const auth = betterAuth({
+  plugins: [
+    genericOAuth({
+      config: [
+        {
+          providerId: "linear",
+          clientId: env.LINEAR_CLIENT_ID,
+          clientSecret: env.LINEAR_CLIENT_SECRET,
+          discoveryUrl: "https://linear.app/.well-known/openid-configuration",
+          scopes: ["openid", "email", "profile"],
+          pkce: true, // Recommended
+        },
+      ],
+    }),
+  ],
+});
+```
+
+**Callback URL pattern**: `{baseURL}/api/auth/oauth2/callback/{providerId}`
+
+---
+
+## Rate Limiting
+
+Built-in rate limiting with customizable rules:
+
+```typescript
+export const auth = betterAuth({
+  rateLimit: {
+    window: 60,  // seconds (default: 60)
+    max: 100,    // requests per window (default: 100)
+
+    // Custom rules for sensitive endpoints
+    customRules: {
+      "/sign-in/email": { window: 10, max: 3 },
+      "/two-factor/*": { window: 10, max: 3 },
+      "/forget-password": { window: 60, max: 5 },
+    },
+
+    // Use Redis/KV for distributed systems
+    storage: "secondary-storage", // or "database"
+  },
+
+  // Secondary storage for rate limiting
+  secondaryStorage: {
+    get: async (key) => env.KV.get(key),
+    set: async (key, value, ttl) => env.KV.put(key, value, { expirationTtl: ttl }),
+    delete: async (key) => env.KV.delete(key),
+  },
+});
+```
+
+**Note**: Server-side calls via `auth.api.*` bypass rate limiting.
+
+---
+
+## Session Cookie Caching
+
+Three encoding strategies for session cookies:
+
+| Strategy | Format | Use Case |
+|----------|--------|----------|
+| **Compact** (default) | Base64url + HMAC-SHA256 | Smallest, fastest |
+| **JWT** | Standard JWT | Interoperable |
+| **JWE** | A256CBC-HS512 encrypted | Most secure |
+
+```typescript
+export const auth = betterAuth({
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 300, // 5 minutes
+      encoding: "compact", // or "jwt" or "jwe"
+    },
+    freshAge: 60 * 60 * 24, // 1 day - operations requiring fresh session
+  },
+});
+```
+
+**Fresh sessions**: Some sensitive operations require recently created sessions. Configure `freshAge` to control this window.
+
+---
+
+## New Social Providers (v1.4.9+)
+
+```typescript
+socialProviders: {
+  // Patreon - Creator economy
+  patreon: {
+    clientId: env.PATREON_CLIENT_ID,
+    clientSecret: env.PATREON_CLIENT_SECRET,
+    scope: ["identity", "identity[email]"],
+  },
+
+  // Kick - Streaming platform (with refresh tokens)
+  kick: {
+    clientId: env.KICK_CLIENT_ID,
+    clientSecret: env.KICK_CLIENT_SECRET,
+  },
+
+  // Vercel - Developer platform
+  vercel: {
+    clientId: env.VERCEL_CLIENT_ID,
+    clientSecret: env.VERCEL_CLIENT_SECRET,
+  },
+}
+```
+
+---
+
+## Cloudflare Workers Requirements
+
+**⚠️ CRITICAL**: Cloudflare Workers require AsyncLocalStorage support:
+
+```toml
+# wrangler.toml
+compatibility_flags = ["nodejs_compat"]
+# or for older Workers:
+# compatibility_flags = ["nodejs_als"]
+```
+
+Without this flag, better-auth will fail with context-related errors.
+
+---
+
+## Database Hooks
+
+Execute custom logic during database operations:
+
+```typescript
+export const auth = betterAuth({
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user, ctx) => {
+          // Validate or modify before creation
+          if (user.email?.endsWith("@blocked.com")) {
+            throw new APIError("BAD_REQUEST", { message: "Email domain not allowed" });
+          }
+          return { data: { ...user, role: "member" } };
+        },
+        after: async (user, ctx) => {
+          // Send welcome email, create related records, etc.
+          await sendWelcomeEmail(user.email);
+          await createDefaultWorkspace(user.id);
+        },
+      },
+    },
+    session: {
+      create: {
+        after: async (session, ctx) => {
+          // Audit logging
+          await auditLog.create({ action: "session_created", userId: session.userId });
+        },
+      },
+    },
+  },
+});
+```
+
+**Available hooks**: `create`, `update` for `user`, `session`, `account`, `verification` tables.
+
+---
+
+## Expo/React Native Integration
+
+Complete mobile integration pattern:
+
+```typescript
+// Client setup with secure storage
+import { expoClient } from "@better-auth/expo";
+import * as SecureStore from "expo-secure-store";
+
+const authClient = createAuthClient({
+  baseURL: "https://api.example.com",
+  plugins: [expoClient({ storage: SecureStore })],
+});
+
+// OAuth with deep linking
+await authClient.signIn.social({
+  provider: "google",
+  callbackURL: "myapp://auth/callback", // Deep link
+});
+
+// Or use ID token verification (no redirect)
+await authClient.signIn.social({
+  provider: "google",
+  idToken: {
+    token: googleIdToken,
+    nonce: generatedNonce,
+  },
+});
+
+// Authenticated requests
+const cookie = await authClient.getCookie();
+await fetch("https://api.example.com/data", {
+  headers: { Cookie: cookie },
+  credentials: "omit",
+});
+```
+
+**app.json deep link setup**:
+```json
+{
+  "expo": {
+    "scheme": "myapp"
+  }
+}
+```
+
+**Server trustedOrigins** (development):
+```typescript
+trustedOrigins: ["exp://**", "myapp://"]
+```
 
 ---
 
@@ -1332,13 +1643,13 @@ Check changelog: https://github.com/better-auth/better-auth/releases
 ---
 
 **Token Efficiency**:
-- **Without skill**: ~30,000 tokens (D1 adapter errors, OAuth provider setup, admin RBAC, MCP deprecation, API discovery)
-- **With skill**: ~6,000 tokens (focused on errors + breaking changes + OAuth 2.1 Provider + API reference)
-- **Savings**: ~80% (~24,000 tokens)
+- **Without skill**: ~35,000 tokens (D1 adapter errors, 15+ plugins, rate limiting, session caching, database hooks, mobile integration)
+- **With skill**: ~8,000 tokens (focused on errors + patterns + all plugins + API reference)
+- **Savings**: ~77% (~27,000 tokens)
 
-**Errors prevented**: 13 documented issues with exact solutions
-**Key value**: D1 adapter requirement, OAuth 2.1 Provider (MCP deprecated), admin impersonation breaking change, v1.4.x updates, 80+ endpoint reference
+**Errors prevented**: 14 documented issues with exact solutions
+**Key value**: D1 adapter requirement, nodejs_compat flag, OAuth 2.1 Provider, Bearer/OneTap/SCIM/Anonymous plugins, rate limiting, session caching, database hooks, Expo integration, 80+ endpoint reference
 
 ---
 
-**Last verified**: 2025-12-31 | **Skill version**: 4.0.0 | **Changes**: Updated to v1.4.10. Added OAuth 2.1 Provider plugin (MCP deprecated). Added admin impersonation breaking change. Added Hono integration template. Added new social providers (Patreon, Kick, Vercel). Added custom RBAC pattern.
+**Last verified**: 2026-01-03 | **Skill version**: 5.0.0 | **Changes**: Added 8 additional plugins (Bearer, One Tap, SCIM, Anonymous, Username, Generic OAuth, Multi-Session, API Key). Added rate limiting configuration. Added session cookie caching (Compact/JWT/JWE). Added new social providers (Patreon, Kick, Vercel). Added Cloudflare Workers nodejs_compat requirement. Added database hooks. Added complete Expo/React Native integration.
