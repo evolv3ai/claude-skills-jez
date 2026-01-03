@@ -34,16 +34,16 @@
 | drizzle-orm.md | Add `timestamp_ms` mode info, modernize journal drift | 0.5 | ✅ Done |
 | d1-batch-operations.md | Clarify Free (50) vs Paid (1,000) tier limits | 0.25 | ✅ Done |
 
-### TIER 3: MEDIUM (Following Sprint) - ~2 hours
+### TIER 3: MEDIUM (Following Sprint) - ~2 hours ✅ COMPLETE (2026-01-03)
 
 | Rule File | Issue | Est. Hours | Status |
 |-----------|-------|------------|--------|
-| react-patterns.md | Add React 19 form actions (useActionState) context | 0.5 | ⏳ Not Started |
-| oauth-samesite-cookies.md | Add POST-based OIDC flows note (SameSite=None) | 0.25 | ⏳ Not Started |
-| soap-api-requests.md | Add SOAP 1.1 vs 1.2 version awareness | 0.25 | ⏳ Not Started |
-| hono-route-ordering.md | Clarify route priority wording | 0.25 | ⏳ Not Started |
-| snowflake-streamlit.md | Add Jan 2025 Git integration note | 0.25 | ⏳ Not Started |
-| cloudflare-deploy-workflow.md | Note secret auto-deploy in v3.73.0+ | 0.25 | ⏳ Not Started |
+| react-patterns.md | Add React 19 form actions (useActionState) context | 0.5 | ✅ Done |
+| oauth-samesite-cookies.md | Add POST-based OIDC flows note (SameSite=None) | 0.25 | ✅ Done |
+| soap-api-requests.md | Add SOAP 1.1 vs 1.2 version awareness | 0.25 | ✅ Done |
+| hono-route-ordering.md | Clarify route priority wording | 0.25 | ✅ Done |
+| snowflake-streamlit.md | Add Jan 2025 Git integration note | 0.25 | ✅ Done |
+| cloudflare-deploy-workflow.md | Note secret auto-deploy in v3.73.0+ | 0.25 | ✅ Done |
 
 ### TIER 4: LOW (When Time Permits) - ~1 hour
 
@@ -165,6 +165,7 @@
 | 2026-01-03 | Initial Audit | Launched 9 parallel rule audits, compiled findings | Start TIER 1 updates |
 | 2026-01-03 | TIER 1 Updates | Completed all 5 TIER 1 rules (clerk-auth, better-auth-vite, vite-node, ai-gateway-providers, cloudflare-ai-gateway) | TIER 2 updates |
 | 2026-01-03 | TIER 2 Updates | Completed all 8 TIER 2 rules (snowflake ×3, workers-ai-models, expo, git, drizzle, d1) | TIER 3 when time permits |
+| 2026-01-03 | TIER 3 Updates | Completed all 6 TIER 3 rules (react-patterns, oauth, soap, hono, streamlit, deploy-workflow) | TIER 4 when time permits |
 
 ---
 
@@ -182,7 +183,7 @@
 
 - [x] All TIER 1 rules updated ✅ (2026-01-03)
 - [x] All TIER 2 rules updated ✅ (2026-01-03)
-- [ ] All TIER 3 rules updated
+- [x] All TIER 3 rules updated ✅ (2026-01-03)
 - [ ] All TIER 4 rules updated
 - [ ] No rule below 90% accuracy
 - [ ] All deprecated patterns removed
