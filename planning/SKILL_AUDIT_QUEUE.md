@@ -30,7 +30,7 @@ Core skills used in most projects - errors here have wide impact.
 | ai-sdk-core | 2026-01-06 | ✓ | ✅ |
 | drizzle-orm-d1 | 2026-01-06 | ✓ | ✅ |
 | hono-routing | 2026-01-06 | ✓ | ✅ |
-| clerk-auth | 2026-01-06 | ✓ | ⬜ |
+| clerk-auth | 2026-01-06 | ✓ | ✅ |
 | better-auth | 2026-01-03 | ✓ | ⬜ |
 
 ### Tier 2: AI/ML Skills (High Churn)
