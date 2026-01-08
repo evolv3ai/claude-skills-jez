@@ -6,9 +6,9 @@ description: |
 
 # Claude API - Structured Outputs & Error Prevention Guide
 
-**Package**: @anthropic-ai/sdk@0.70.1 (Nov 20, 2025)
+**Package**: @anthropic-ai/sdk@0.71.2
 **Breaking Changes**: Oct 2025 - Claude 3.5/3.7 models retired, Nov 2025 - Structured outputs beta
-**Last Updated**: 2026-01-06
+**Last Updated**: 2026-01-09
 
 ---
 
@@ -462,7 +462,7 @@ This skill prevents **12** documented issues:
 
 ## Package Versions
 
-**Latest**: @anthropic-ai/sdk@0.70.1 (Nov 20, 2025)
+**Latest**: @anthropic-ai/sdk@0.71.2
 
 ```json
 {
@@ -489,4 +489,4 @@ This skill prevents **12** documented issues:
 
 ---
 
-**Last verified**: 2025-11-22 | **Skill version**: 2.0.0 | **Changes**: Added structured outputs (v0.69.0), updated model table (retired 3.5/3.7), context management, agent skills API. Removed basic tutorials (~380 lines). Focused on knowledge gaps + error prevention + advanced patterns.
+**Last verified**: 2026-01-09 | **Skill version**: 2.0.1 | **Changes**: Updated SDK version to 0.71.2
