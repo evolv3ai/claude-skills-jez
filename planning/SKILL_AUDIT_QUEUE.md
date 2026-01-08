@@ -38,15 +38,15 @@ AI SDKs change frequently - prone to training cutoff issues.
 
 | Skill | Last Audit | Has Rules | Status |
 |-------|------------|-----------|--------|
-| openai-api | 2026-01-03 | ✓ | ⬜ |
-| openai-agents | 2025-10-26 | ✓ | ⬜ |
-| openai-assistants | 2026-01-03 | ✓ | ⬜ |
-| openai-responses | 2026-01-03 | ✓ | ⬜ |
-| claude-api | 2026-01-06 | ✓ | ⬜ |
-| claude-agent-sdk | 2026-01-03 | ✓ | ⬜ |
-| google-gemini-api | 2026-01-03 | ✓ | ⬜ |
-| google-gemini-embeddings | 2026-01-03 | ✓ | ⬜ |
-| ai-sdk-ui | 2026-01-06 | ✓ | ⬜ |
+| openai-api | 2026-01-09 | ✓ | ✅ |
+| openai-agents | 2026-01-09 | ✓ | ✅ |
+| openai-assistants | 2026-01-09 | ✓ | ✅ |
+| openai-responses | 2026-01-09 | ✓ | ✅ |
+| claude-api | 2026-01-09 | ✓ | ✅ |
+| claude-agent-sdk | 2026-01-09 | ✓ | ✅ |
+| google-gemini-api | 2026-01-09 | ✓ | ✅ |
+| google-gemini-embeddings | 2026-01-09 | ✓ | ✅ |
+| ai-sdk-ui | 2026-01-09 | ✓ | ✅ |
 
 ### Tier 3: Cloudflare Platform (Stable but Complex)
 Cloudflare products - generally stable but intricate.
