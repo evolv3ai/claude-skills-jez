@@ -9,9 +9,9 @@ description: |
 # OpenAI Responses API
 
 **Status**: Production Ready
-**Last Updated**: 2025-11-27
+**Last Updated**: 2026-01-09
 **API Launch**: March 2025
-**Dependencies**: openai@6.9.1 (Node.js) or fetch API (Cloudflare Workers)
+**Dependencies**: openai@6.15.0 (Node.js) or fetch API (Cloudflare Workers)
 
 ---
 
@@ -37,7 +37,7 @@ OpenAI's unified interface for agentic applications, launched **March 2025**. Pr
 ## Quick Start
 
 ```bash
-npm install openai@6.9.1
+npm install openai@6.15.0
 ```
 
 ```typescript
