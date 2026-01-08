@@ -7,9 +7,9 @@ description: |
 # Cloudflare R2 Object Storage
 
 **Status**: Production Ready ✅
-**Last Updated**: 2025-11-24
+**Last Updated**: 2026-01-09
 **Dependencies**: cloudflare-worker-base (for Worker setup)
-**Latest Versions**: wrangler@4.50.0, @cloudflare/workers-types@4.20251121.0, aws4fetch@1.0.20
+**Latest Versions**: wrangler@4.58.0, @cloudflare/workers-types@4.20260108.0, aws4fetch@1.0.20
 
 **Recent Updates (2025)**:
 - **September 2025**: R2 SQL open beta (serverless query engine for Apache Iceberg), Pipelines GA (real-time stream ingestion), Remote bindings GA (local dev connects to deployed R2)
