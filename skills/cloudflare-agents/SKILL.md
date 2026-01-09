@@ -9,9 +9,9 @@ description: |
 # Cloudflare Agents SDK
 
 **Status**: Production Ready ✅
-**Last Updated**: 2025-11-23
+**Last Updated**: 2026-01-09
 **Dependencies**: cloudflare-worker-base (recommended)
-**Latest Versions**: agents@0.2.23 (Nov 13, 2025), @modelcontextprotocol/sdk@latest
+**Latest Versions**: agents@0.2.23, @modelcontextprotocol/sdk@latest
 **Production Tested**: Cloudflare's own MCP servers (https://github.com/cloudflare/mcp-server-cloudflare)
 
 **Recent Updates (2025)**:

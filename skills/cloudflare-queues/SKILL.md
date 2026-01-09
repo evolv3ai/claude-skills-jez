@@ -7,9 +7,9 @@ description: |
 # Cloudflare Queues
 
 **Status**: Production Ready ✅
-**Last Updated**: 2025-11-24
+**Last Updated**: 2026-01-09
 **Dependencies**: cloudflare-worker-base (for Worker setup)
-**Latest Versions**: wrangler@4.50.0, @cloudflare/workers-types@4.20251121.0
+**Latest Versions**: wrangler@4.58.0, @cloudflare/workers-types@4.20260108.0
 
 **Recent Updates (2025)**:
 - **April 2025**: Pull consumers increased limits (5,000 msg/s per queue, up from 1,200 requests/5min)

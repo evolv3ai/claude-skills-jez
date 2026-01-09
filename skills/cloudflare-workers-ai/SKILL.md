@@ -21,9 +21,9 @@ description: |
 # Cloudflare Workers AI
 
 **Status**: Production Ready ✅
-**Last Updated**: 2025-11-25
+**Last Updated**: 2026-01-09
 **Dependencies**: cloudflare-worker-base (for Worker setup)
-**Latest Versions**: wrangler@4.50.0, @cloudflare/workers-types@4.20251125.0
+**Latest Versions**: wrangler@4.58.0, @cloudflare/workers-types@4.20260108.0
 
 **Recent Updates (2025)**:
 - **April 2025 - Performance**: Llama 3.3 70B 2-4x faster (speculative decoding, prefix caching), BGE embeddings 2x faster

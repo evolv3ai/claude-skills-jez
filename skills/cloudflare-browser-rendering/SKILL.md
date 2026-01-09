@@ -11,7 +11,7 @@ Production-ready knowledge domain for building browser automation workflows with
 **Status**: Production Ready ✅
 **Last Updated**: 2026-01-06
 **Dependencies**: cloudflare-worker-base (for Worker setup)
-**Latest Versions**: @cloudflare/puppeteer@1.0.4 (July 2025), @cloudflare/playwright@1.0.0 (Playwright v1.55 GA Sept 2025), wrangler@4.50.0
+**Latest Versions**: @cloudflare/puppeteer@1.0.4, @cloudflare/playwright@1.0.0, wrangler@4.58.0
 
 **Recent Updates (2025)**:
 - **Sept 2025**: Playwright v1.55 GA, Stagehand framework support (Workers AI), /links excludeExternalLinks param
