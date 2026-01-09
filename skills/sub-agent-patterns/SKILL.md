@@ -89,6 +89,15 @@ Capable agent for complex, multi-step tasks requiring both exploration AND actio
 
 When names conflict, project-level takes precedence.
 
+**⚠️ CRITICAL: Session Restart Required**
+
+Agents are loaded at session startup only. If you create new agent files during a session:
+1. They won't appear in `/agents`
+2. Claude won't be able to invoke them
+3. **Solution**: Restart Claude Code session to discover new agents
+
+This is the most common reason custom agents "don't work" - they were created after the session started.
+
 ### File Format
 
 Markdown files with YAML frontmatter:
