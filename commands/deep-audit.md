@@ -340,6 +340,17 @@ After report is generated, offer:
 
 ## Bulk Operations
 
+Use the bulk operations script for auditing multiple skills at once.
+
+### List Skills by Tier
+
+```bash
+/home/jez/Documents/claude-skills/.venv/bin/python \
+  scripts/deep-audit-bulk.py --list
+```
+
+Shows all skills organized by tier with existence status.
+
 ### Check All Cached Skills
 
 ```bash
@@ -352,16 +363,57 @@ Output shows:
 - Skills that need re-audit (cache expired or docs changed)
 - Skills that are up to date
 
-### Tier-Based Auditing (Phase 4 - Future)
+### Tier-Based Auditing
 
 ```bash
-/deep-audit --tier 1    # Audit Tier 1 skills (highest priority)
-/deep-audit --tier 2    # Audit Tier 2 skills
+# Single tier
+/home/jez/Documents/claude-skills/.venv/bin/python \
+  scripts/deep-audit-bulk.py --tier 1
+
+# Multiple tiers (range)
+/home/jez/Documents/claude-skills/.venv/bin/python \
+  scripts/deep-audit-bulk.py --tier 1-3
+
+# Multiple tiers (specific)
+/home/jez/Documents/claude-skills/.venv/bin/python \
+  scripts/deep-audit-bulk.py --tier 1,3,5
+
+# Dry run (preview only)
+/home/jez/Documents/claude-skills/.venv/bin/python \
+  scripts/deep-audit-bulk.py --dry-run --tier 1
 ```
 
-### Pattern Matching (Phase 4 - Future)
+Tier definitions are read from `planning/SKILL_AUDIT_QUEUE.md`.
+
+### Pattern Matching
 
 ```bash
-/deep-audit cloudflare-*    # Audit all Cloudflare skills
-/deep-audit ai-*            # Audit all AI-related skills
+# Cloudflare skills
+/home/jez/Documents/claude-skills/.venv/bin/python \
+  scripts/deep-audit-bulk.py 'cloudflare-*'
+
+# AI-related skills
+/home/jez/Documents/claude-skills/.venv/bin/python \
+  scripts/deep-audit-bulk.py 'ai-*'
+
+# OpenAI skills
+/home/jez/Documents/claude-skills/.venv/bin/python \
+  scripts/deep-audit-bulk.py 'openai-*'
+```
+
+### Skip Fresh Cache
+
+Only audit skills that need re-auditing (cache > 7 days old):
+
+```bash
+/home/jez/Documents/claude-skills/.venv/bin/python \
+  scripts/deep-audit-bulk.py --tier 1 --skip-fresh
+```
+
+### Audit All Skills
+
+```bash
+# WARNING: Expensive! (~$0.20 Firecrawl, ~2.4M tokens)
+/home/jez/Documents/claude-skills/.venv/bin/python \
+  scripts/deep-audit-bulk.py --all
 ```
