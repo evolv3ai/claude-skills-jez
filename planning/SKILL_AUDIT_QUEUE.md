@@ -53,37 +53,37 @@ Cloudflare products - generally stable but intricate.
 
 | Skill | Last Audit | Has Rules | Status |
 |-------|------------|-----------|--------|
-| cloudflare-d1 | 2026-01-03 | ✓ | ⬜ |
-| cloudflare-r2 | 2026-01-03 | ✓ | ⬜ |
-| cloudflare-kv | 2026-01-03 | ✓ | ⬜ |
-| cloudflare-workers-ai | 2026-01-03 | ✓ | ⬜ |
-| cloudflare-vectorize | 2026-01-06 | ✓ | ⬜ |
-| cloudflare-durable-objects | 2026-01-03 | ✓ | ⬜ |
-| cloudflare-queues | 2025-11-23 | ✓ | ⬜ |
-| cloudflare-workflows | 2025-11-23 | ✓ | ⬜ |
-| cloudflare-agents | 2025-11-24 | ✓ | ⬜ |
-| cloudflare-browser-rendering | 2026-01-06 | ✓ | ⬜ |
-| cloudflare-mcp-server | 2025-11-26 | ✓ | ⬜ |
-| cloudflare-turnstile | 2025-11-22 | ✓ | ⬜ |
-| cloudflare-hyperdrive | 2025-11-22 | ✓ | ⬜ |
-| cloudflare-images | 2025-11-22 | ✓ | ⬜ |
-| cloudflare-python-workers | 2025-11-28 | ✓ | ⬜ |
+| cloudflare-d1 | 2026-01-09 | ✓ | ✅ |
+| cloudflare-r2 | 2026-01-09 | ✓ | ✅ |
+| cloudflare-kv | 2026-01-09 | ✓ | ✅ |
+| cloudflare-workers-ai | 2026-01-09 | ✓ | ✅ |
+| cloudflare-vectorize | 2026-01-09 | ✓ | ✅ |
+| cloudflare-durable-objects | 2026-01-09 | ✓ | ✅ |
+| cloudflare-queues | 2026-01-09 | ✓ | ✅ |
+| cloudflare-workflows | 2026-01-09 | ✓ | ✅ |
+| cloudflare-agents | 2026-01-09 | ✓ | ✅ |
+| cloudflare-browser-rendering | 2026-01-09 | ✓ | ✅ |
+| cloudflare-mcp-server | 2026-01-09 | ✓ | ✅ |
+| cloudflare-turnstile | 2026-01-09 | ✓ | ✅ |
+| cloudflare-hyperdrive | 2026-01-09 | ✓ | ✅ |
+| cloudflare-images | 2026-01-09 | ✓ | ✅ |
+| cloudflare-python-workers | 2026-01-09 | ✓ | ✅ |
 
 ### Tier 4: Frontend/UI Skills
 React ecosystem - moderate churn.
 
 | Skill | Last Audit | Has Rules | Status |
 |-------|------------|-----------|--------|
-| tanstack-query | 2026-01-03 | ✓ | ⬜ |
-| tanstack-router | 2026-01-06 | ✓ | ⬜ |
-| tanstack-table | 2026-01-06 | ✓ | ⬜ |
-| tanstack-start | 2025-11-28 | ⬜ | ⬜ |
-| zustand-state-management | 2026-01-06 | ✓ | ⬜ |
-| react-hook-form-zod | 2026-01-03 | ✓ | ⬜ |
-| tiptap | 2026-01-06 | ✓ | ⬜ |
-| motion | 2025-11-28 | ✓ | ⬜ |
-| auto-animate | 2025-11-28 | ⬜ | ⬜ |
-| nextjs | 2025-11-24 | ✓ | ⬜ |
+| tanstack-query | 2026-01-09 | ✓ | ✅ |
+| tanstack-router | 2026-01-09 | ✓ | ✅ |
+| tanstack-table | 2026-01-09 | ✓ | ✅ |
+| tanstack-start | 2026-01-09 | ✓ | ✅ |
+| zustand-state-management | 2026-01-09 | ✓ | ✅ |
+| react-hook-form-zod | 2026-01-09 | ✓ | ✅ |
+| tiptap | 2026-01-09 | ✓ | ✅ |
+| motion | 2026-01-09 | ✓ | ✅ |
+| auto-animate | 2026-01-09 | ✓ | ✅ |
+| nextjs | 2026-01-09 | ✓ | ✅ |
 
 ### Tier 5: MCP/Tooling Skills
 MCP is new - high likelihood of issues.
