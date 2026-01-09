@@ -13,7 +13,7 @@ metadata:
 **Status**: Production Ready
 **Last Updated**: 2026-01-09
 **Dependencies**: None
-**Latest Versions**: `@neondatabase/serverless@1.0.2`, `@vercel/postgres@0.10.0`, `drizzle-orm@0.45.1`, `drizzle-kit@0.31.8`, `neonctl@2.18.1`
+**Latest Versions**: `@neondatabase/serverless@1.0.2`, `@vercel/postgres@0.10.0`, `drizzle-orm@0.45.1`, `drizzle-kit@0.31.8`, `neonctl@2.19.0`
 
 ---
 
@@ -149,10 +149,10 @@ npm install prisma @prisma/client @prisma/adapter-neon @neondatabase/serverless
 2. Vercel automatically creates a Neon database
 3. Run `vercel env pull` to get environment variables locally
 
-**Option C: Neon CLI** (neonctl@2.18.1)
+**Option C: Neon CLI** (neonctl@2.19.0)
 ```bash
 # Install CLI
-npm install -g neonctl@2.18.1
+npm install -g neonctl@2.19.0
 
 # Authenticate
 neonctl auth
@@ -790,7 +790,7 @@ neonctl branches delete feature
 - `drizzle-kit@^0.31.7` - Drizzle schema migrations and introspection
 - `@prisma/client@^6.10.0` - Prisma ORM (Node.js only, not edge-compatible)
 - `@prisma/adapter-neon@^6.10.0` - Prisma adapter for Neon serverless
-- `neonctl@^2.18.1` - Neon CLI for database management
+- `neonctl@^2.19.0` - Neon CLI for database management
 - `zod@^3.24.0` - Schema validation for input sanitization
 
 ---
@@ -820,7 +820,7 @@ neonctl branches delete feature
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.8",
-    "neonctl": "^2.18.1"
+    "neonctl": "^2.19.0"
   }
 }
 ```

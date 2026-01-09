@@ -880,7 +880,7 @@ const spaces = await withRetry(() => listSpaces(accessToken))
 
 ---
 
-## Package Versions (Verified 2026-01-03)
+## Package Versions (Verified 2026-01-09)
 
 ```json
 {
@@ -888,8 +888,8 @@ const spaces = await withRetry(() => listSpaces(accessToken))
     "google-chat-cards": "^1.0.3"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260103.0",
-    "wrangler": "^4.54.0"
+    "@cloudflare/workers-types": "^4.20260109.0",
+    "wrangler": "^4.58.0"
   }
 }
 ```

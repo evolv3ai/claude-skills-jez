@@ -24,7 +24,7 @@ metadata:
 **Status**: Production Ready
 **Last Updated**: 2026-01-09
 **Dependencies**: Node.js 18+, Expo CLI
-**Latest Versions**: react-native@0.83.1, expo@~54.0.31, react@19.1
+**Latest Versions**: react-native@0.83.1, expo@~54.0.31, react@19.2.3
 
 ---
 
@@ -859,7 +859,7 @@ npm install @react-navigation/native@^7.0.0
 ```json
 {
   "dependencies": {
-    "react": "^19.1.0",
+    "react": "^19.2.3",
     "react-native": "^0.82.0",
     "expo": "~52.0.0",
     "@react-navigation/native": "^7.0.0",

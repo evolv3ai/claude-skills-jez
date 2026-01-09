@@ -12,7 +12,7 @@ metadata:
 # TypeScript MCP on Cloudflare Workers
 
 **Last Updated**: 2026-01-09
-**Versions**: @modelcontextprotocol/sdk@1.25.2, hono@4.11.3, zod@3.24.2
+**Versions**: @modelcontextprotocol/sdk@1.25.2, hono@4.11.3, zod@4.3.5
 **Spec Version**: 2025-11-25
 
 ---

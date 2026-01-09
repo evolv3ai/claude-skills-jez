@@ -23,7 +23,7 @@ metadata:
 **Status**: Production Ready
 **Last Updated**: 2026-01-09
 **Dependencies**: tsx (dev dependency)
-**Latest Versions**: tsx@4.21.0
+**Current Versions**: tsx@4.21.0
 
 ---
 
@@ -224,13 +224,13 @@ cp ~/.claude/skills/mcp-cli-scripts/rules/mcp-cli-scripts.md .claude/rules/
 ## Dependencies
 
 **Required**:
-- tsx@4.19.2 - TypeScript execution without compilation
+- tsx@4.21.0 - TypeScript execution without compilation
 
 Add to package.json:
 ```json
 {
   "devDependencies": {
-    "tsx": "^4.19.2"
+    "tsx": "^4.21.0"
   }
 }
 ```
@@ -244,12 +244,12 @@ Add to package.json:
 
 ---
 
-## Package Versions (Verified 2025-12-27)
+## Package Versions (Verified 2026-01-09)
 
 ```json
 {
   "devDependencies": {
-    "tsx": "^4.19.2"
+    "tsx": "^4.21.0"
   }
 }
 ```

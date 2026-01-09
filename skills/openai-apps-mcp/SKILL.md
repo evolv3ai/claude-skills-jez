@@ -14,7 +14,7 @@ allowed-tools: [Read, Write, Edit, Bash, Glob, Grep]
 **Status**: Production Ready
 **Last Updated**: 2026-01-09
 **Dependencies**: `cloudflare-worker-base`, `hono-routing` (optional)
-**Latest Versions**: @modelcontextprotocol/sdk@1.25.2, hono@4.11.3, zod@4.1.13, wrangler@4.58.0
+**Latest Versions**: @modelcontextprotocol/sdk@1.25.2, hono@4.11.3, zod@4.3.5, wrangler@4.58.0
 
 ---
 
@@ -35,7 +35,7 @@ Build **ChatGPT Apps** using **MCP (Model Context Protocol)** servers on Cloudfl
 ```bash
 npm create cloudflare@latest my-openai-app -- --type hello-world --ts --git --deploy false
 cd my-openai-app
-npm install @modelcontextprotocol/sdk@1.25.1 hono@4.11.3 zod@4.1.13
+npm install @modelcontextprotocol/sdk@1.25.2 hono@4.11.3 zod@4.3.5
 npm install -D @cloudflare/vite-plugin@1.17.1 vite@7.2.4
 ```
 
@@ -277,7 +277,7 @@ try {
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",
     "hono": "^4.11.3",
-    "zod": "^4.1.13"
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.17.1",

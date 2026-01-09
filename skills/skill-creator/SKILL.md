@@ -187,7 +187,7 @@ allowed-tools:
 ---
 ```
 
-**Note**: `allowed-tools` is the ONLY valid optional field. Fields like `license:` and `metadata:` are NOT recognized by Claude Code and may prevent skill discovery.
+**Note**: `allowed-tools` is an optional field to restrict which tools Claude can use. The `metadata:` field with `keywords:` array is commonly used in this repository for improved discoverability, though it's not officially documented in the Anthropic spec. Fields like `license:` are informational but not functionally used by Claude Code.
 
 ### Field Guidelines
 

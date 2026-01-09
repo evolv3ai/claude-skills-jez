@@ -29,7 +29,7 @@ Complete skill for integrating Sveltia CMS into static site projects.
 
 ## Current Versions
 
-- **@sveltia/cms**: 0.120.1 (verified January 2026)
+- **@sveltia/cms**: 0.127.0 (verified January 2026)
 - **Status**: Public Beta (v1.0 expected early 2026)
 - **Maturity**: Production-ready (270+ issues solved from predecessor)
 
@@ -214,7 +214,7 @@ collections:
        <title>Content Manager</title>
      </head>
      <body>
-       <script src="https://unpkg.com/@sveltia/cms@0.120.1/dist/sveltia-cms.js" type="module"></script>
+       <script src="https://unpkg.com/@sveltia/cms@0.127.0/dist/sveltia-cms.js" type="module"></script>
      </body>
    </html>
    ```
@@ -471,7 +471,7 @@ collections:
 
 **Use version pinning (recommended):**
 ```html
-<script src="https://unpkg.com/@sveltia/cms@0.120.1/dist/sveltia-cms.js" type="module"></script>
+<script src="https://unpkg.com/@sveltia/cms@0.127.0/dist/sveltia-cms.js" type="module"></script>
 ```
 
 ---
@@ -598,7 +598,7 @@ Sveltia CMS is a **drop-in replacement** for Decap CMS.
 <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
 
 <!-- NEW: Sveltia CMS -->
-<script src="https://unpkg.com/@sveltia/cms@0.120.1/dist/sveltia-cms.js" type="module"></script>
+<script src="https://unpkg.com/@sveltia/cms@0.127.0/dist/sveltia-cms.js" type="module"></script>
 ```
 
 **Step 2: Keep existing config.yml** (no changes needed)
@@ -680,7 +680,7 @@ This skill prevents **8 common errors** (100% prevention rate):
 
 ---
 
-**Last Updated**: 2025-11-28
-**Skill Version**: 2.0.0
-**Sveltia CMS Version**: 0.120.1 (Beta)
+**Last Updated**: 2026-01-09
+**Skill Version**: 2.0.1
+**Sveltia CMS Version**: 0.127.0 (Beta)
 **Status**: Production-ready, v1.0 GA expected early 2026

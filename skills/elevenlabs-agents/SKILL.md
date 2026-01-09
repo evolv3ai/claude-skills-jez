@@ -51,7 +51,7 @@ ElevenLabs migrated to new scoped packages in August 2025. **Current packages:**
 npm install @elevenlabs/react@0.12.3           # React SDK (Dec 2025: localization, Scribe fixes)
 npm install @elevenlabs/client@0.12.2          # JavaScript SDK (Dec 2025: localization)
 npm install @elevenlabs/react-native@0.5.7     # React Native SDK (Dec 2025: mic fixes, speed param)
-npm install @elevenlabs/elevenlabs-js@2.28.0   # Base SDK (Dec 2025: Scribe audio format fix)
+npm install @elevenlabs/elevenlabs-js@2.30.0   # Base SDK (Jan 2026: latest)
 npm install -g @elevenlabs/agents-cli@0.6.1    # CLI
 ```
 
@@ -884,4 +884,4 @@ This skill composes well with:
 
 **Production Tested**: WordPress Auditor, Customer Support Agents, AgentFlow (webhook integration)
 **Last Updated**: 2026-01-09
-**Package Versions**: elevenlabs@1.59.0, @elevenlabs/elevenlabs-js@2.28.0, @elevenlabs/agents-cli@0.6.1, @elevenlabs/react@0.12.3, @elevenlabs/client@0.12.2, @elevenlabs/react-native@0.5.7
+**Package Versions**: elevenlabs@1.59.0, @elevenlabs/elevenlabs-js@2.30.0, @elevenlabs/agents-cli@0.6.1, @elevenlabs/react@0.12.3, @elevenlabs/client@0.12.2, @elevenlabs/react-native@0.5.7

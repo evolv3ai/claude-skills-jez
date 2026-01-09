@@ -31,7 +31,7 @@ Production-tested patterns for Flask with the application factory pattern, Bluep
 - Flask-SQLAlchemy: 3.1.1
 - Flask-Login: 0.6.3
 - Flask-WTF: 1.2.2
-- Werkzeug: 3.1.3
+- Werkzeug: 3.1.5
 
 ---
 

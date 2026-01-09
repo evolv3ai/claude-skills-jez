@@ -104,12 +104,14 @@ Invoke: `/review-skill <skill-name>` or use this skill when detecting outdated p
 
 ## Bundled Resources
 
-**Planning**: `planning/SKILL_REVIEW_PROCESS.md` (complete 9-phase guide)
+**Planning**: `~/.claude/skills/../planning/SKILL_REVIEW_PROCESS.md` or repo `planning/SKILL_REVIEW_PROCESS.md` (complete 9-phase guide)
 
-**Scripts**: `scripts/review-skill.sh` (automated validation)
+**Scripts**: Repo root `scripts/review-skill.sh` (automated validation)
 
-**Commands**: `commands/review-skill.md` (slash command, symlinked to ~/.claude/commands/)
+**Commands**: Repo root `commands/review-skill.md` (slash command, symlinked to `~/.claude/commands/`)
+
+**References**: `references/audit-report-template.md` (output template)
 
 ---
 
-**Last Verified**: 2026-01-06 | **Version**: 1.0.0
+**Last Verified**: 2026-01-09 | **Version**: 1.0.1
