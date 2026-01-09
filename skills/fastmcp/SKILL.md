@@ -8,6 +8,17 @@ description: |
   storage backends for tokens/cache, adding middleware for logging/rate limiting, deploying to FastMCP Cloud,
   or troubleshooting module-level server, storage, lifespan, middleware order, circular imports, or OAuth errors.
 
+metadata:
+  doc_sources:
+    primary: "https://gofastmcp.com/getting-started/welcome"
+    server: "https://gofastmcp.com/servers/fastmcp"
+    tools: "https://gofastmcp.com/servers/tools"
+    resources: "https://gofastmcp.com/servers/resources"
+    changelog: "https://github.com/jlowin/fastmcp/releases"
+  ecosystem: pypi
+  package_name: fastmcp
+  tier: 2
+  last_verified: "2026-01-09"
 ---
 
 # FastMCP - Build MCP Servers in Python
