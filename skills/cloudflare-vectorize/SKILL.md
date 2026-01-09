@@ -1,11 +1,26 @@
 ---
 name: cloudflare-vectorize
 description: |
-  Build semantic search with Cloudflare Vectorize V2 (Sept 2024 GA). Covers V2 breaking changes: async mutations,
-  5M vectors/index (was 200K), 31ms latency (was 549ms), returnMetadata enum, and V1 deprecation (Dec 2024).
+  Build semantic search with Cloudflare Vectorize V2. Covers async mutations, 5M vectors/index, 31ms latency, returnMetadata enum changes, and V1 deprecation. Prevents 8 errors including dimension mismatches.
 
-  Use when: migrating V1→V2, handling async mutations with mutationId, creating metadata indexes before insert,
-  or troubleshooting "returnMetadata must be 'all'", V2 timing issues, metadata index errors, dimension mismatches.
+  Use when: building RAG or semantic search, troubleshooting returnMetadata, V2 timing, metadata index, or dimension errors.
+metadata:
+  keywords:
+    - cloudflare vectorize
+    - vectorize v2
+    - vector database
+    - semantic search
+    - RAG
+    - embeddings
+    - workers ai embeddings
+    - bge-base
+    - vector index
+    - async mutations
+    - mutationId
+    - metadata indexes
+    - returnMetadata
+    - dimension mismatch
+    - cosine similarity
 ---
 
 # Cloudflare Vectorize

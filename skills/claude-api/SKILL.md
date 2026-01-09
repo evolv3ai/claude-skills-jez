@@ -1,7 +1,11 @@
 ---
 name: claude-api
 description: |
-  Build with Claude Messages API using structured outputs (v0.69.0+, Nov 2025) for guaranteed JSON schema validation. Covers prompt caching (90% savings), streaming SSE, tool use, model deprecations (3.5/3.7 retired Oct 2025). Use when: building chatbots/agents with validated JSON responses, or troubleshooting rate_limit_error, structured output validation, prompt caching not activating, streaming SSE parsing.
+  Build with Claude Messages API using structured outputs for guaranteed JSON schema validation. Covers prompt caching (90% savings), streaming SSE, tool use, and model deprecations. Prevents 12 documented errors.
+
+  Use when: building chatbots/agents, troubleshooting rate_limit_error, prompt caching issues, or streaming SSE parsing errors.
+metadata:
+  keywords: [Claude API, Messages API, structured outputs, JSON schema, prompt caching, streaming, SSE, tool use, function calling, Claude 3.5, Claude 3.7, Claude Sonnet 4.5, Claude Opus 4, rate_limit_error, vision, extended thinking, retry-after, anthropic-sdk]
 ---
 
 # Claude API - Structured Outputs & Error Prevention Guide

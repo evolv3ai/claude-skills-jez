@@ -3,7 +3,9 @@ name: OpenAI Apps MCP
 description: |
   Build ChatGPT apps with MCP servers on Cloudflare Workers. Extend ChatGPT with custom tools and interactive widgets (HTML/JS UI).
 
-  Use when: developing ChatGPT extensions, implementing MCP servers, or troubleshooting CORS blocking (allow chatgpt.com), widget 404s (missing ui://widget/), wrong MIME type (text/html+skybridge), or ASSETS binding undefined.
+  Use when: developing ChatGPT extensions, implementing MCP servers, or troubleshooting CORS, widget 404s, MIME types, or ASSETS binding errors.
+metadata:
+  keywords: [openai-apps, chatgpt-apps, MCP, model-context-protocol, cloudflare-workers, widgets, ui://widget, text/html+skybridge, chatgpt.com, CORS, JSON-RPC]
 allowed-tools: [Read, Write, Edit, Bash, Glob, Grep]
 ---
 

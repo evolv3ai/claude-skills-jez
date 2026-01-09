@@ -1,9 +1,11 @@
 ---
 name: nextjs
 description: |
-  Build Next.js 16 apps with App Router, Server Components/Actions, Cache Components ("use cache"), and async route params. Includes proxy.ts (replaces middleware.ts) and React 19.2.
+  Build Next.js 16 apps with App Router, Server Components/Actions, Cache Components ("use cache"), and async route params. Includes proxy.ts and React 19.2.
 
-  Use when: building Next.js 16 projects, or troubleshooting async params (Promise types), "use cache" directives, parallel route 404s (missing default.js), or proxy.ts CORS.
+  Use when: building Next.js 16 projects, or troubleshooting async params (Promise types), "use cache" directives, parallel route 404s.
+metadata:
+  keywords: [nextjs, next-16, app-router, server-components, server-actions, use-cache, cache-components, async-params, proxy.ts, react-19, turbopack, parallel-routes, default.js]
 allowed-tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
 ---
 

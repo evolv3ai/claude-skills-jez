@@ -1,10 +1,19 @@
 ---
 name: skill-review
 description: |
-  Audit claude-skills repository documentation with systematic 9-phase review: standards compliance, official docs verification via Context7/WebFetch, code examples accuracy, cross-file consistency, and version drift detection. Auto-fixes unambiguous issues with severity classification.
+  Audit claude-skills with systematic 9-phase review: standards compliance, official docs verification, code accuracy, cross-file consistency, and version drift detection.
 
-  Use when: investigating skill issues, major package updates detected (e.g., v1.x → v2.x), skill not verified >90 days, before marketplace submission, or troubleshooting outdated API patterns, contradictory examples, broken links, version drift.
-
+  Use when investigating skill issues, major updates detected, skill not verified >90 days, or before marketplace submission.
+metadata:
+  keywords:
+    - skill audit
+    - version drift
+    - standards compliance
+    - documentation review
+    - broken links
+    - outdated API
+    - marketplace submission
+    - skill verification
 allowed-tools:
   - Read
   - Bash

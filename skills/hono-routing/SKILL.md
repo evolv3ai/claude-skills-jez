@@ -1,10 +1,25 @@
 ---
 name: hono-routing
 description: |
-  Build type-safe APIs with Hono - fast, lightweight routing for Cloudflare Workers, Deno, Bun, and Node.js. Covers routing, middleware, validation (Zod/Valibot), RPC client/server, streaming (SSE, streamText), WebSocket, security middleware (secureHeaders, CSRF), and combine middleware.
+  Build type-safe APIs with Hono for Cloudflare Workers, Deno, Bun, Node.js. Routing, middleware, validation (Zod/Valibot), RPC, streaming (SSE), WebSocket, security (CSRF, secureHeaders).
 
-  Use when: building APIs with Hono, streaming responses (SSE, AI), WebSocket connections, security middleware (CSRF, secureHeaders), request validation, RPC communication, or troubleshooting validation hooks, RPC types, middleware chains.
-
+  Use when: building Hono APIs, streaming SSE, WebSocket, validation, RPC. Troubleshoot: validation hooks, RPC types, middleware chains.
+metadata:
+  keywords:
+    - hono
+    - hono routing
+    - cloudflare workers api
+    - type-safe api
+    - zod validator
+    - valibot validator
+    - hono rpc
+    - hono streaming
+    - sse streaming
+    - websocket hono
+    - hono middleware
+    - secureHeaders
+    - csrf protection
+    - hono validation
 ---
 
 # Hono Routing & Middleware

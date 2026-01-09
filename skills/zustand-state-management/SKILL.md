@@ -1,9 +1,11 @@
 ---
 name: zustand-state-management
 description: |
-  Build type-safe global state in React applications with Zustand. Supports TypeScript, persist middleware, devtools, slices pattern, and Next.js SSR.
+  Build type-safe global state in React with Zustand. Supports TypeScript, persist middleware, devtools, slices pattern, and Next.js SSR with hydration handling.
 
-  Use when setting up React state, migrating from Redux/Context API, implementing localStorage persistence, or troubleshooting Next.js hydration errors, TypeScript inference issues, or infinite render loops.
+  Use when setting up React state, migrating from Redux/Context, or troubleshooting hydration errors, TypeScript inference, or infinite render loops.
+metadata:
+  keywords: [Zustand, React state management, TypeScript, persist middleware, devtools, slices pattern, Next.js, SSR, hydration, localStorage, Redux alternative, Context API]
 ---
 
 # Zustand State Management

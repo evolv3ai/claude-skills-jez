@@ -1,13 +1,11 @@
 ---
 name: ai-sdk-core
 description: |
-  Build backend AI with Vercel AI SDK v5/v6. v6 stable introduces Output API (Output.object/array/choice
-  replace deprecated generateObject/streamObject), plus speech synthesis, transcription, image generation,
-  embeddings, reranking, MCP tools, and middleware. Covers v4→v5 migration, latest models (GPT-5.2,
-  Claude 4.x, Gemini 2.5), Workers startup fix, and 12 error solutions.
+  Build backend AI with Vercel AI SDK v6 stable. Covers Output API (replaces generateObject/streamObject), speech synthesis, transcription, embeddings, MCP tools. Includes v4→v5 migration and 12 error solutions.
 
-  Use when: implementing AI SDK v5/v6, using Output API, speech/transcription/image features, embeddings,
-  MCP tools, migrating v4→v5, troubleshooting errors, or fixing Workers startup issues.
+  Use when: implementing AI SDK v5/v6, migrating versions, troubleshooting AI_APICallError, Workers startup issues, or Output API validation errors.
+metadata:
+  keywords: [Vercel AI SDK, generateText, streamText, Output API, generateObject, streamObject, speech synthesis, transcription, image generation, embeddings, reranking, MCP tools, middleware, GPT-5.2, Claude 4.x, Gemini 2.5, v4 migration, Workers startup, AI_APICallError, AI_NoObjectGeneratedError]
 ---
 
 # AI SDK Core

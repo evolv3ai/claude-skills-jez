@@ -1,9 +1,11 @@
 ---
 name: tiptap
 description: |
-  Build rich text editors with Tiptap - headless editor framework with React, shadcn/ui, and Tailwind v4 integration. Includes SSR-safe setup, image uploads to R2, prose styling, collaborative editing, and markdown support.
+  Build rich text editors with Tiptap - headless editor framework with React and Tailwind v4. Covers SSR-safe setup, image uploads, prose styling, and collaborative editing.
 
-  Use when creating blog editors, comment systems, documentation platforms, or Notion-like apps, or troubleshooting SSR hydration errors, Tailwind typography issues, or image upload performance.
+  Use when creating blog editors, comment systems, or Notion-like apps, or troubleshooting SSR hydration errors, typography issues, or image upload problems.
+metadata:
+  keywords: [Tiptap, rich text editor, ProseMirror, React, shadcn/ui, Tailwind v4, SSR, Next.js, Y.js, collaborative editing, markdown, image upload, R2, WYSIWYG, content editor]
 ---
 
 # Tiptap Rich Text Editor

@@ -1,12 +1,11 @@
 ---
 name: ai-sdk-ui
 description: |
-  Build React chat interfaces with Vercel AI SDK v6. Covers v6 stable (agent integration, tool approval,
-  message parts structure, auto-submit), v5→v6 migration, useChat/useCompletion/useObject hooks,
-  and 12 UI error solutions (stream parsing, stale body values, React update depth).
+  Build React chat interfaces with Vercel AI SDK v6. Covers useChat/useCompletion/useObject hooks, message parts structure, tool approval workflows, and 12 UI error solutions.
 
-  Use when: implementing AI SDK v6 chat UIs, migrating v5→v6, troubleshooting "useChat failed to parse
-  stream", "useChat no response", or "stale body values" errors, or building AI chat interfaces.
+  Use when: implementing AI chat UIs, migrating v5→v6, troubleshooting "useChat failed to parse stream", "stale body values", or React update depth errors.
+metadata:
+  keywords: [Vercel AI SDK, useChat, useCompletion, useObject, useAssistant, React hooks, chat interface, streaming, SSE, message parts, tool approval, auto-submit, agent integration, v5 migration, stream parsing, stale body, React update depth]
 ---
 
 # AI SDK UI - Frontend React Hooks

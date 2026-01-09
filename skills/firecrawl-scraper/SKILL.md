@@ -1,10 +1,9 @@
 ---
 name: firecrawl-scraper
 description: |
-  Complete knowledge domain for Firecrawl v4 API - web scraping and crawling that converts websites into LLM-ready markdown or structured data.
+  Convert websites into LLM-ready markdown with Firecrawl v4 API. Handles JavaScript rendering, anti-bot bypass, and structured data extraction for RAG and AI applications.
 
-  Use when: scraping websites, crawling entire sites, extracting web content, converting HTML to markdown, building web scrapers, handling dynamic JavaScript content, bypassing anti-bot protection, extracting structured data from web pages, or when encountering "content not loading", "JavaScript rendering issues", or "blocked by bot detection".
-
+  Use when: scraping websites, crawling sites, or troubleshooting content not loading, JavaScript rendering, or bot detection.
 metadata:
   doc_sources:
     primary: "https://docs.firecrawl.dev"
@@ -14,6 +13,22 @@ metadata:
   package_name: firecrawl-py
   tier: 2
   last_verified: "2026-01-09"
+  keywords:
+    - firecrawl
+    - web scraping
+    - web crawling
+    - html to markdown
+    - javascript rendering
+    - anti-bot bypass
+    - structured data extraction
+    - firecrawl-py
+    - "@mendable/firecrawl-js"
+    - content scraping
+    - rag data
+    - llm data
+    - browser automation
+    - screenshot capture
+    - cloudflare workers scraping
 ---
 
 # Firecrawl Web Scraper Skill

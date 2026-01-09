@@ -1,11 +1,11 @@
 ---
 name: better-auth
 description: |
-  Build authentication systems for TypeScript/Cloudflare Workers with social auth, 2FA, passkeys, organizations, RBAC, OAuth 2.1 provider, and 15+ plugins. Self-hosted alternative to Clerk/Auth.js.
+  Self-hosted auth for TypeScript/Cloudflare Workers with social auth, 2FA, passkeys, organizations, RBAC, and 15+ plugins. Requires Drizzle ORM or Kysely for D1 (no direct adapter). Self-hosted alternative to Clerk/Auth.js.
 
-  IMPORTANT: Requires Drizzle ORM or Kysely for D1 - no direct D1 adapter. Workers require nodejs_compat flag. v1.4.10 adds OAuth 2.1 Provider (MCP deprecated), Bearer tokens, Google One Tap, SCIM, Anonymous auth, rate limiting, Patreon/Kick/Vercel providers.
-
-  Use when: self-hosting auth on Cloudflare D1, building OAuth provider for MCP servers, multi-tenant SaaS, admin dashboards, API key auth, guest users, or troubleshooting D1 adapter errors, session caching, rate limits, database hooks.
+  Use when: self-hosting auth on D1, building OAuth provider, multi-tenant SaaS, or troubleshooting D1 adapter errors, session caching, rate limits.
+metadata:
+  keywords: [better-auth, Drizzle ORM, Kysely, D1, Cloudflare Workers, social auth, 2FA, passkeys, organizations, RBAC, OAuth 2.1, Bearer tokens, Google One Tap, SCIM, Anonymous auth, rate limiting, Patreon, Kick, Vercel, nodejs_compat, session caching, database hooks, API key auth]
 allowed-tools:
   - Read
   - Write

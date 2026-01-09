@@ -1,11 +1,25 @@
 ---
 name: flask
 description: |
-  Build Python web applications with Flask, using the application factory pattern, Blueprints,
-  and Flask-SQLAlchemy. Covers project structure, authentication, and configuration management.
+  Build Python web apps with Flask using application factory pattern, Blueprints, and Flask-SQLAlchemy. Covers project structure, authentication, and configuration management.
 
-  Use when: creating Flask projects, organizing with blueprints, implementing authentication,
-  or troubleshooting circular imports, application context errors, or blueprint registration.
+  Use when: creating Flask projects, organizing blueprints, or troubleshooting circular imports, context errors, or registration.
+metadata:
+  keywords:
+    - flask
+    - flask-sqlalchemy
+    - flask-login
+    - flask-wtf
+    - blueprints
+    - application factory
+    - python web
+    - werkzeug
+    - jinja2
+    - circular imports
+    - application context
+    - blueprint registration
+    - csrf token
+    - gunicorn flask
 ---
 
 # Flask Skill

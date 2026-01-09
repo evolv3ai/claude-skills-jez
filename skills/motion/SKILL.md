@@ -1,11 +1,26 @@
 ---
 name: motion
 description: |
-  Build sophisticated React animations with Motion (formerly Framer Motion) - declarative animations, gestures (drag, hover, tap), scroll effects, spring physics, layout animations, and SVG manipulation. Optimize bundle size with LazyMotion (4.6 KB) or useAnimate mini (2.3 KB).
+  Build React animations with Motion (Framer Motion) - gestures (drag, hover, tap), scroll effects, spring physics, layout animations, SVG. Bundle: 2.3 KB (mini) to 34 KB (full).
 
-  Use when: adding drag-and-drop interactions, creating scroll-triggered animations, implementing modal dialogs with transitions, building carousels with momentum, animating page/route transitions, creating parallax hero sections, implementing accordions with smooth expand/collapse, or optimizing animation bundle sizes. For simple list animations, use auto-animate skill instead (3.28 KB vs 34 KB).
-
-  Troubleshoot: AnimatePresence exit not working, large list performance issues, Tailwind transition conflicts, Next.js "use client" errors, scrollable container layout issues, or Cloudflare Workers build errors (resolved Dec 2024).
+  Use when: drag-and-drop, scroll animations, modals, carousels, parallax. Troubleshoot: AnimatePresence exit, list performance, Tailwind conflicts, Next.js "use client".
+metadata:
+  keywords:
+    - motion
+    - framer motion
+    - react animations
+    - gestures
+    - drag and drop
+    - scroll animations
+    - spring physics
+    - layout animations
+    - AnimatePresence
+    - LazyMotion
+    - useAnimate
+    - svg animation
+    - parallax
+    - modal transitions
+    - whileInView
 ---
 
 # Motion Animation Library

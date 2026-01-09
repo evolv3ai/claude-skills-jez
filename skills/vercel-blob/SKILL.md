@@ -1,9 +1,11 @@
 ---
 name: vercel-blob
 description: |
-  Integrate Vercel Blob object storage for file uploads, image management, and CDN-delivered assets in Next.js applications. Supports client-side uploads with presigned URLs and multipart transfers.
+  Integrate Vercel Blob for file uploads and CDN-delivered assets in Next.js. Supports client-side uploads with presigned URLs and multipart transfers for large files.
 
-  Use when implementing file uploads (images, PDFs, videos), managing user-generated content, or troubleshooting missing tokens, size limit errors, or client upload failures.
+  Use when implementing file uploads (images, PDFs, videos) or troubleshooting missing tokens, size limits, or client upload failures.
+metadata:
+  keywords: [Vercel Blob, file upload, object storage, CDN, Next.js, presigned URLs, multipart upload, images, PDFs, user-generated content, server actions]
 ---
 
 # Vercel Blob

@@ -1,9 +1,11 @@
 ---
 name: project-planning
 description: |
-  Generate structured planning documentation for web projects with context-safe phases, verification criteria, and exit conditions. Creates IMPLEMENTATION_PHASES.md plus conditional docs (DATABASE_SCHEMA, API_ENDPOINTS, UI_COMPONENTS, CRITICAL_WORKFLOWS).
+  Generate structured planning docs for web projects with context-safe phases, verification criteria, and exit conditions. Creates IMPLEMENTATION_PHASES.md plus conditional docs.
 
-  Use when: starting new Cloudflare Workers/React projects, adding major features to existing apps, breaking large work into manageable phases, or need verified planning before coding begins.
+  Use when: starting new projects, adding major features, or breaking large work into manageable phases.
+metadata:
+  keywords: [project-planning, implementation-phases, database-schema, api-endpoints, ui-components, critical-workflows, cloudflare-workers, react, verification-criteria]
 ---
 
 # Project Planning Skill

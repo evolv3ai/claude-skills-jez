@@ -1,9 +1,23 @@
 ---
 name: sveltia-cms
 description: |
-  Set up Sveltia CMS - the lightweight Git-backed CMS successor to Decap/Netlify CMS with 5x smaller bundle (300 KB), GraphQL performance, and 270+ fixed predecessor issues. Framework-agnostic for Hugo, Jekyll, 11ty, Gatsby, Astro.
+  Set up Sveltia CMS - lightweight Git-backed CMS successor to Decap/Netlify CMS (300KB bundle, 270+ fixes). Framework-agnostic for Hugo, Jekyll, 11ty, Astro.
 
-  Use when: adding CMS to static sites, migrating from Decap/Netlify CMS, enabling non-technical editors, or troubleshooting OAuth authentication failures, YAML parse errors, CORS/COOP policy problems, content not listing issues.
+  Use when adding CMS to static sites, migrating from Decap CMS, or fixing OAuth, YAML parse, CORS/COOP errors.
+metadata:
+  keywords:
+    - sveltia cms
+    - decap cms
+    - netlify cms
+    - git-backed cms
+    - static site cms
+    - hugo cms
+    - jekyll cms
+    - 11ty cms
+    - astro cms
+    - oauth authentication
+    - yaml parse error
+    - cors coop policy
 allowed-tools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep']
 ---
 

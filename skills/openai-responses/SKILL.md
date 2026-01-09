@@ -1,9 +1,11 @@
 ---
 name: openai-responses
 description: |
-  Build agentic AI applications with OpenAI's Responses API - the stateful successor to Chat Completions. Preserves reasoning across turns for 5% better multi-turn performance and 40-80% improved cache utilization.
+  Build agentic AI with OpenAI Responses API - stateful conversations with preserved reasoning, built-in tools (Code Interpreter, File Search, Web Search), and MCP integration.
 
-  Use when: building AI agents with persistent reasoning, integrating MCP servers for external tools, using built-in Code Interpreter/File Search/Web Search, managing stateful conversations, implementing background processing for long tasks, or migrating from Chat Completions to gain polymorphic outputs and server-side tools.
+  Use when: building agents with persistent reasoning, using server-side tools, or migrating from Chat Completions for better multi-turn performance.
+metadata:
+  keywords: [openai-responses, responses-api, stateful, agentic, code-interpreter, file-search, web-search, MCP, background-mode, polymorphic-outputs, conversation-state, reasoning]
 ---
 
 # OpenAI Responses API

@@ -1,14 +1,35 @@
 ---
 name: elevenlabs-agents
 description: |
-  Build conversational AI voice agents with ElevenLabs Platform using React, JavaScript, React Native, or Swift SDKs.
-  Configure agents, tools (client/server/MCP), RAG knowledge bases, multi-voice, and Scribe real-time STT.
+  Build conversational AI voice agents with ElevenLabs Platform. Configure agents, tools, RAG knowledge bases, multi-voice, and Scribe STT across React, React Native, or Swift. Prevents 27 documented errors.
 
-  Use when: building voice chat interfaces, implementing AI phone agents with Twilio, configuring agent workflows
-  or tools, adding RAG knowledge bases, testing with CLI "agents as code", or troubleshooting deprecated @11labs
-  packages, Android audio cutoff, CSP violations, dynamic variables, or WebRTC config.
-
-  Keywords: ElevenLabs Agents, ElevenLabs voice agents, AI voice agents, conversational AI, @elevenlabs/react, @elevenlabs/client, @elevenlabs/react-native, @elevenlabs/elevenlabs-js, @elevenlabs/agents-cli, elevenlabs SDK, voice AI, TTS, text-to-speech, ASR, speech recognition, turn-taking model, WebRTC voice, WebSocket voice, ElevenLabs conversation, agent system prompt, agent tools, agent knowledge base, RAG voice agents, multi-voice agents, pronunciation dictionary, voice speed control, elevenlabs scribe, @11labs deprecated, Android audio cutoff, CSP violation elevenlabs, dynamic variables elevenlabs, case-sensitive tool names, webhook authentication, post-call webhook, webhook payload schema, ElevenLabs-Signature header, transcript null message, call_successful string, webhook cost credits USD, charging llm_price, user context extraction, llm_usage tokens, data_collection_results, evaluation_criteria_results, feedback thumb_rating, interrupted turn, source_medium, rag_retrieval_info, has_audio has_user_audio has_response_audio
+  Use when: building voice agents, AI phone systems, or troubleshooting @11labs deprecated, webhook errors, CSP violations.
+metadata:
+  keywords:
+    - elevenlabs agents
+    - voice agents
+    - conversational ai
+    - "@elevenlabs/react"
+    - "@elevenlabs/client"
+    - "@elevenlabs/react-native"
+    - "@elevenlabs/agents-cli"
+    - voice ai
+    - tts
+    - text-to-speech
+    - asr
+    - speech recognition
+    - webrtc voice
+    - agent tools
+    - rag voice agents
+    - multi-voice
+    - elevenlabs scribe
+    - "@11labs deprecated"
+    - android audio cutoff
+    - csp violation
+    - dynamic variables
+    - webhook authentication
+    - ElevenLabs-Signature
+    - post-call webhook
 ---
 
 # ElevenLabs Agents Platform

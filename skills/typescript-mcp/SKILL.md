@@ -1,10 +1,12 @@
 ---
 name: typescript-mcp
 description: |
-  Build stateless MCP servers with TypeScript on Cloudflare Workers using @modelcontextprotocol/sdk. Provides patterns for tools, resources, prompts, and authentication (API keys, OAuth, Zero Trust).
+  Build MCP servers with TypeScript on Cloudflare Workers. Covers tools, resources, prompts, tasks, authentication (API keys, OAuth, Zero Trust), and Cloudflare service integrations.
 
-  Use when exposing APIs to LLMs, integrating Cloudflare services (D1, KV, R2, Vectorize), or troubleshooting export syntax errors, unclosed transport leaks, or CORS misconfigurations.
+  Use when exposing APIs to LLMs or troubleshooting export syntax errors, transport leaks, or CORS misconfigurations.
 allowed-tools: [Read, Write, Edit, Bash, Grep, Glob]
+metadata:
+  keywords: [MCP, Model Context Protocol, TypeScript, Cloudflare Workers, Hono, D1, KV, R2, Vectorize, LLM tools, API gateway, authentication, OAuth, Zero Trust, JSON-RPC]
 ---
 
 # TypeScript MCP on Cloudflare Workers

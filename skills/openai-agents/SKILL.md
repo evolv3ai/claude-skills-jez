@@ -1,9 +1,11 @@
 ---
 name: openai-agents
 description: |
-  Build AI applications with OpenAI Agents SDK - text agents, voice agents (realtime), multi-agent workflows with handoffs, tools with Zod schemas, input/output guardrails, structured outputs, and streaming. Deploy to Cloudflare Workers, Next.js, or React with human-in-the-loop patterns.
+  Build AI applications with OpenAI Agents SDK - text agents, voice agents, multi-agent handoffs, tools with Zod schemas, guardrails, and streaming.
 
-  Use when: building text-based agents with tools and Zod schemas, creating realtime voice agents with WebRTC/WebSocket, implementing multi-agent workflows with handoffs between specialists, setting up input/output guardrails for safety, requiring human approval for critical actions, streaming agent responses, deploying agents to Cloudflare Workers or Next.js, or troubleshooting Zod schema type errors, MCP tracing failures, infinite loops (MaxTurnsExceededError), tool call failures, schema mismatches, or voice agent handoff constraints.
+  Use when: building agents with tools, voice agents with WebRTC, multi-agent workflows, or troubleshooting MaxTurnsExceededError, tool call failures.
+metadata:
+  keywords: [openai-agents, agents-sdk, text-agents, voice-agents, realtime, multi-agent, handoffs, zod, guardrails, structured-outputs, streaming, human-in-the-loop, cloudflare-workers, nextjs, webrtc, websocket, MCP-tracing]
 ---
 
 # OpenAI Agents SDK

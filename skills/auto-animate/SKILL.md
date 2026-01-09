@@ -1,12 +1,11 @@
 ---
 name: auto-animate
 description: |
-  Zero-config animations for React, Vue, Solid, Svelte, Preact with @formkit/auto-animate (3.28kb).
-  Prevents 10+ documented errors: SSR/Next.js imports, conditional parents, missing keys, flexbox width,
-  table display, Jest/esbuild config, CSS position conflicts, Vue/Nuxt registration, Angular ESM.
+  Zero-config animations for React, Vue, Solid, Svelte, Preact with @formkit/auto-animate (3.28kb). Prevents 10+ documented errors including SSR imports, conditional parents, missing keys, and CSS conflicts.
 
-  Use when: animating lists/accordions/toasts/forms, troubleshooting SSR animation errors, need
-  accessible animations (auto prefers-reduced-motion), or want drop-in transitions without Motion overhead.
+  Use when: animating lists/accordions/toasts, troubleshooting SSR animation errors, or need accessible drop-in transitions with auto prefers-reduced-motion.
+metadata:
+  keywords: [auto-animate, formkit, React animation, Vue animation, Solid, Svelte, Preact, SSR, Next.js, conditional parents, missing keys, flexbox, table display, Jest, esbuild, CSS position, Vue registration, Nuxt, Angular ESM, prefers-reduced-motion]
 ---
 
 # AutoAnimate - Error Prevention Guide

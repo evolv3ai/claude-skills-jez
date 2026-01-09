@@ -1,9 +1,11 @@
 ---
 name: open-source-contributions
 description: |
-  Create maintainer-friendly pull requests for open source projects with clean code submissions and professional communication. Prevents 16 common mistakes that cause PR rejection.
+  Create maintainer-friendly pull requests with clean code and professional communication. Prevents 16 common mistakes that cause PR rejection.
 
-  Use when: contributing to public repositories, submitting PRs to community projects, migrating from contributor to maintainer workflows, or troubleshooting PR rejection, working on main branch errors, failing CI checks, or personal artifacts in commits.
+  Use when: contributing to open source, submitting PRs, or troubleshooting PR rejection, CI failures, or personal artifacts in commits.
+metadata:
+  keywords: [open-source, pull-request, PR, github, contributing, git, feature-branch, conventional-commits, code-review, CI, maintainer]
 ---
 
 # Open Source Contributions Skill

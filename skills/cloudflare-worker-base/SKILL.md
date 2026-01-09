@@ -1,17 +1,32 @@
 ---
 name: cloudflare-worker-base
 description: |
-  Set up Cloudflare Workers with Hono routing, Vite plugin, and Static Assets using production-tested patterns.
-  Prevents 8 errors: export syntax, routing conflicts, HMR crashes, gradual rollout asset mismatches, and free tier 429s.
+  Set up Cloudflare Workers with Hono routing, Vite plugin, and Static Assets. Prevents 8 errors including export syntax, routing conflicts, HMR crashes, and free tier 429s.
 
-  Use when: creating Workers projects, configuring Hono or Vite for Workers, deploying with Wrangler,
-  adding Static Assets with SPA fallback, or troubleshooting export syntax, API route conflicts, scheduled
-  handlers, or HMR race conditions.
-
-  Keywords: Cloudflare Workers, CF Workers, Hono, wrangler, Vite, Static Assets, @cloudflare/vite-plugin,
-  wrangler.jsonc, ES Module, run_worker_first, SPA fallback, API routes, serverless, edge computing,
-  "Cannot read properties of undefined", "Static Assets 404", "A hanging Promise was canceled",
-  "Handler does not export", deployment fails, routing not working, HMR crashes
+  Use when: creating Workers projects, configuring Hono/Vite, or troubleshooting export syntax, API route conflicts, or HMR issues.
+metadata:
+  keywords:
+    - cloudflare workers
+    - cf workers
+    - hono
+    - wrangler
+    - vite
+    - static assets
+    - "@cloudflare/vite-plugin"
+    - wrangler.jsonc
+    - es module
+    - run_worker_first
+    - spa fallback
+    - api routes
+    - serverless
+    - edge computing
+    - Cannot read properties of undefined
+    - Static Assets 404
+    - A hanging Promise was canceled
+    - Handler does not export
+    - hmr crashes
+    - workers rpc
+    - auto-provisioning
 ---
 
 # Cloudflare Worker Base Stack
