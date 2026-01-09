@@ -11,8 +11,8 @@ allowed-tools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep']
 
 Git-backed headless CMS with visual editing for content-heavy sites.
 
-**Last Updated**: 2025-11-28
-**Versions**: tinacms@2.10.0, @tinacms/cli@1.12.5
+**Last Updated**: 2026-01-09
+**Versions**: tinacms@3.2.0, @tinacms/cli@2.0.7
 
 ---
 

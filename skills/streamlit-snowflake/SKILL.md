@@ -7,7 +7,7 @@ description: |
 license: MIT
 metadata:
   version: "1.0.0"
-  last_verified: "2025-12-24"
+  last_verified: "2026-01-09"
   snowflake_cli: ">=3.14.0"
   streamlit: "1.35.0"
   python: "3.11"

@@ -15,7 +15,7 @@ Complete skill for integrating Sveltia CMS into static site projects.
 
 ## Current Versions
 
-- **@sveltia/cms**: 0.120.1 (November 2025)
+- **@sveltia/cms**: 0.120.1 (verified January 2026)
 - **Status**: Public Beta (v1.0 expected early 2026)
 - **Maturity**: Production-ready (270+ issues solved from predecessor)
 

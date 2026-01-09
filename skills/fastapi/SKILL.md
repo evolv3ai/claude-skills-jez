@@ -12,8 +12,8 @@ description: |
 
 Production-tested patterns for FastAPI with Pydantic v2, SQLAlchemy 2.0 async, and JWT authentication.
 
-**Latest Versions** (verified December 2025):
-- FastAPI: 0.123.2
+**Latest Versions** (verified January 2026):
+- FastAPI: 0.128.0
 - Pydantic: 2.11.7
 - SQLAlchemy: 2.0.30
 - Uvicorn: 0.35.0

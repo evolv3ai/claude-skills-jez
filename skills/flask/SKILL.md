@@ -12,7 +12,7 @@ description: |
 
 Production-tested patterns for Flask with the application factory pattern, Blueprints, and Flask-SQLAlchemy.
 
-**Latest Versions** (verified December 2025):
+**Latest Versions** (verified January 2026):
 - Flask: 3.1.2
 - Flask-SQLAlchemy: 3.1.1
 - Flask-Login: 0.6.3

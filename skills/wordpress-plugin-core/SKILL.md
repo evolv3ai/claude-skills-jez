@@ -8,7 +8,7 @@ description: |
 
 # WordPress Plugin Development (Core)
 
-**Last Updated**: 2025-11-28
+**Last Updated**: 2026-01-09
 **Latest Versions**: WordPress 6.8+, PHP 8.0+ recommended
 **Dependencies**: None (WordPress 5.9+, PHP 7.4+ minimum)
 
