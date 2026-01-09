@@ -188,6 +188,25 @@ This error passed all version checks because the npm version exists - but the sk
 
 When `/deep-audit <skill-name>` is invoked, execute the following steps:
 
+### Step 0: Check for --diff Flag (Incremental Audit)
+
+If `--diff` flag is present, first check if documentation has changed:
+
+```bash
+# Check if docs changed since last audit
+/home/jez/Documents/claude-skills/.venv/bin/python \
+  scripts/deep-audit-diff.py <skill-name>
+```
+
+**If exit code is 0** (docs unchanged): Report "Documentation unchanged since last audit" and skip full audit.
+
+**If exit code is 1** (needs re-audit): Continue with full audit below.
+
+**Output interpretation:**
+- `STATUS: UP TO DATE` → Skip audit, inform user
+- `STATUS: NEEDS RE-AUDIT` → Continue with full audit
+- `Reason: Last audit is X days old` → Cache expired, re-audit needed
+
 ### Step 1: Validate and Scrape
 
 ```bash
@@ -295,9 +314,54 @@ After all 4 agents complete:
 
 4. **Inform User**: Display summary and path to full report.
 
-### Step 5: Offer Next Steps
+### Step 5: Update History with Audit Result
+
+After generating the report, update `archive/audit-cache/<skill>/history.json` with the audit score:
+
+```python
+# Append audit result to history
+history[-1]["audit_result"] = {
+    "score": 8.5,  # Overall score
+    "status": "PASS",  # PASS | NEEDS_UPDATE | CRITICAL
+    "report_path": "planning/CONTENT_AUDIT_<skill>.md"
+}
+```
+
+This enables tracking audit quality over time.
+
+### Step 6: Offer Next Steps
 
 After report is generated, offer:
 1. Open report for review: `cat planning/CONTENT_AUDIT_<skill>.md`
 2. Start fixing issues (if any critical/high findings)
 3. Mark audit complete if score >= 8/10
+
+---
+
+## Bulk Operations
+
+### Check All Cached Skills
+
+```bash
+# See which skills need re-auditing
+/home/jez/Documents/claude-skills/.venv/bin/python \
+  scripts/deep-audit-diff.py --all
+```
+
+Output shows:
+- Skills that need re-audit (cache expired or docs changed)
+- Skills that are up to date
+
+### Tier-Based Auditing (Phase 4 - Future)
+
+```bash
+/deep-audit --tier 1    # Audit Tier 1 skills (highest priority)
+/deep-audit --tier 2    # Audit Tier 2 skills
+```
+
+### Pattern Matching (Phase 4 - Future)
+
+```bash
+/deep-audit cloudflare-*    # Audit all Cloudflare skills
+/deep-audit ai-*            # Audit all AI-related skills
+```
