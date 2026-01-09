@@ -17,7 +17,7 @@ allowed-tools:
 
 # better-auth - D1 Adapter & Error Prevention Guide
 
-**Package**: better-auth@1.4.10 (Dec 31, 2025)
+**Package**: better-auth@1.4.10 (Jan 9, 2026)
 **Breaking Changes**: ESM-only (v1.4.0), Admin impersonation prevention default (v1.4.6), Multi-team table changes (v1.3), D1 requires Drizzle/Kysely (no direct adapter)
 
 ---

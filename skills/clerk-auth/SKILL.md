@@ -6,9 +6,9 @@ description: |
 
 # Clerk Auth - Breaking Changes & Error Prevention Guide
 
-**Package Versions**: @clerk/nextjs@6.36.5, @clerk/backend@2.29.0, @clerk/clerk-react@5.59.2, @clerk/testing@1.13.26
+**Package Versions**: @clerk/nextjs@6.36.7, @clerk/backend@2.29.2, @clerk/clerk-react@5.59.2, @clerk/testing@1.13.26
 **Breaking Changes**: Nov 2025 - API version 2025-11-10, Oct 2024 - Next.js v6 async auth()
-**Last Updated**: 2026-01-06
+**Last Updated**: 2026-01-09
 
 ---
 
@@ -593,9 +593,9 @@ Add to `package.json`:
 ```json
 {
   "dependencies": {
-    "@clerk/nextjs": "^6.36.5",
+    "@clerk/nextjs": "^6.36.7",
     "@clerk/clerk-react": "^5.59.2",
-    "@clerk/backend": "^2.29.0",
+    "@clerk/backend": "^2.29.2",
     "@clerk/testing": "^1.13.26"
   }
 }

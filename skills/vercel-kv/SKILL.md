@@ -8,7 +8,7 @@ description: |
 
 # Vercel KV
 
-**Last Updated**: 2025-11-28
+**Last Updated**: 2026-01-09
 **Version**: @vercel/kv@3.0.0 (Redis-compatible, powered by Upstash)
 
 ---

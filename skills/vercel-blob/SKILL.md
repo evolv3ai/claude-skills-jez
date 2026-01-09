@@ -8,7 +8,7 @@ description: |
 
 # Vercel Blob
 
-**Last Updated**: 2025-11-28
+**Last Updated**: 2026-01-09
 **Version**: @vercel/blob@2.0.0
 
 ---

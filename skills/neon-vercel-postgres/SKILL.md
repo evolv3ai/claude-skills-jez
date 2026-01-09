@@ -9,9 +9,9 @@ description: |
 # Neon & Vercel Serverless Postgres
 
 **Status**: Production Ready
-**Last Updated**: 2025-11-26
+**Last Updated**: 2026-01-09
 **Dependencies**: None
-**Latest Versions**: `@neondatabase/serverless@1.0.2`, `@vercel/postgres@0.10.0`, `drizzle-orm@0.44.7`, `drizzle-kit@0.31.7`, `neonctl@2.18.1`
+**Latest Versions**: `@neondatabase/serverless@1.0.2`, `@vercel/postgres@0.10.0`, `drizzle-orm@0.45.1`, `drizzle-kit@0.31.8`, `neonctl@2.18.1`
 
 ---
 
@@ -119,8 +119,8 @@ npm install @vercel/postgres
 **With ORM**:
 ```bash
 # Drizzle ORM (recommended for edge compatibility)
-npm install drizzle-orm@0.44.7 @neondatabase/serverless@1.0.2
-npm install -D drizzle-kit@0.31.7
+npm install drizzle-orm@0.45.1 @neondatabase/serverless@1.0.2
+npm install -D drizzle-kit@0.31.8
 
 # Prisma (Node.js only)
 npm install prisma @prisma/client @prisma/adapter-neon @neondatabase/serverless
@@ -807,17 +807,17 @@ neonctl branches delete feature
 
 ---
 
-## Package Versions (Verified 2025-11-26)
+## Package Versions (Verified 2026-01-09)
 
 ```json
 {
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
     "@vercel/postgres": "^0.10.0",
-    "drizzle-orm": "^0.44.7"
+    "drizzle-orm": "^0.45.1"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.31.7",
+    "drizzle-kit": "^0.31.8",
     "neonctl": "^2.18.1"
   }
 }

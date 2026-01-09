@@ -24,7 +24,7 @@ description: |
 # Drizzle ORM for Cloudflare D1
 
 **Status**: Production Ready ✅
-**Last Updated**: 2026-01-06
+**Last Updated**: 2026-01-09
 **Latest Version**: drizzle-orm@0.45.1, drizzle-kit@0.31.8, better-sqlite3@12.5.0
 **Dependencies**: cloudflare-d1, cloudflare-worker-base
 
