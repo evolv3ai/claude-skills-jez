@@ -3,8 +3,8 @@
 **Repository**: https://github.com/jezweb/claude-skills
 **Purpose**: Production-ready skills for Claude Code CLI
 **Owner**: Jeremy Dawes (Jez) | Jezweb
-**Status**: Active Development | 63 Skills Complete (13 archived)
-**Last Updated**: 2025-12-15
+**Status**: Active Development | 72 Skills Complete (13 archived)
+**Last Updated**: 2026-01-09
 
 ---
 
