@@ -428,18 +428,28 @@ tools: Read, Grep, Glob, Bash
 ---
 ```
 
-### Agent Chainability Considerations
+### Agent Context Considerations
 
-Agent startup time and token usage affect orchestration performance:
+Agent context usage depends heavily on the task:
 
-| Agent Weight | Tokens | Startup | Chainability |
-|--------------|--------|---------|--------------|
-| Lightweight (<3k) | Fast | <2s | Excellent - fluid orchestration |
-| Medium (3k-10k) | Moderate | 2-5s | Good - most use cases |
-| Heavy (10k-25k) | Slow | 5-10s | Fair - use sparingly |
-| Very heavy (>25k) | Very slow | 10s+ | Poor - bottleneck risk |
+| Scenario | Context | Tool Calls | Works? |
+|----------|---------|------------|--------|
+| Deep research agent | 130k | 90+ | ✅ Yes |
+| Multi-file audit | 80k+ | 50+ | ✅ Yes |
+| Simple format check | 3k | 5-10 | ✅ Yes |
+| Chained orchestration | Varies | Varies | ✅ Depends on task |
 
-**Best practice**: Keep custom agent prompts under 3k tokens for smooth chaining.
+**Reality**: Agents with 90+ tool calls and 130k context work fine when doing meaningful work. The limiting factor is task complexity, not arbitrary token limits.
+
+**What actually matters**:
+- Is the agent making progress on each tool call?
+- Is context being used for real work vs redundant instructions?
+- Are results coherent at the end?
+
+**When context becomes a problem**:
+- Agent starts repeating itself or losing track
+- Results become incoherent or contradictory
+- Agent "forgets" earlier findings in long sessions
 
 ### Persona-Based Routing
 
@@ -908,7 +918,7 @@ Orchestration:
 Advanced:
   Background: Ctrl+B during agent execution
   Models: haiku (fast), sonnet (balanced), opus (deep)
-  Weight: Keep agents <3k tokens for smooth chaining
+  Context: 130k+ and 90+ tool calls work fine for real work
   Hooks: PreToolUse, PostToolUse, Stop events
 
 Resume agents:
