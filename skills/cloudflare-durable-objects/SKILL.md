@@ -2,6 +2,7 @@
 name: cloudflare-durable-objects
 description: |
   Build stateful Durable Objects for real-time apps, WebSocket servers, coordination, and persistent state. Use when: implementing chat rooms, multiplayer games, rate limiting, session management, WebSocket hibernation, or troubleshooting class export, migration, WebSocket state loss, or binding errors.
+user-invocable: true
 ---
 
 # Cloudflare Durable Objects

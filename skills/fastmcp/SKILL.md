@@ -4,6 +4,7 @@ description: |
   Build MCP servers in Python with FastMCP to expose tools, resources, and prompts to LLMs. Supports storage backends, middleware, OAuth Proxy, OpenAPI integration, and FastMCP Cloud deployment. Prevents 25+ errors.
 
   Use when: creating MCP servers, or troubleshooting module-level server, storage, lifespan, middleware, or OAuth errors.
+user-invocable: true
 ---
 
 # FastMCP - Build MCP Servers in Python

@@ -2,6 +2,7 @@
 name: cloudflare-r2
 description: |
   Store objects with R2's S3-compatible storage on Cloudflare's edge. Use when: uploading/downloading files, configuring CORS, generating presigned URLs, multipart uploads, managing metadata, or troubleshooting R2_ERROR, CORS failures, presigned URL issues, or quota errors.
+user-invocable: true
 ---
 
 # Cloudflare R2 Object Storage

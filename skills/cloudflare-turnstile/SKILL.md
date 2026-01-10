@@ -2,6 +2,7 @@
 name: cloudflare-turnstile
 description: |
   Add bot protection with Turnstile (CAPTCHA alternative). Use when: protecting forms, securing login/signup, preventing spam, migrating from reCAPTCHA, integrating with React/Next.js/Hono, implementing E2E tests, or debugging CSP errors, token validation failures, or error codes 100*/300*/600*.
+user-invocable: true
 ---
 
 # Cloudflare Turnstile

@@ -4,6 +4,7 @@ description: |
   Build AI agents with Cloudflare Agents SDK on Workers + Durable Objects. Provides WebSockets, state persistence, scheduling, and multi-agent coordination. Prevents 16 documented errors.
 
   Use when: building WebSocket agents, RAG with Vectorize, MCP servers, or troubleshooting "Agent class must extend", "new_sqlite_classes", binding errors.
+user-invocable: true
 ---
 
 # Cloudflare Agents SDK

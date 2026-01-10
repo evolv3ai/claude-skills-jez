@@ -4,6 +4,7 @@ description: |
   Build type-safe, file-based React routing with TanStack Router. Supports client-side navigation, route loaders, and TanStack Query integration.
 
   Use when implementing file-based routing patterns, building SPAs with TypeScript routing, or troubleshooting devtools dependency errors, type safety issues, or Vite bundling problems.
+user-invocable: true
 ---
 
 # TanStack Router

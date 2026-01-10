@@ -4,6 +4,7 @@ description: |
   Build type-safe global state in React with Zustand. Supports TypeScript, persist middleware, devtools, slices pattern, and Next.js SSR with hydration handling.
 
   Use when setting up React state, migrating from Redux/Context, or troubleshooting hydration errors, TypeScript inference, or infinite render loops.
+user-invocable: true
 ---
 
 # Zustand State Management

@@ -4,6 +4,7 @@ description: |
   Build full-stack React apps with TanStack Start on Cloudflare Workers. Type-safe routing, server functions, SSR/streaming, D1/KV/R2 integration.
 
   Use when building full-stack React apps with SSR, or migrating from Next.js. RC status - monitor #5734 before production.
+user-invocable: true
 allowed-tools: [Bash, Read, Write, Edit]
 ---
 

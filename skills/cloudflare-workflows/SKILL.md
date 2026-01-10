@@ -4,6 +4,7 @@ description: |
   Build durable workflows with Cloudflare Workflows (GA April 2025). Features step.do, step.sleep, waitForEvent, Vitest testing, automatic retries, and state persistence for long-running tasks.
 
   Use when: creating workflows, implementing retries, or troubleshooting NonRetryableError, I/O context, serialization errors.
+user-invocable: true
 ---
 
 # Cloudflare Workflows
