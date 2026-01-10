@@ -102,6 +102,18 @@ This skill activates when conversations include:
 - Artifact nesting in snowflake.yml
 - REFERENCE_USAGE grant syntax for shared data
 
+## Included Agents
+
+This skill includes **1 companion agent** for common workflows:
+
+| Agent | Purpose | Trigger Phrases |
+|-------|---------|-----------------|
+| **snowflake-deploy** | Deploy native apps, run security scans | "deploy snowflake app", "publish to marketplace" |
+
+**Why use the agent?** Context hygiene. Native app deployment involves security scans, version management, and release directives - the agent handles the multi-step workflow and returns a clean status report.
+
+---
+
 ## Related Skills
 
 - `streamlit-snowflake` - Streamlit apps in Snowflake
