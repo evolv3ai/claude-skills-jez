@@ -1,7 +1,7 @@
 ---
 name: docs-workflow
 description: |
-  Documentation lifecycle management for Claude Code projects. Create, maintain, and audit CLAUDE.md, README.md, and docs/ structure with smart templates.
+  Four slash commands for documentation lifecycle: /docs, /docs-init, /docs-update, /docs-claude. Create, maintain, and audit CLAUDE.md, README.md, and docs/ structure with smart templates.
 
   Use when: starting new projects, maintaining documentation, auditing docs for staleness, or ensuring CLAUDE.md matches project state.
 user-invocable: true
