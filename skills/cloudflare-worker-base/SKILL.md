@@ -225,6 +225,28 @@ const { valid, userId } = await env.AUTH.verifyToken(authHeader)
 - **Self-bindings**: In `wrangler dev`, shows as `[connected]` for same-Worker calls
 
 
+## Commands
+
+### `/deploy` - One-Command Deploy Pipeline
+
+**Use when**: Ready to commit, push, and deploy your Cloudflare Worker in one step.
+
+**Does**:
+1. **Pre-flight**: Verifies wrangler config, checks for changes, builds, runs TypeScript check
+2. **Commit & Push**: Stages changes, generates conventional commit message, pushes to remote
+3. **Deploy**: Runs `wrangler deploy`, captures Worker URL
+4. **Report**: Shows commit hash, branch, deployed URL, any warnings
+
+**Time savings**: 2-3 min per deploy cycle
+
+**Edge Cases Handled**:
+- No changes to commit → skips to deploy
+- Build script missing → warns and continues
+- No remote configured → reports error with suggestion
+- TypeScript errors → stops and reports
+
+---
+
 ## Bundled Resources
 
 **Templates**: Complete setup files in `templates/` directory (wrangler.jsonc, vite.config.ts, package.json, tsconfig.json, src/index.ts, public/index.html, styles.css, script.js)
