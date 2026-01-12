@@ -12,37 +12,47 @@
 
 ---
 
-## office Skill: Phase 1 - Skill Scaffolding 🔄
+## office Skill: Phase 1 - Skill Scaffolding ✅
 
-**Type**: Setup | **Started**: 2026-01-12
-**Spec**: `docs/IMPLEMENTATION_PHASES-office.md#phase-1`
+**Type**: Setup | **Completed**: 2026-01-12
+**Summary**: Created full skill with comprehensive patterns (accelerated Phases 1-4)
+
+**Completed**:
+- [x] Directory structure (rules/, templates/, references/, scripts/)
+- [x] SKILL.md with full DOCX, XLSX, PDF patterns
+- [x] README.md with comprehensive keywords
+- [x] rules/office.md with correction patterns
+- [x] Verified YAML frontmatter (414 chars, valid)
+
+## Phase 2-4: Document Patterns ✅ (Merged into Phase 1)
+
+SKILL.md already contains complete patterns for:
+- DOCX: Headings, paragraphs, tables, images, export
+- XLSX: Arrays, JSON, formulas, multiple sheets, export
+- PDF: Text, fonts, images, shapes, forms, merge
+
+## Phase 5: Templates & References 🔄
+
+**Type**: Implementation | **Started**: 2026-01-12
+**Spec**: `docs/IMPLEMENTATION_PHASES-office.md#phase-5`
 
 **Progress**:
-- [ ] Create skill directory structure
-- [ ] Create SKILL.md skeleton with YAML frontmatter
-- [ ] Create README.md with keywords
-- [ ] Verify against claude-skills standards
+- [ ] Create `templates/docx-basic.ts`
+- [ ] Create `templates/xlsx-basic.ts`
+- [ ] Create `templates/pdf-basic.ts`
+- [ ] Create `templates/workers-pdf.ts`
+- [ ] Create `references/docx-api.md`
+- [ ] Create `references/xlsx-api.md`
+- [ ] Create `references/pdf-lib-api.md`
+- [ ] Create `scripts/verify-deps.sh`
 
-**Next Action**: Create `skills/office/` directory structure following `templates/skill-skeleton/`
+**Next Action**: Create template files starting with `templates/docx-basic.ts`
 
 **Key Files**:
-- `skills/office/SKILL.md`
-- `skills/office/README.md`
-- `templates/skill-skeleton/` (reference)
+- `skills/office/templates/`
+- `skills/office/references/`
 
 **Known Issues**: None
-
-## Phase 2: DOCX Patterns ⏸️
-**Spec**: `docs/IMPLEMENTATION_PHASES-office.md#phase-2`
-
-## Phase 3: XLSX Patterns ⏸️
-**Spec**: `docs/IMPLEMENTATION_PHASES-office.md#phase-3`
-
-## Phase 4: PDF Patterns ⏸️
-**Spec**: `docs/IMPLEMENTATION_PHASES-office.md#phase-4`
-
-## Phase 5: Workers Integration ⏸️
-**Spec**: `docs/IMPLEMENTATION_PHASES-office.md#phase-5`
 
 ## Phase 6: Polish & Marketplace ⏸️
 **Spec**: `docs/IMPLEMENTATION_PHASES-office.md#phase-6`
