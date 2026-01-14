@@ -256,6 +256,58 @@ Search CSS for:
 
 Flag any that may not meet 4.5:1 ratio.
 
+#### Contrast Ratio Calculation
+
+To calculate contrast ratio manually, use this formula:
+
+**Step 1: Convert hex to relative luminance**
+```
+For each R, G, B value (0-255):
+1. Divide by 255 to get 0-1 range
+2. If value ≤ 0.03928: L = value / 12.92
+   If value > 0.03928: L = ((value + 0.055) / 1.055) ^ 2.4
+3. Luminance = 0.2126 × R + 0.7152 × G + 0.0722 × B
+```
+
+**Step 2: Calculate ratio**
+```
+Ratio = (L1 + 0.05) / (L2 + 0.05)
+Where L1 is the lighter color's luminance and L2 is the darker
+```
+
+**Quick Reference - Common Colors:**
+
+| Color | Hex | Luminance | vs White (#fff) | vs Black (#000) |
+|-------|-----|-----------|-----------------|-----------------|
+| White | #ffffff | 1.000 | 1:1 | 21:1 ✅ |
+| Black | #000000 | 0.000 | 21:1 ✅ | 1:1 |
+| Gray 500 | #6b7280 | 0.183 | 4.6:1 ✅ | 4.6:1 ✅ |
+| Gray 400 | #9ca3af | 0.352 | 2.9:1 ❌ | 7.4:1 ✅ |
+| Gray 600 | #4b5563 | 0.104 | 7.5:1 ✅ | 2.8:1 ❌ |
+| Slate 500 | #64748b | 0.176 | 4.7:1 ✅ | 4.5:1 ✅ |
+| Teal 500 | #14b8a6 | 0.356 | 2.8:1 ❌ | 7.6:1 ✅ |
+| Blue 600 | #2563eb | 0.137 | 5.7:1 ✅ | 3.7:1 ❌ |
+| Red 500 | #ef4444 | 0.213 | 4.0:1 ❌ | 5.3:1 ✅ |
+
+**WCAG Requirements:**
+- **4.5:1** - Normal text (< 18pt regular or < 14pt bold)
+- **3:1** - Large text (≥ 18pt regular or ≥ 14pt bold) and UI components
+- **3:1** - Focus indicators
+
+**Common Failing Combinations:**
+- Light gray text (#9ca3af) on white ❌
+- Teal (#14b8a6) text on white ❌
+- White text on light backgrounds ❌
+- Yellow (#fbbf24) text on white ❌
+
+**Safe Dark Text on Light Background:**
+- Use #374151 (gray-700) or darker
+- Use #1e293b (slate-800) for high contrast
+
+**Safe Light Text on Dark Background:**
+- Use #f9fafb (gray-50) or lighter
+- Use #ffffff for maximum contrast
+
 ### ARIA Misuse
 
 ```bash

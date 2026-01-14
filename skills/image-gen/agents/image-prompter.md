@@ -131,3 +131,80 @@ Professional, trustworthy, approachable mood.
 | Missing element | "Add [element] to [location]" |
 | Wrong lighting | "Make lighting more [warm/cool/dramatic]" |
 | Text illegible | "Make text larger and clearer" |
+
+---
+
+## Negative Prompts (What to Avoid)
+
+Always include "Do NOT include" or "Avoid" statements to prevent common artifacts:
+
+### For Photorealistic Images
+```
+Do NOT include:
+- Watermarks or text overlays
+- Extra limbs or distorted body parts
+- Blurry or out-of-focus areas
+- Unnatural skin textures or tones
+- Stock photo-style corporate posing
+```
+
+### For Illustrations/Vector
+```
+Avoid:
+- Photorealistic elements mixed with vector
+- Busy backgrounds that distract from subject
+- Gradients that clash with flat design
+- Multiple conflicting art styles
+```
+
+### For Infographics
+```
+Do NOT include:
+- Decorative elements that distract from data
+- Illegible small text
+- 3D effects that reduce clarity
+- More than 3-4 colors
+```
+
+### For Product Shots
+```
+Avoid:
+- Reflections that obscure product details
+- Background elements competing with product
+- Unrealistic proportions or scale
+- Visible supports or stands
+```
+
+### For Backgrounds/Textures
+```
+Do NOT include:
+- Recognizable objects or faces
+- Sharp contrast that distracts from foreground content
+- Patterns that cause visual fatigue
+- Elements that won't tile seamlessly (if tiling needed)
+```
+
+### Common AI Image Artifacts to Specify Against
+```
+Avoid:
+- Extra fingers or incorrect hand anatomy
+- Text/letters that are garbled or nonsensical
+- Inconsistent shadows (multiple light sources)
+- Floating objects without proper grounding
+- Uncanny valley facial expressions
+```
+
+### Example with Negative Prompt
+
+```
+**Prompt:**
+A photorealistic hero image of a modern home office with large windows,
+natural light streaming in, minimalist desk with laptop, plants on shelves.
+Warm, inviting atmosphere, shot at 35mm f/2.8, shallow depth of field.
+
+Do NOT include: people, visible brand logos on devices, cluttered desk,
+harsh shadows, corporate/generic stock photo feel.
+
+**Model:** gemini-2.5-pro-preview-image-generation
+**Config:** { aspectRatio: "16:9" }
+```

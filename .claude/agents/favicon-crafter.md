@@ -174,6 +174,62 @@ Always deliver:
 <polygon points="16,0 30,8 30,24 16,32 2,24 2,8" fill="[COLOR]"/>
 ```
 
+### Star (ratings, favorites, awards)
+```xml
+<polygon points="16,0 20,12 32,12 22,19 26,32 16,24 6,32 10,19 0,12 12,12" fill="[COLOR]"/>
+```
+
+### Diamond (premium, luxury)
+```xml
+<polygon points="16,0 32,16 16,32 0,16" fill="[COLOR]"/>
+```
+
+### Heart (love, wellness, community)
+```xml
+<path d="M16 28C16 28 4 20 4 12C4 8 7 4 12 4C14 4 16 6 16 6C16 6 18 4 20 4C25 4 28 8 28 12C28 20 16 28 16 28Z" fill="[COLOR]"/>
+```
+
+### Cloud (cloud services, storage)
+```xml
+<path d="M8 22C4 22 2 19 2 16C2 13 5 11 8 11C8 7 12 4 17 4C22 4 26 8 26 13C29 13 30 16 30 18C30 21 28 22 25 22Z" fill="[COLOR]"/>
+```
+
+### Gradient Backgrounds
+
+**Two-color gradient (diagonal):**
+```xml
+<defs>
+  <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" style="stop-color:[COLOR1];stop-opacity:1" />
+    <stop offset="100%" style="stop-color:[COLOR2];stop-opacity:1" />
+  </linearGradient>
+</defs>
+<circle cx="16" cy="16" r="16" fill="url(#grad)"/>
+```
+
+**Three-color gradient (horizontal):**
+```xml
+<defs>
+  <linearGradient id="grad" x1="0%" y1="50%" x2="100%" y2="50%">
+    <stop offset="0%" style="stop-color:[COLOR1];stop-opacity:1" />
+    <stop offset="50%" style="stop-color:[COLOR2];stop-opacity:1" />
+    <stop offset="100%" style="stop-color:[COLOR3];stop-opacity:1" />
+  </linearGradient>
+</defs>
+<circle cx="16" cy="16" r="16" fill="url(#grad)"/>
+```
+
+**Radial gradient (glow effect):**
+```xml
+<defs>
+  <radialGradient id="grad" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" style="stop-color:[COLOR1];stop-opacity:1" />
+    <stop offset="100%" style="stop-color:[COLOR2];stop-opacity:1" />
+  </radialGradient>
+</defs>
+<circle cx="16" cy="16" r="16" fill="url(#grad)"/>
+```
+
 ---
 
 ## Example Outputs
