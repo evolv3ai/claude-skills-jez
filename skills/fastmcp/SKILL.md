@@ -1,9 +1,9 @@
 ---
 name: fastmcp
 description: |
-  Build MCP servers in Python with FastMCP to expose tools, resources, and prompts to LLMs. Supports storage backends, middleware, OAuth Proxy, OpenAPI integration, and FastMCP Cloud deployment. Prevents 25+ errors.
+  Build MCP servers in Python with FastMCP to expose tools, resources, and prompts to LLMs. Supports storage backends, middleware, OAuth Proxy, OpenAPI integration, and FastMCP Cloud deployment. Prevents 30+ errors.
 
-  Use when: creating MCP servers, or troubleshooting module-level server, storage, lifespan, middleware, or OAuth errors.
+  Use when: creating MCP servers, or troubleshooting module-level server, storage, lifespan, middleware, OAuth, background tasks, or FastAPI mount errors.
 user-invocable: true
 ---
 
@@ -83,6 +83,91 @@ python server.py --transport http --port 8000
 
 **Known Compatibility:**
 - MCP SDK pinned to <2.x (v2.14.2+)
+
+## What's New in v3.0.0 (Beta - January 2026)
+
+**⚠️ MAJOR BREAKING CHANGES** - FastMCP 3.0 is a complete architectural refactor.
+
+### Provider Architecture
+
+All components now sourced via **Providers**:
+- `FileSystemProvider` - Discover decorated functions from directories with hot-reload
+- `SkillsProvider` - Expose agent skill files as MCP resources
+- `OpenAPIProvider` - Auto-generate from OpenAPI specs
+- `ProxyProvider` - Proxy to remote MCP servers
+
+```python
+from fastmcp import FastMCP
+from fastmcp.providers import FileSystemProvider
+
+mcp = FastMCP("server")
+mcp.add_provider(FileSystemProvider(path="./tools", reload=True))
+```
+
+### Transforms (Component Middleware)
+
+Modify components without changing source code:
+- Namespace, rename, filter by version
+- `ResourcesAsTools` - Expose resources as tools
+- `PromptsAsTools` - Expose prompts as tools
+
+```python
+from fastmcp.transforms import Namespace, VersionFilter
+
+mcp.add_transform(Namespace(prefix="api"))
+mcp.add_transform(VersionFilter(min_version="2.0"))
+```
+
+### Component Versioning
+
+```python
+@mcp.tool(version="2.0")
+async def fetch_data(query: str) -> dict:
+    # Clients see highest version by default
+    # Can request specific version
+    return {"data": [...]}
+```
+
+### Session-Scoped State
+
+```python
+@mcp.tool()
+async def set_preference(key: str, value: str, ctx: Context) -> dict:
+    await ctx.set_state(key, value)  # Persists across session
+    return {"saved": True}
+
+@mcp.tool()
+async def get_preference(key: str, ctx: Context) -> dict:
+    value = await ctx.get_state(key, default=None)
+    return {"value": value}
+```
+
+### Other Features
+
+- `--reload` flag for auto-restart during development
+- Automatic threadpool dispatch for sync functions
+- Tool timeouts
+- OpenTelemetry tracing
+- Component authorization: `@tool(auth=require_scopes("admin"))`
+
+### Migration Guide
+
+**Pin to v2 if not ready**:
+```
+# requirements.txt
+fastmcp<3
+```
+
+**For most servers**, updating the import is all you need:
+```python
+# v2.x and v3.0 compatible
+from fastmcp import FastMCP
+
+mcp = FastMCP("server")
+# ... rest of code works the same
+```
+
+**See**: [Official Migration Guide](https://github.com/jlowin/fastmcp/blob/main/docs/development/upgrade-guide.mdx)
 
 ---
 
@@ -183,6 +268,12 @@ async def analyze_large_dataset(dataset_id: str, context: Context) -> dict:
 - Operations that may need user input mid-execution
 - Long-running API calls or data processing
 
+**Known Limitation (v2.14.x)**:
+- `statusMessage` from `ctx.report_progress()` is **not forwarded** to clients during background task polling ([GitHub Issue #2904](https://github.com/jlowin/fastmcp/issues/2904))
+- Progress messages appear in server logs but not in client UI
+- **Workaround**: Use official MCP SDK (`mcp>=1.10.0`) instead of FastMCP for now
+- **Status**: Fix pending in [PR #2906](https://github.com/jlowin/fastmcp/pull/2906)
+
 **Important:** Tasks execute through Docket scheduler. Cannot execute tasks through proxies (will raise error).
 
 ## Sampling with Tools (v2.14.1+)
@@ -248,6 +339,9 @@ async def get_single_response(prompt: str, context: Context) -> dict:
 **Sampling Handlers:**
 - `AnthropicSamplingHandler` - For Claude models (v2.14.1+)
 - `OpenAISamplingHandler` - For GPT models
+
+**Known Limitation**:
+`ctx.sample()` works when client connects to a single server but fails with "Sampling not supported" error when multiple servers are configured in client. Tools without sampling work fine. ([Community-sourced finding](https://github.com/jlowin/fastmcp/issues/699))
 
 ## Storage Backends
 
@@ -449,6 +543,16 @@ mcp = FastMCP("GitHub Auth", auth=auth)
 
 **Supported Providers:** GitHub, Google, Azure, AWS Cognito, Discord, Facebook, WorkOS, AuthKit, Descope, Scalekit, OCI (v2.13.1)
 
+**Supabase Provider** (v2.14.2+):
+```python
+from fastmcp.auth import SupabaseProvider
+
+auth = SupabaseProvider(
+    auth_route="/custom-auth",  # Custom auth route (new in v2.14.2)
+    # ... other config
+)
+```
+
 ## Icons, API Integration, Cloud Deployment
 
 **Icons:** Add to servers, tools, resources, prompts. Use `Icon(url, size)`, data URIs via `Icon.from_file()` or `Image.to_data_uri()` (v2.13.1).
@@ -480,7 +584,7 @@ def create_server():
 {"mcpServers": {"my-server": {"url": "https://project.fastmcp.app/mcp", "transport": "http"}}}
 ```
 
-## 25 Common Errors (With Solutions)
+## 30 Common Errors (With Solutions)
 
 ### Error 1: Missing Server Object
 **Error:** `RuntimeError: No server object found at module level`
@@ -519,6 +623,11 @@ def create_server():
 **Cause:** Client and server using incompatible transports
 **Solution:** Match transports - stdio: `mcp.run()` + `{"command": "python", "args": ["server.py"]}`, HTTP: `mcp.run(transport="http", port=8000)` + `{"url": "http://localhost:8000/mcp", "transport": "http"}`
 
+**HTTP Timeout Issue (Fixed in v2.14.3)**:
+- HTTP transport was defaulting to 5-second timeout instead of MCP's 30-second default ([GitHub Issue #2845](https://github.com/jlowin/fastmcp/issues/2845))
+- Tools taking >5 seconds would fail silently in v2.14.2 and earlier
+- **Solution**: Upgrade to fastmcp>=2.14.3 (timeout now respects MCP's 30s default)
+
 ### Error 8: Import Errors (Editable Package)
 **Error:** `ModuleNotFoundError: No module named 'my_package'`
 **Cause:** Package not properly installed
@@ -538,6 +647,39 @@ def create_server():
 **Error:** `TypeError: Object of type 'ndarray' is not JSON serializable`
 **Cause:** Unsupported type hints (NumPy arrays, custom classes)
 **Solution:** Return JSON-compatible types: `list[float]` or convert: `{"values": np_array.tolist()}`
+
+**Custom Classes Not Supported (Community-sourced)**:
+FastMCP supports all Pydantic-compatible types, but custom classes must be converted to dictionaries or Pydantic models for tool returns:
+```python
+# ❌ NOT SUPPORTED
+class MyCustomClass:
+    def __init__(self, value: str):
+        self.value = value
+
+@mcp.tool()
+async def get_custom() -> MyCustomClass:
+    return MyCustomClass("test")  # Serialization error
+
+# ✅ SUPPORTED - Use dict or Pydantic
+@mcp.tool()
+async def get_custom() -> dict[str, str]:
+    obj = MyCustomClass("test")
+    return {"value": obj.value}
+
+# OR use Pydantic BaseModel
+from pydantic import BaseModel
+class MyModel(BaseModel):
+    value: str
+
+@mcp.tool()
+async def get_model() -> MyModel:
+    return MyModel(value="test")  # Works!
+```
+
+**OutputSchema $ref Resolution (Fixed in v2.14.2)**:
+- Root-level `$ref` in `outputSchema` wasn't being dereferenced ([GitHub Issue #2720](https://github.com/jlowin/fastmcp/issues/2720))
+- Caused MCP spec non-compliance and client compatibility issues
+- **Solution**: Upgrade to fastmcp>=2.14.2 (auto-dereferences $ref)
 
 ### Error 12: JSON Serialization
 **Error:** `TypeError: Object of type 'datetime' is not JSON serializable`
@@ -641,6 +783,59 @@ from fastmcp import Image
 from fastmcp.utilities import Image
 ```
 
+### Error 29: FastAPI Mount Path Doubling
+**Error:** Client can't connect to `/mcp` endpoint, gets 404
+**Source:** [GitHub Issue #2961](https://github.com/jlowin/fastmcp/issues/2961)
+**Cause:** Mounting FastMCP at `/mcp` creates endpoint at `/mcp/mcp` due to path prefix duplication
+**Solution:** Mount at root `/` or adjust client config
+
+```python
+# ❌ WRONG - Creates /mcp/mcp endpoint
+from fastapi import FastAPI
+from fastmcp import FastMCP
+
+mcp = FastMCP("server")
+app = FastAPI(lifespan=mcp.lifespan)
+app.mount("/mcp", mcp)  # Endpoint becomes /mcp/mcp
+
+# ✅ CORRECT - Mount at root
+app.mount("/", mcp)  # Endpoint is /mcp
+
+# ✅ OR adjust client config
+# In claude_desktop_config.json:
+{"url": "http://localhost:8000/mcp/mcp", "transport": "http"}
+```
+
+**Critical**: Must also pass `lifespan=mcp.lifespan` to FastAPI (see Error #17).
+
+### Error 30: Background Tasks Fail with "No Active Context" (ASGI Mount)
+**Error:** `RuntimeError: No active context found`
+**Source:** [GitHub Issue #2877](https://github.com/jlowin/fastmcp/issues/2877)
+**Cause:** ContextVar propagation issue when FastMCP mounted in FastAPI/Starlette with background tasks (`task=True`)
+**Solution:** Upgrade to fastmcp>=2.14.3
+
+```python
+# In v2.14.2 and earlier - FAILS
+from fastapi import FastAPI
+from fastmcp import FastMCP, Context
+
+mcp = FastMCP("server")
+app = FastAPI(lifespan=mcp.lifespan)
+
+@mcp.tool(task=True)
+async def sample(name: str, ctx: Context) -> dict:
+    # RuntimeError: No active context found
+    await ctx.report_progress(1, 1, "Processing")
+    return {"status": "OK"}
+
+app.mount("/", mcp)
+
+# ✅ FIXED in v2.14.3
+# pip install fastmcp>=2.14.3
+```
+
+**Note**: Related to Error #17 (Lifespan Not Passed to ASGI App).
+
 ---
 
 ## Production Patterns, Testing, CLI
@@ -674,8 +869,8 @@ FASTMCP_LOG_LEVEL=DEBUG fastmcp dev  # Debug logging
 
 **Official:** https://github.com/jlowin/fastmcp, https://fastmcp.cloud, https://modelcontextprotocol.io, Context7: `/jlowin/fastmcp`
 **Related Skills:** openai-api, claude-api, cloudflare-worker-base, typescript-mcp
-**Package Versions:** fastmcp>=2.14.2 (PyPI), Python>=3.10, httpx, pydantic, py-key-value-aio, cryptography
-**Last Updated**: 2026-01-09
+**Package Versions:** fastmcp>=2.14.2 (PyPI), Python>=3.10 (3.13 supported in v2.14.1+), httpx, pydantic, py-key-value-aio, cryptography
+**Last Updated**: 2026-01-21
 
 **17 Key Takeaways:**
 1. Module-level server export (FastMCP Cloud)
@@ -696,6 +891,6 @@ FASTMCP_LOG_LEVEL=DEBUG fastmcp dev  # Debug logging
 16. **Background tasks** for long-running operations (`task=True`)
 17. **Sampling with tools** for agentic workflows (`ctx.sample(tools=[...])`)
 
-**Production Readiness:** Encrypted storage, 4 auth patterns, 8 middleware types, modular composition, OAuth security (consent screens, PKCE, RFC 7662), response caching, connection pooling, timing middleware, background tasks, agentic sampling
+**Production Readiness:** Encrypted storage, 4 auth patterns, 8 middleware types, modular composition, OAuth security (consent screens, PKCE, RFC 7662), response caching, connection pooling, timing middleware, background tasks, agentic sampling, FastAPI/Starlette mounting, v3.0 provider architecture
 
-**Prevents 25+ errors. 90-95% token savings.**
+**Prevents 30+ errors. 90-95% token savings.**

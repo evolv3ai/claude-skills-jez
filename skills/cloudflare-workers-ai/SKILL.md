@@ -1,16 +1,16 @@
 ---
 name: cloudflare-workers-ai
 description: |
-  Run LLMs and AI models on Cloudflare's GPU network with Workers AI. Includes Llama 4, Gemma 3, Mistral 3.1, Flux images, BGE embeddings, streaming, and AI Gateway. Handles 2025 breaking changes.
+  Run LLMs and AI models on Cloudflare's GPU network with Workers AI. Includes Llama 4, Gemma 3, Mistral 3.1, Flux images, BGE embeddings, streaming, and AI Gateway. Handles 2025 breaking changes. Prevents 7 documented errors.
 
-  Use when: implementing LLM inference, images, RAG, or troubleshooting AI_ERROR, rate limits, max_tokens, BGE pooling.
+  Use when: implementing LLM inference, images, RAG, or troubleshooting AI_ERROR, rate limits, max_tokens, BGE pooling, context window, neuron billing, Miniflare AI binding, NSFW filter, num_steps.
 user-invocable: true
 ---
 
 # Cloudflare Workers AI
 
 **Status**: Production Ready ✅
-**Last Updated**: 2026-01-09
+**Last Updated**: 2026-01-21
 **Dependencies**: cloudflare-worker-base (for Worker setup)
 **Latest Versions**: wrangler@4.58.0, @cloudflare/workers-types@4.20260109.0, workers-ai-provider@3.0.2
 
@@ -45,6 +45,144 @@ export default {
 ```
 
 **Why streaming?** Prevents buffering in memory, faster time-to-first-token, avoids Worker timeout issues.
+
+---
+
+## Known Issues Prevention
+
+This skill prevents **7** documented issues:
+
+### Issue #1: Context Window Validation Changed to Tokens (February 2025)
+
+**Error**: `"Exceeded character limit"` despite model supporting larger context
+**Source**: [Cloudflare Changelog](https://developers.cloudflare.com/changelog/2025-02-24-context-windows/)
+**Why It Happens**: Before February 2025, Workers AI validated prompts using a hard 6144 character limit, even for models with larger token-based context windows (e.g., Mistral with 32K tokens). After the update, validation switched to token-based counting.
+**Prevention**: Calculate tokens (not characters) when checking context window limits.
+
+```typescript
+import { encode } from 'gpt-tokenizer'; // or model-specific tokenizer
+
+const tokens = encode(prompt);
+const contextWindow = 32768; // Model's max tokens (check docs)
+const maxResponseTokens = 2048;
+
+if (tokens.length + maxResponseTokens > contextWindow) {
+  throw new Error(`Prompt exceeds context window: ${tokens.length} tokens`);
+}
+
+const response = await env.AI.run('@cf/mistral/mistral-7b-instruct-v0.2', {
+  messages: [{ role: 'user', content: prompt }],
+  max_tokens: maxResponseTokens,
+});
+```
+
+### Issue #2: Neuron Consumption Discrepancies in Dashboard
+
+**Error**: Dashboard neuron usage significantly exceeds expected token-based calculations
+**Source**: [Cloudflare Community Discussion](https://community.cloudflare.com/t/amount-of-the-neurons-used-for-the-text-generation-does-not-correspond-pricing-doc/788301)
+**Why It Happens**: Users report dashboard showing hundred-million-level neuron consumption for K-level token usage, particularly with AutoRAG features and certain models. The discrepancy between expected neuron consumption (based on pricing docs) and actual dashboard metrics is not fully documented.
+**Prevention**: Monitor neuron usage via AI Gateway logs and correlate with requests. File support ticket if consumption significantly exceeds expectations.
+
+```typescript
+// Use AI Gateway for detailed request logging
+const response = await env.AI.run(
+  '@cf/meta/llama-3.1-8b-instruct',
+  { messages: [{ role: 'user', content: query }] },
+  { gateway: { id: 'my-gateway' } }
+);
+
+// Monitor dashboard at: https://dash.cloudflare.com → AI → Workers AI
+// Compare neuron usage with token counts
+// File support ticket with details if discrepancy persists
+```
+
+### Issue #3: AI Binding Requires Remote or Latest Tooling in Local Dev
+
+**Error**: `"MiniflareCoreError: wrapped binding module can't be resolved (internal modules only)"`
+**Source**: [GitHub Issue #6796](https://github.com/cloudflare/workers-sdk/issues/6796)
+**Why It Happens**: When using Workers AI bindings with Miniflare in local development (particularly with custom Vite plugins), the AI binding requires external workers that aren't properly exposed by older `unstable_getMiniflareWorkerOptions`. The error occurs when Miniflare can't resolve the internal AI worker module.
+**Prevention**: Use remote bindings for AI in local dev, or update to latest @cloudflare/vite-plugin.
+
+```jsonc
+// wrangler.jsonc - Option 1: Use remote AI binding in local dev
+{
+  "ai": { "binding": "AI" },
+  "dev": {
+    "remote": true // Use production AI binding locally
+  }
+}
+```
+
+```bash
+# Option 2: Update to latest tooling
+npm install -D @cloudflare/vite-plugin@latest
+
+# Option 3: Use wrangler dev instead of custom Miniflare
+npm run dev
+```
+
+### Issue #4: Flux Image Generation NSFW Filter False Positives
+
+**Error**: `"AiError: Input prompt contains NSFW content (code 3030)"` for innocent prompts
+**Source**: [Cloudflare Community Discussion](https://community.cloudflare.com/t/image-rendering-issue-with-flux-api-nsfw-warning/729440)
+**Why It Happens**: Flux image generation models (`@cf/black-forest-labs/flux-1-schnell`) sometimes trigger false positive NSFW content errors even with innocent single-word prompts like "hamburger". The NSFW filter can be overly sensitive without context.
+**Prevention**: Add descriptive context around potential trigger words instead of using single-word prompts.
+
+```typescript
+// ❌ May trigger error 3030
+const response = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
+  prompt: 'hamburger', // Single word triggers filter
+});
+
+// ✅ Add context to avoid false positives
+const response = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
+  prompt: 'A photo of a delicious large hamburger on a plate with lettuce and tomato',
+  num_steps: 4,
+});
+```
+
+### Issue #5: Image Generation Error 1000 - Missing num_steps Parameter
+
+**Error**: `"Error: unexpected type 'int32' with value 'undefined' (code 1000)"`
+**Source**: [Cloudflare Community Discussion](https://community.cloudflare.com/t/ai-api-call-for-image-generation-returns-1000-error-minimal-error-msg/616994)
+**Why It Happens**: Image generation API calls return error code 1000 when the `num_steps` parameter is not provided, even though documentation suggests it's optional. The parameter is actually required for most Flux models.
+**Prevention**: Always include `num_steps: 4` for image generation models (typically 4 for Flux Schnell).
+
+```typescript
+// ✅ Always include num_steps for image generation
+const image = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
+  prompt: 'A beautiful sunset over mountains',
+  num_steps: 4, // Required - typically 4 for Flux Schnell
+});
+
+// Note: FLUX.2 [klein] 4B has fixed steps=4 (cannot be adjusted)
+```
+
+### Issue #6: Zod v4 Incompatibility with Structured Output Tools
+
+**Error**: Syntax errors and failed transpilation when using Stagehand with Zod v4
+**Source**: [GitHub Issue #10798](https://github.com/cloudflare/workers-sdk/issues/10798)
+**Why It Happens**: Stagehand (browser automation) and some structured output examples in Workers AI fail with Zod v4 (now default). The underlying `zod-to-json-schema` library doesn't yet support Zod v4, causing transpilation failures.
+**Prevention**: Pin Zod to v3 until zod-to-json-schema supports v4.
+
+```bash
+# Install Zod v3 specifically
+npm install zod@3
+
+# Or pin in package.json
+{
+  "dependencies": {
+    "zod": "~3.23.8" // Pin to v3 for compatibility
+  }
+}
+```
+
+### Issue #7: AI Gateway Cache Headers for Per-Request Control
+
+**Not an error, but important feature**: AI Gateway supports per-request cache control via HTTP headers for custom TTL, cache bypass, and custom cache keys beyond dashboard defaults.
+**Source**: [AI Gateway Caching Documentation](https://developers.cloudflare.com/ai-gateway/features/caching/)
+**Use When**: You need different caching behavior for different requests (e.g., 1 hour for expensive queries, skip cache for real-time data).
+**Implementation**: See AI Gateway Integration section below for header usage.
 
 ---
 
@@ -100,10 +238,23 @@ env.AI.run(
 
 | Model | Best For | Rate Limit | Notes |
 |-------|----------|------------|-------|
-| `@cf/black-forest-labs/flux-1-schnell` | High quality, photorealistic | 720/min | - |
-| `@cf/leonardo/lucid-origin` | Leonardo AI style | 720/min | NEW 2025 |
-| `@cf/leonardo/phoenix-1.0` | Leonardo AI variant | 720/min | NEW 2025 |
-| `@cf/stabilityai/stable-diffusion-xl-base-1.0` | General purpose | 720/min | - |
+| `@cf/black-forest-labs/flux-1-schnell` | High quality, photorealistic | 720/min | ⚠️ See warnings below |
+| `@cf/leonardo/lucid-origin` | Leonardo AI style | 720/min | NEW 2025, requires num_steps |
+| `@cf/leonardo/phoenix-1.0` | Leonardo AI variant | 720/min | NEW 2025, requires num_steps |
+| `@cf/stabilityai/stable-diffusion-xl-base-1.0` | General purpose | 720/min | Requires num_steps |
+
+**⚠️ Common Image Generation Issues:**
+- **Error 1000**: Always include `num_steps: 4` parameter (required despite docs suggesting optional)
+- **Error 3030 (NSFW filter)**: Single words like "hamburger" may trigger false positives - add descriptive context to prompts
+
+```typescript
+// ✅ Correct pattern for image generation
+const image = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
+  prompt: 'A photo of a delicious hamburger on a plate with fresh vegetables',
+  num_steps: 4, // Required to avoid error 1000
+});
+// Descriptive context helps avoid NSFW false positives (error 3030)
+```
 
 ### Vision Models
 
@@ -170,6 +321,8 @@ const validated = Schema.parse(JSON.parse(response.response));
 
 Provides caching, logging, cost tracking, and analytics for AI requests.
 
+### Basic Gateway Usage
+
 ```typescript
 const response = await env.AI.run(
   '@cf/meta/llama-3.1-8b-instruct',
@@ -184,7 +337,46 @@ await gateway.patchLog(env.AI.aiGatewayLogId, {
 });
 ```
 
-**Benefits:** Cost tracking, caching (reduces duplicate inference), logging, rate limiting, analytics.
+### Per-Request Cache Control (Advanced)
+
+Override default cache behavior with HTTP headers for fine-grained control:
+
+```typescript
+// Custom cache TTL (1 hour for expensive queries)
+const response = await fetch(
+  `https://gateway.ai.cloudflare.com/v1/${accountId}/${gatewayId}/workers-ai/@cf/meta/llama-3.1-8b-instruct`,
+  {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${env.CLOUDFLARE_API_KEY}`,
+      'Content-Type': 'application/json',
+      'cf-aig-cache-ttl': '3600', // 1 hour in seconds (min: 60, max: 2592000)
+    },
+    body: JSON.stringify({
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  }
+);
+
+// Skip cache for real-time data
+const response = await fetch(gatewayUrl, {
+  headers: {
+    'cf-aig-skip-cache': 'true', // Bypass cache entirely
+  },
+  // ...
+});
+
+// Check if response was cached
+const cacheStatus = response.headers.get('cf-aig-cache-status'); // "HIT" or "MISS"
+```
+
+**Available Cache Headers:**
+- `cf-aig-cache-ttl`: Set custom TTL in seconds (60s to 1 month)
+- `cf-aig-skip-cache`: Bypass cache entirely (`'true'`)
+- `cf-aig-cache-key`: Custom cache key for granular control
+- `cf-aig-cache-status`: Response header showing `"HIT"` or `"MISS"`
+
+**Benefits:** Cost tracking, caching (reduces duplicate inference), logging, rate limiting, analytics, per-request cache customization.
 
 ---
 
@@ -315,6 +507,63 @@ await generateText({
   prompt: 'Write a poem',
 });
 ```
+
+---
+
+## Community Tips
+
+> **Note**: These tips come from community discussions and production experience.
+
+### Hono Framework Streaming Pattern
+
+When using Workers AI streaming with Hono, return the stream directly as a Response (not through Hono's streaming utilities):
+
+```typescript
+import { Hono } from 'hono';
+
+type Bindings = { AI: Ai };
+const app = new Hono<{ Bindings: Bindings }>();
+
+app.post('/chat', async (c) => {
+  const { prompt } = await c.req.json();
+
+  const stream = await c.env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+    messages: [{ role: 'user', content: prompt }],
+    stream: true,
+  });
+
+  // Return stream directly (not c.stream())
+  return new Response(stream, {
+    headers: {
+      'content-type': 'text/event-stream',
+      'cache-control': 'no-cache',
+      'connection': 'keep-alive',
+    },
+  });
+});
+```
+
+**Source**: [Hono Discussion #2409](https://github.com/orgs/honojs/discussions/2409)
+
+### Troubleshooting Unexplained AI Binding Failures
+
+If experiencing unexplained Workers AI failures:
+
+```bash
+# 1. Check wrangler version
+npx wrangler --version
+
+# 2. Clear wrangler cache
+rm -rf ~/.wrangler
+
+# 3. Update to latest stable
+npm install -D wrangler@latest
+
+# 4. Check local network/firewall settings
+# Some corporate firewalls block Workers AI endpoints
+```
+
+**Note**: Most "version incompatibility" issues turn out to be network configuration problems.
 
 ---
 

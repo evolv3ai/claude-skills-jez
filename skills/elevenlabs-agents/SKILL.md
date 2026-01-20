@@ -1,9 +1,9 @@
 ---
 name: elevenlabs-agents
 description: |
-  Build conversational AI voice agents with ElevenLabs Platform. Configure agents, tools, RAG knowledge bases, multi-voice, and Scribe STT across React, React Native, or Swift. Prevents 27 documented errors.
+  Build conversational AI voice agents with ElevenLabs Platform. Configure agents, tools, RAG knowledge bases, multi-voice, and Scribe STT across React, React Native, or Swift. Prevents 34 documented errors.
 
-  Use when: building voice agents, AI phone systems, or troubleshooting @11labs deprecated, webhook errors, CSP violations.
+  Use when: building voice agents, AI phone systems, or troubleshooting @11labs deprecated, webhook errors, CSP violations, localhost allowlist, tool parsing errors.
 user-invocable: true
 ---
 
@@ -42,10 +42,36 @@ npm install -g @elevenlabs/agents-cli@0.6.1    # CLI
 - `end_call` system tool fix (no longer omits last message)
 
 **SDK Fixes**:
-- Scribe audio format parameter now correctly transmitted (v2.28.0)
+- Scribe audio format parameter now correctly transmitted (v2.32.0, Jan 2026)
 - React Native infinite loop fix in useEffect dependencies (v0.5.6)
 - Speed parameter support in TTS overrides (v0.5.7)
 - Localization support for chat UI terms (v0.12.3)
+
+---
+
+## Package Selection Guide
+
+**Which ElevenLabs package should I use?**
+
+| Package | Environment | Use Case |
+|---------|-------------|----------|
+| `@elevenlabs/elevenlabs-js` | **Server only** (Node.js) | Full API access, TTS, voices, models |
+| `@elevenlabs/client` | **Browser + Server** | Agents SDK, WebSocket, lightweight |
+| `@elevenlabs/react` | **React apps** | Conversational AI hooks |
+| `@elevenlabs/react-native` | **Mobile** | iOS/Android agents |
+
+**⚠️ Why elevenlabs-js doesn't work in browser:**
+- Depends on Node.js `child_process` module (by design)
+- **Error**: `Module not found: Can't resolve 'child_process'`
+- **Workaround for browser API access**: Create proxy server endpoint using `elevenlabs-js`, call proxy from browser
+
+**Affected Frameworks:**
+- Next.js client components
+- Vite browser builds
+- Electron renderer process
+- Tauri webview
+
+**Source**: [GitHub Issue #293](https://github.com/elevenlabs/elevenlabs-js/issues/293)
 
 ---
 
@@ -96,7 +122,41 @@ const agent = await client.agents.create({
 
 ---
 
-## 2. Agent Configuration
+## 2. SDK Parameter Naming (camelCase vs snake_case)
+
+**CRITICAL**: The JS SDK uses **camelCase** for parameters while the Python SDK and API use **snake_case**. Using snake_case in JS causes silent failures where parameters are ignored.
+
+**Common Parameters:**
+
+| API/Python (snake_case) | JS SDK (camelCase) |
+|-------------------------|-------------------|
+| `model_id` | `modelId` |
+| `voice_id` | `voiceId` |
+| `output_format` | `outputFormat` |
+| `voice_settings` | `voiceSettings` |
+
+**Example:**
+```typescript
+// ❌ WRONG - parameter ignored (snake_case):
+const stream = await elevenlabs.textToSpeech.convert(voiceId, {
+  model_id: "eleven_v3",  // Silently ignored!
+  text: "Hello"
+});
+
+// ✅ CORRECT - use camelCase:
+const stream = await elevenlabs.textToSpeech.convert(voiceId, {
+  modelId: "eleven_v3",   // Works!
+  text: "Hello"
+});
+```
+
+**Tip**: Always check TypeScript types for correct parameter names. This is the most common error when migrating from Python SDK.
+
+**Source**: [GitHub Issue #300](https://github.com/elevenlabs/elevenlabs-js/issues/300)
+
+---
+
+## 3. Agent Configuration
 
 ### System Prompt Architecture (6 Components)
 
@@ -266,6 +326,46 @@ await client.knowledgeBase.computeRagIndex({ document_id: doc.id, embedding_mode
 
 ## 5. Tools (4 Types)
 
+### ⚠️ BREAKING CHANGE: prompt.tools Deprecated (July 2025)
+
+The legacy `prompt.tools` array was **removed on July 23, 2025**. All agent configurations must use the new format.
+
+**Migration Timeline:**
+- July 14, 2025: Legacy format still accepted
+- July 15, 2025: GET responses stop including `tools` field
+- **July 23, 2025**: POST/PATCH reject `prompt.tools` (active now)
+
+**Old Format** (no longer works):
+```typescript
+{
+  agent: {
+    prompt: {
+      tools: [{ name: "get_weather", url: "...", method: "GET" }]
+    }
+  }
+}
+```
+
+**New Format** (required):
+```typescript
+{
+  agent: {
+    prompt: {
+      tool_ids: ["tool_abc123"],         // Client/server tools
+      built_in_tools: ["end_call"]       // System tools (new field)
+    }
+  }
+}
+```
+
+**Error if both used**: "A request must include either prompt.tool_ids or the legacy prompt.tools array — never both"
+
+**Note**: All tools from legacy format were auto-migrated to standalone tool records.
+
+**Source**: [Official Migration Guide](https://elevenlabs.io/docs/agents-platform/customization/tools/agent-tools-deprecation)
+
+---
+
 ### A. Client Tools (Browser/Mobile)
 
 Execute in browser or mobile app. **Tool names case-sensitive.**
@@ -302,6 +402,11 @@ HTTP requests to external APIs. **PUT support added Apr 2025.**
 **2025 Features:**
 - **transfer-to-human** system tool (Apr 2025)
 - **tool_latency_secs** tracking (Apr 2025)
+
+**⚠️ Historical Issue (Fixed Feb 2025):**
+Tool calling was broken with `gpt-4o-mini` due to an OpenAI API change. This was fixed in SDK v2.25.0+ (Feb 17, 2025). If using older SDK versions, upgrade to avoid silent tool execution failures on that model.
+
+**Source**: [Changelog Feb 17, 2025](https://elevenlabs.io/docs/changelog/2025/2/17)
 
 ### C. MCP Tools (Model Context Protocol)
 
@@ -385,6 +490,34 @@ const { connect, startRecording, stopRecording, transcript, partialTranscript } 
 **Events:** PARTIAL_TRANSCRIPT, FINAL_TRANSCRIPT_WITH_TIMESTAMPS, SESSION_STARTED, ERROR
 
 **⚠️ Closed Beta** - requires sales contact. For agents, use Agents Platform instead (LLM + TTS + two-way interaction).
+
+**⚠️ Webhook Mode Issue:**
+Using `speechToText.convert()` with `webhook: true` causes SDK parsing errors. The API returns only `{ request_id }` for webhook mode, but the SDK expects the full transcription schema.
+
+**Error Message:**
+```
+ParseError: response: Missing required key "language_code"; Missing required key "text"; ...
+```
+
+**Workaround** - Use direct fetch API instead of SDK:
+```typescript
+const formData = new FormData();
+formData.append('file', audioFile);
+formData.append('model_id', 'scribe_v1');
+formData.append('webhook', 'true');
+formData.append('webhook_id', webhookId);
+
+const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+  method: 'POST',
+  headers: { 'xi-api-key': apiKey },
+  body: formData,
+});
+
+const result = await response.json(); // { request_id: 'xxx' }
+// Actual transcription delivered to webhook endpoint
+```
+
+**Source**: [GitHub Issue #232](https://github.com/elevenlabs/elevenlabs-js/issues/232) (confirmed by maintainer)
 
 ---
 
@@ -590,16 +723,50 @@ elevenlabs tests push
 **Solution:** Check `index.status === 'ready'` before using
 
 ### Error 10: WebSocket Protocol Error (1002)
-**Cause:** Network instability or incompatible browser
-**Solution:** Use WebRTC instead, implement reconnection logic
+**Cause:** Network instability, incompatible browser, or firewall issues
+**Symptoms:**
+```
+Error receiving message: received 1002 (protocol error)
+Error sending user audio chunk: received 1002 (protocol error)
+WebSocket is already in CLOSING or CLOSED state
+```
+Connection cycles: Disconnected → Connected → Disconnected rapidly
+
+**Solution:**
+1. **Use WebRTC instead of WebSocket** for better stability: `connectionType: 'webrtc'`
+2. **Implement reconnection logic** with exponential backoff
+3. **Check network stability** and firewall rules (port restrictions)
+4. **Test on different networks/browsers** to isolate the issue
+
+**Source**: [GitHub Issue #134](https://github.com/elevenlabs/elevenlabs-examples/issues/134)
 
 ### Error 11: 401 Unauthorized in Production
 **Cause:** Agent visibility or API key config
 **Solution:** Check visibility (public/private), verify API key in prod, check allowlist
 
 ### Error 12: Allowlist Connection Errors
-**Cause:** Allowlist enabled but using shared link
-**Solution:** Configure allowlist domains or disable for testing
+**Cause:** Allowlist enabled but using shared link, OR localhost validation bug
+**Symptoms:**
+```
+Host is not supported
+Host is not valid or supported
+Host is not in insights whitelist
+WebSocket is already in CLOSING or CLOSED state
+```
+
+**Solution:**
+1. Configure allowlist domains in dashboard or disable for testing
+2. **Localhost workaround**: Use `127.0.0.1:3000` instead of `localhost:3000`
+
+**⚠️ Localhost Validation Bug:**
+The dashboard has inconsistent validation for localhost URLs:
+- ❌ `localhost:3000` → Rejected (should be valid)
+- ❌ `http://localhost:3000` → Rejected (protocol not allowed)
+- ❌ `localhost:3000/voice-chat` → Rejected (paths not allowed)
+- ✅ `www.localhost:3000` → Accepted (invalid but accepted!)
+- ✅ `127.0.0.1:3000` → Accepted (use this for local dev)
+
+**Source**: [GitHub Issue #320](https://github.com/elevenlabs/elevenlabs-js/issues/320)
 
 ### Error 13: Workflow Infinite Loops
 **Cause:** Edge conditions creating loops
@@ -823,6 +990,140 @@ const schema = z.object({
 ```
 **Note:** These match the existing fields in the GET Conversation API response
 
+### Error 28: Tool Parsing Fails When Tool Not Found
+**Cause:** Calling `conversations.get(id)` when conversation contains tool_results where the tool was deleted/not found
+**Error Message:**
+```
+Error: response -> transcript -> [11] -> tool_results -> [0] -> type:
+Expected string. Received null.;
+response -> transcript -> [11] -> tool_results -> [0] -> type:
+[Variant 1] Expected "system". Received null.;
+response -> transcript -> [11] -> tool_results -> [0] -> type:
+[Variant 2] Expected "workflow". Received null.
+```
+
+**Solution:**
+1. **SDK fix needed** - SDK should handle null tool_results.type gracefully
+2. **Workaround for users:**
+   - Ensure all referenced tools exist before deleting them
+   - Wrap `conversation.get()` in try-catch until SDK is fixed
+   ```typescript
+   try {
+     const conversation = await client.conversationalAi.conversations.get(id);
+   } catch (error) {
+     console.error('Tool parsing error - conversation may reference deleted tools');
+   }
+   ```
+
+**Source**: [GitHub Issue #268](https://github.com/elevenlabs/elevenlabs-js/issues/268)
+
+### Error 29: SDK Parameter Naming Confusion (snake_case vs camelCase)
+**Cause:** Using snake_case parameters (from API/Python SDK docs) in JS SDK, which expects camelCase
+**Symptoms:** Parameters silently ignored, wrong model/voice used, no error messages
+
+**Common Mistakes:**
+```typescript
+// ❌ WRONG - parameter ignored:
+convert(voiceId, { model_id: "eleven_v3" })
+
+// ✅ CORRECT:
+convert(voiceId, { modelId: "eleven_v3" })
+```
+
+**Solution:** Always use camelCase for JS SDK parameters. Check TypeScript types if unsure.
+
+**Affected Parameters:** `model_id`, `voice_id`, `output_format`, `voice_settings`, and all API parameters
+
+**Source**: [GitHub Issue #300](https://github.com/elevenlabs/elevenlabs-js/issues/300)
+
+### Error 30: Webhook Mode ParseError with speechToText.convert()
+**Cause:** SDK expects full transcription response but webhook mode returns only `{ request_id }`
+**Error Message:**
+```
+ParseError: Missing required key "language_code"; Missing required key "text"; ...
+```
+
+**Solution:** Use direct fetch API instead of SDK for webhook mode:
+```typescript
+const formData = new FormData();
+formData.append('file', audioFile);
+formData.append('model_id', 'scribe_v1');
+formData.append('webhook', 'true');
+formData.append('webhook_id', webhookId);
+
+const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+  method: 'POST',
+  headers: { 'xi-api-key': apiKey },
+  body: formData,
+});
+
+const result = await response.json(); // { request_id: 'xxx' }
+```
+
+**Source**: [GitHub Issue #232](https://github.com/elevenlabs/elevenlabs-js/issues/232)
+
+### Error 31: Package Not Compatible with Browser/Web
+**Cause:** Using `@elevenlabs/elevenlabs-js` in browser/client environments (depends on Node.js `child_process`)
+**Error Message:**
+```
+Module not found: Can't resolve 'child_process'
+```
+
+**Affected Frameworks:**
+- Next.js client components
+- Vite browser builds
+- Electron renderer process
+- Tauri webview
+
+**Solution:**
+1. **For browser/web**: Use `@elevenlabs/client` or `@elevenlabs/react` instead
+2. **For full API access in browser**: Create proxy server endpoint using `elevenlabs-js`, call from browser
+3. **For Electron/Tauri**: Use `elevenlabs-js` in main process only, not renderer
+
+**Note:** This is by design - `elevenlabs-js` is server-only
+
+**Source**: [GitHub Issue #293](https://github.com/elevenlabs/elevenlabs-js/issues/293)
+
+### Error 32: prompt.tools Deprecated - POST/PATCH Rejected
+**Cause:** Using legacy `prompt.tools` array field after July 23, 2025 cutoff
+**Error Message:**
+```
+A request must include either prompt.tool_ids or the legacy prompt.tools array — never both
+```
+
+**Solution:** Migrate to new format:
+```typescript
+// ❌ Old (rejected):
+{ agent: { prompt: { tools: [...] } } }
+
+// ✅ New (required):
+{
+  agent: {
+    prompt: {
+      tool_ids: ["tool_abc123"],         // Client/server tools
+      built_in_tools: ["end_call"]       // System tools
+    }
+  }
+}
+```
+
+**Note:** All legacy tools were auto-migrated to standalone records. Just update your configuration references.
+
+**Source**: [Official Migration Guide](https://elevenlabs.io/docs/agents-platform/customization/tools/agent-tools-deprecation)
+
+### Error 33: GPT-4o Mini Tool Calling Broken (Fixed Feb 2025)
+**Cause:** OpenAI API breaking change affected `gpt-4o-mini` tool execution (historical issue)
+**Symptoms:** Tools silently fail to execute, no error messages
+**Solution:** Upgrade to SDK v2.25.0+ (released Feb 17, 2025). If using older SDK versions, upgrade or avoid `gpt-4o-mini` for tool-based workflows.
+
+**Source**: [Changelog Feb 17, 2025](https://elevenlabs.io/docs/changelog/2025/2/17)
+
+### Error 34: Scribe Audio Format Parameter Not Transmitted (Fixed v2.32.0)
+**Cause:** WebSocket URI wasn't including `audio_format` parameter even when specified (historical issue)
+**Solution:** Upgrade to `@elevenlabs/elevenlabs-js@2.32.0` or later (released Jan 19, 2026)
+
+**Source**: [GitHub PR #319](https://github.com/elevenlabs/elevenlabs-js/pull/319)
+
 ---
 
 ## Integration with Existing Skills
@@ -858,5 +1159,6 @@ This skill composes well with:
 ---
 
 **Production Tested**: WordPress Auditor, Customer Support Agents, AgentFlow (webhook integration)
-**Last Updated**: 2026-01-09
-**Package Versions**: elevenlabs@1.59.0, @elevenlabs/elevenlabs-js@2.30.0, @elevenlabs/agents-cli@0.6.1, @elevenlabs/react@0.12.3, @elevenlabs/client@0.12.2, @elevenlabs/react-native@0.5.7
+**Last Updated**: 2026-01-21
+**Package Versions**: elevenlabs@1.59.0, @elevenlabs/elevenlabs-js@2.32.0, @elevenlabs/agents-cli@0.6.1, @elevenlabs/react@0.12.3, @elevenlabs/client@0.12.2, @elevenlabs/react-native@0.5.7
+**Changes**: Added 7 new errors (tool parsing, parameter naming, webhook mode, prompt.tools deprecation, localhost allowlist bug, package compatibility, historical fixes). Expanded WebSocket 1002 and allowlist errors with troubleshooting. Added package selection guide and SDK parameter naming guide. Updated Scribe audio format fix to v2.32.0.

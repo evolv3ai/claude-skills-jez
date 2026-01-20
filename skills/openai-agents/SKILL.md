@@ -1,9 +1,9 @@
 ---
 name: openai-agents
 description: |
-  Build AI applications with OpenAI Agents SDK - text agents, voice agents, multi-agent handoffs, tools with Zod schemas, guardrails, and streaming.
+  Build AI applications with OpenAI Agents SDK - text agents, voice agents, multi-agent handoffs, tools with Zod schemas, guardrails, and streaming. Prevents 11 documented errors.
 
-  Use when: building agents with tools, voice agents with WebRTC, multi-agent workflows, or troubleshooting MaxTurnsExceededError, tool call failures.
+  Use when: building agents with tools, voice agents with WebRTC, multi-agent workflows, or troubleshooting MaxTurnsExceededError, tool call failures, reasoning defaults, JSON output leaks.
 user-invocable: true
 ---
 
@@ -16,10 +16,12 @@ Build AI applications with text agents, voice agents (realtime), multi-agent wor
 ## Quick Start
 
 ```bash
-npm install @openai/agents zod@4
+npm install @openai/agents zod@4  # v0.4.0+ requires Zod 4 (breaking change)
 npm install @openai/agents-realtime  # Voice agents
 export OPENAI_API_KEY="your-key"
 ```
+
+**Breaking Change (v0.4.0)**: Zod 3 no longer supported. Upgrade to `zod@4`.
 
 **Runtimes**: Node.js 22+, Deno, Bun, Cloudflare Workers (experimental)
 
@@ -83,6 +85,25 @@ const techAgent = new Agent({ name: 'Technical', handoffDescription: 'For tech i
 const triageAgent = Agent.create({ name: 'Triage', handoffs: [billingAgent, techAgent] });
 ```
 
+**Agent-as-Tool Context Isolation**: When using `agent.asTool()`, sub-agents do NOT share parent conversation history (intentional design to simplify debugging).
+
+**Workaround**: Pass context via tool parameters:
+
+```typescript
+const helperTool = tool({
+  name: 'use_helper',
+  parameters: z.object({
+    query: z.string(),
+    context: z.string().optional(),
+  }),
+  execute: async ({ query, context }) => {
+    return await run(subAgent, `${context}\n\n${query}`);
+  },
+});
+```
+
+**Source**: [Issue #806](https://github.com/openai/openai-agents-js/issues/806)
+
 ---
 
 ## Guardrails
@@ -110,6 +131,21 @@ while (result.interruption?.type === 'tool_approval') {
 }
 ```
 
+**Streaming HITL**: When using `stream: true` with `requiresApproval`, must explicitly check interruptions:
+
+```typescript
+const stream = await run(agent, input, { stream: true });
+let result = await stream.finalResult();
+while (result.interruption?.type === 'tool_approval') {
+  const approved = await promptUser(result.interruption);
+  result = approved
+    ? await result.state.approve(result.interruption)
+    : await result.state.reject(result.interruption);
+}
+```
+
+**Example**: [human-in-the-loop-stream.ts](https://github.com/openai/openai-agents-js/blob/main/examples/agent-patterns/human-in-the-loop-stream.ts)
+
 ---
 
 ## Realtime Voice Agents
@@ -135,6 +171,9 @@ await session.connect();
 
 **Voice Handoffs**: Voice/model must match across agents (cannot change during handoff)
 
+**Limitations**:
+- **Video streaming NOT supported**: Despite camera examples, realtime video streaming is not natively supported. Model may not proactively speak based on video events. ([Issue #694](https://github.com/openai/openai-agents-js/issues/694))
+
 **Templates**:
 - `templates/realtime-agents/realtime-agent-basic.ts`
 - `templates/realtime-agents/realtime-session-browser.tsx`
@@ -151,6 +190,9 @@ await session.connect();
 ```typescript
 export default {
   async fetch(request: Request, env: Env) {
+    // Disable tracing or use startTracingExportLoop()
+    process.env.OTEL_SDK_DISABLED = 'true';
+
     process.env.OPENAI_API_KEY = env.OPENAI_API_KEY;
     const agent = new Agent({ name: 'Assistant', model: 'gpt-5-mini' });
     const result = await run(agent, (await request.json()).message);
@@ -158,7 +200,10 @@ export default {
   }
 };
 ```
-**Limitations**: No voice agents, 30s CPU limit, 128MB memory
+**Limitations**:
+- No voice agents
+- 30s CPU limit, 128MB memory
+- **Tracing requires manual setup** - set `OTEL_SDK_DISABLED=true` or call `startTracingExportLoop()` ([Issue #16](https://github.com/openai/openai-agents-js/issues/16))
 
 **Next.js**: `app/api/agent/route.ts` → `POST` handler with `run(agent, message)`
 
@@ -166,7 +211,7 @@ export default {
 
 ---
 
-## Error Handling (9+ Errors Prevented)
+## Error Handling (11+ Errors Prevented)
 
 ### 1. Zod Schema Type Errors
 
@@ -181,6 +226,8 @@ parameters: mySchema
 // ✅ Works reliably
 parameters: z.object({ field: z.string() })
 ```
+
+**Note**: As of v0.4.1, invalid JSON in tool call arguments is handled gracefully (previously caused SyntaxError crashes). ([PR #887](https://github.com/openai/openai-agents-js/pull/887))
 
 **Source**: [GitHub #188](https://github.com/openai/openai-agents-js/issues/188)
 
@@ -246,6 +293,41 @@ const agent = new Agent({
 });
 ```
 
+### 6. Reasoning Effort Defaults Changed (v0.4.0)
+
+**Error**: Unexpected reasoning behavior after upgrading to v0.4.0.
+
+**Why It Happens**: Default reasoning effort for gpt-5.1/5.2 changed from `"low"` to `"none"` in v0.4.0.
+
+**Prevention**: Explicitly set reasoning effort if you need it.
+
+```typescript
+// v0.4.0+ - default is now "none"
+const agent = new Agent({
+  model: 'gpt-5.1',
+  reasoning: { effort: 'low' }, // Explicitly set if needed: 'low', 'medium', 'high'
+});
+```
+
+**Source**: [Release v0.4.0](https://github.com/openai/openai-agents-js/releases/tag/v0.4.0) | [PR #876](https://github.com/openai/openai-agents-js/pull/876)
+
+### 7. Reasoning Content Leaks into JSON Output
+
+**Error**: `response_reasoning` field appears in structured output unexpectedly.
+
+**Why It Happens**: Model endpoint issue (not SDK bug) when using `outputType` with reasoning models.
+
+**Workaround**: Filter out `response_reasoning` from output.
+
+```typescript
+const result = await run(agent, input);
+const { response_reasoning, ...cleanOutput } = result.finalOutput;
+return cleanOutput;
+```
+
+**Source**: [Issue #844](https://github.com/openai/openai-agents-js/issues/844)
+**Status**: Model-side issue, coordinating with OpenAI teams
+
 **All Errors**: See `references/common-errors.md`
 
 **Template**: `templates/shared/error-handling.ts`
@@ -301,7 +383,7 @@ console.log(result.usage.totalTokens, result.history.length, result.currentAgent
 | Error debugging | ~8k tokens | ~3k tokens | 63% |
 | **Average** | **~10k** | **~4k** | **~60%** |
 
-**Errors Prevented**: 9 documented issues = 100% error prevention
+**Errors Prevented**: 11 documented issues = 100% error prevention
 
 ---
 
@@ -353,7 +435,8 @@ console.log(result.usage.totalTokens, result.history.length, result.currentAgent
 
 ---
 
-**Version**: SDK v0.3.7
-**Last Verified**: 2026-01-09
+**Version**: SDK v0.4.1
+**Last Verified**: 2026-01-21
 **Skill Author**: Jeremy Dawes (Jezweb)
 **Production Tested**: Yes
+**Changes**: Added v0.4.0 breaking changes (Zod 4, reasoning defaults), invalid JSON handling (v0.4.1), reasoning output leaks, streaming HITL pattern, agent-as-tool context isolation, video limitations, Cloudflare tracing setup

@@ -1,9 +1,9 @@
 ---
 name: cloudflare-workflows
 description: |
-  Build durable workflows with Cloudflare Workflows (GA April 2025). Features step.do, step.sleep, waitForEvent, Vitest testing, automatic retries, and state persistence for long-running tasks.
+  Build durable workflows with Cloudflare Workflows (GA April 2025). Features step.do, step.sleep, waitForEvent, Vitest testing, automatic retries, and state persistence for long-running tasks. Prevents 12 documented errors.
 
-  Use when: creating workflows, implementing retries, or troubleshooting NonRetryableError, I/O context, serialization errors.
+  Use when: creating workflows, implementing retries, or troubleshooting NonRetryableError, I/O context, serialization errors, waitForEvent timeouts, getPlatformProxy failures.
 user-invocable: true
 ---
 
@@ -59,6 +59,335 @@ npx wrangler workflows instances list my-workflow
 ```
 
 **CRITICAL**: Extends `WorkflowEntrypoint`, implements `run()` with `step` methods, bindings in wrangler.jsonc
+
+---
+
+## Known Issues Prevention
+
+This skill prevents **12** documented errors with Cloudflare Workflows.
+
+### Issue #1: waitForEvent Skips Events After Timeout in Local Dev
+
+**Error**: Events sent after a `waitForEvent()` timeout are ignored in subsequent `waitForEvent()` calls
+**Environment**: Local development (`wrangler dev`) only - works correctly in production
+**Source**: [GitHub Issue #11740](https://github.com/cloudflare/workers-sdk/issues/11740)
+
+**Why It Happens**: Bug in miniflare that was fixed in production (May 2025) but not ported to local emulator. After a timeout, the event queue becomes corrupted for that instance.
+
+**Prevention**:
+- **Test waitForEvent timeout scenarios in production/staging**, not local dev
+- Avoid chaining multiple `waitForEvent()` calls where timeouts are expected
+
+**Example of Bug**:
+```typescript
+export class MyWorkflow extends WorkflowEntrypoint<Env, Params> {
+  async run(event: WorkflowEvent<Params>, step: WorkflowStep) {
+    for (let i = 0; i < 3; i++) {
+      try {
+        const evt = await step.waitForEvent(`wait-${i}`, {
+          type: 'user-action',
+          timeout: '5 seconds'
+        });
+        console.log(`Iteration ${i}: Received event`);
+      } catch {
+        console.log(`Iteration ${i}: Timeout`);
+      }
+    }
+  }
+}
+// In wrangler dev:
+// - Iteration 1: ✅ receives event
+// - Iteration 2: ⏱️ times out (expected)
+// - Iteration 3: ❌ does not receive event (BUG - event is sent but ignored)
+```
+
+**Status**: Known bug, fix pending for miniflare.
+
+---
+
+### Issue #2: getPlatformProxy() Fails With Workflow Bindings
+
+**Error**: `MiniflareCoreError [ERR_RUNTIME_FAILURE]: The Workers runtime failed to start`
+**Message**: Worker's binding refers to service with named entrypoint, but service has no such entrypoint
+**Source**: [GitHub Issue #9402](https://github.com/cloudflare/workers-sdk/issues/9402)
+
+**Why It Happens**: `getPlatformProxy()` from `wrangler` package doesn't support Workflow bindings (similar to how it handles Durable Objects). This blocks Next.js integration and local CLI scripts.
+
+**Prevention**:
+- **Option 1**: Comment out workflow bindings when using `getPlatformProxy()`
+- **Option 2**: Create separate `wrangler.cli.jsonc` without workflows for CLI scripts
+- **Option 3**: Access workflow bindings directly via deployed worker, not proxy
+
+```typescript
+// Workaround: Separate config for CLI scripts
+// wrangler.cli.jsonc (no workflows)
+{
+  "name": "my-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-20"
+  // workflows commented out
+}
+
+// Use in script:
+import { getPlatformProxy } from 'wrangler';
+const { env } = await getPlatformProxy({ configPath: './wrangler.cli.jsonc' });
+```
+
+**Status**: Known limitation, fix planned (filter workflows similar to DOs).
+
+---
+
+### Issue #3: Workflow Instance Lost After Immediate Redirect (Local Dev)
+
+**Error**: Instance ID returned but `instance.not_found` when queried
+**Environment**: Local development (`wrangler dev`) only - works correctly in production
+**Source**: [GitHub Issue #10806](https://github.com/cloudflare/workers-sdk/issues/10806)
+
+**Why It Happens**: Returning a redirect immediately after `workflow.create()` causes request to "soft abort" before workflow initialization completes (single-threaded execution in dev).
+
+**Prevention**: Use `ctx.waitUntil()` to ensure workflow initialization completes before redirect:
+
+```typescript
+export default {
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const workflow = await env.MY_WORKFLOW.create({ params: { userId: '123' } });
+
+    // ✅ Ensure workflow initialization completes
+    ctx.waitUntil(workflow.status());
+
+    return Response.redirect('/dashboard', 302);
+  }
+};
+```
+
+**Status**: Fixed in recent wrangler versions (post-Sept 2025), but workaround still recommended for compatibility.
+
+---
+
+### Issue #4: Vitest Tests Unreliable in CI Environments
+
+**Error**: `[vitest-worker]: Timeout calling "resolveId"`
+**Environment**: CI/CD pipelines (GitLab, GitHub Actions) - works locally
+**Source**: [GitHub Issue #10600](https://github.com/cloudflare/workers-sdk/issues/10600)
+
+**Why It Happens**: `@cloudflare/vitest-pool-workers` has resource constraint issues in CI containers, affecting workflow tests more than other worker types.
+
+**Prevention**:
+1. Increase `testTimeout` in vitest config:
+   ```typescript
+   export default defineWorkersConfig({
+     test: {
+       testTimeout: 60_000 // Default: 5000ms
+     }
+   });
+   ```
+2. Check CI resource limits (CPU/memory)
+3. Use `isolatedStorage: false` if not testing storage isolation
+4. Consider testing against deployed instances instead of vitest for critical workflows
+
+**Status**: Known issue, investigating (Internal: WOR-945).
+
+---
+
+### Issue #5: Instance restart() and terminate() Not Implemented in Local Dev
+
+**Error**: `Error: Not implemented yet` when calling `instance.restart()` or `instance.terminate()`
+**Environment**: Local development (`wrangler dev`) only - works in production
+**Source**: [GitHub Issue #11312](https://github.com/cloudflare/workers-sdk/issues/11312)
+
+**Why It Happens**: Instance management APIs not yet implemented in miniflare. Additionally, instance status shows `running` even when workflow is sleeping.
+
+**Prevention**: Test instance lifecycle management (pause/resume/terminate) in production or staging environment until local dev support is added.
+
+```typescript
+const instance = await env.MY_WORKFLOW.get(instanceId);
+
+// ❌ Fails in wrangler dev
+await instance.restart();    // Error: Not implemented yet
+await instance.terminate();  // Error: Not implemented yet
+
+// ✅ Works in production
+```
+
+**Status**: Known limitation, no timeline for local dev support.
+
+---
+
+### Issue #6: I/O Must Be Inside step.do() Callbacks
+
+**Error**: `"Cannot perform I/O on behalf of a different request"`
+**Source**: Cloudflare runtime behavior
+
+**Why It Happens**: Trying to use I/O objects created in one request context from another request handler.
+
+**Prevention**: Always perform I/O within `step.do()` callbacks:
+
+```typescript
+// ❌ Bad - I/O outside step
+const response = await fetch('https://api.example.com/data');
+const data = await response.json();
+
+await step.do('use data', async () => {
+  return data;  // This will fail!
+});
+
+// ✅ Good - I/O inside step
+const data = await step.do('fetch data', async () => {
+  const response = await fetch('https://api.example.com/data');
+  return await response.json();
+});
+```
+
+---
+
+### Issue #7: NonRetryableError Behaves Differently in Dev vs Production
+
+**Error**: NonRetryableError with empty message causes retries in dev mode but works correctly in production
+**Environment**: Development-specific bug
+**Source**: [GitHub Issue #10113](https://github.com/cloudflare/workers-sdk/issues/10113)
+
+**Why It Happens**: Empty error messages are handled differently between miniflare and production runtime.
+
+**Prevention**: Always provide a message to NonRetryableError:
+
+```typescript
+// ❌ Retries in dev, exits in prod
+throw new NonRetryableError('');
+
+// ✅ Exits in both environments
+throw new NonRetryableError('Validation failed');
+```
+
+**Status**: Known issue, workaround documented.
+
+---
+
+### Issue #8: In-Memory State Lost on Hibernation
+
+**Error**: Variables declared outside `step.do()` reset to initial values after sleep/hibernation
+**Source**: [Cloudflare Workflows Rules](https://developers.cloudflare.com/workflows/build/rules-of-workflows/)
+
+**Why It Happens**: Workflows hibernate when the engine detects no pending work. All in-memory state is lost during hibernation.
+
+**Prevention**: Only use state returned from `step.do()` - everything else is ephemeral:
+
+```typescript
+// ❌ BAD - In-memory variable lost on hibernation
+let counter = 0;
+export class MyWorkflow extends WorkflowEntrypoint<Env, Params> {
+  async run(event: WorkflowEvent<Params>, step: WorkflowStep) {
+    counter = await step.do('increment', async () => counter + 1);
+    await step.sleep('wait', '1 hour'); // ← Hibernates here, in-memory state lost
+    console.log(counter); // ❌ Will be 0, not 1!
+  }
+}
+
+// ✅ GOOD - State from step.do() return values persists
+export class MyWorkflow extends WorkflowEntrypoint<Env, Params> {
+  async run(event: WorkflowEvent<Params>, step: WorkflowStep) {
+    const counter = await step.do('increment', async () => 1);
+    await step.sleep('wait', '1 hour');
+    console.log(counter); // ✅ Still 1
+  }
+}
+```
+
+---
+
+### Issue #9: Non-Deterministic Step Names Break Caching
+
+**Error**: Steps re-run unnecessarily, performance degradation
+**Source**: [Cloudflare Workflows Rules](https://developers.cloudflare.com/workflows/build/rules-of-workflows/)
+
+**Why It Happens**: Step names act as cache keys. Using `Date.now()`, `Math.random()`, or other non-deterministic values causes new cache keys every run.
+
+**Prevention**: Use static, deterministic step names:
+
+```typescript
+// ❌ BAD - Non-deterministic step name
+await step.do(`fetch-data-${Date.now()}`, async () => {
+  return await fetchExpensiveData();
+});
+// Every execution creates new cache key → step always re-runs
+
+// ✅ GOOD - Deterministic step name
+await step.do('fetch-data', async () => {
+  return await fetchExpensiveData();
+});
+// Same cache key → result reused on restart/retry
+```
+
+---
+
+### Issue #10: Promise.race/any Outside step.do() Causes Inconsistency
+
+**Error**: Different promises resolve on restart, inconsistent behavior
+**Source**: [Cloudflare Workflows Rules](https://developers.cloudflare.com/workflows/build/rules-of-workflows/)
+
+**Why It Happens**: Non-deterministic operations outside steps run again on restart, potentially with different results.
+
+**Prevention**: Keep all non-deterministic logic inside `step.do()`:
+
+```typescript
+// ❌ BAD - Race outside step
+const fastest = await Promise.race([fetchA(), fetchB()]);
+await step.do('use result', async () => fastest);
+// On restart: race runs again, different promise might win
+
+// ✅ GOOD - Race inside step
+const fastest = await step.do('fetch fastest', async () => {
+  return await Promise.race([fetchA(), fetchB()]);
+});
+// On restart: cached result used, consistent behavior
+```
+
+---
+
+### Issue #11: Side Effects Repeat on Restart
+
+**Error**: Duplicate logs, metrics, or operations after workflow restart
+**Source**: [Cloudflare Workflows Rules](https://developers.cloudflare.com/workflows/build/rules-of-workflows/)
+
+**Why It Happens**: Code outside `step.do()` executes multiple times if the workflow restarts mid-execution.
+
+**Prevention**: Put logging, metrics, and other side effects inside `step.do()`:
+
+```typescript
+// ❌ BAD - Side effect outside step
+console.log('Workflow started'); // ← Logs multiple times on restart
+await step.do('work', async () => { /* work */ });
+
+// ✅ GOOD - Side effects inside step
+await step.do('log start', async () => {
+  console.log('Workflow started'); // ← Logs once (cached)
+});
+```
+
+---
+
+### Issue #12: Non-Idempotent Operations Can Repeat
+
+**Error**: Double charges, duplicate database writes after step timeout
+**Source**: [Cloudflare Workflows Rules](https://developers.cloudflare.com/workflows/build/rules-of-workflows/)
+
+**Why It Happens**: Steps retry individually. If an API call succeeds but the step times out before returning, the retry will call the API again.
+
+**Prevention**: Guard non-idempotent operations with existence checks:
+
+```typescript
+// ❌ BAD - Charge customer without check
+await step.do('charge', async () => {
+  return await stripe.charges.create({ amount: 1000, customer: customerId });
+});
+// If step times out after charge succeeds, retry charges AGAIN!
+
+// ✅ GOOD - Check for existing charge first
+await step.do('charge', async () => {
+  const existing = await stripe.charges.list({ customer: customerId, limit: 1 });
+  if (existing.data.length > 0) return existing.data[0]; // Idempotent
+  return await stripe.charges.create({ amount: 1000, customer: customerId });
+});
+```
 
 ---
 
@@ -463,50 +792,6 @@ console.log(status);
 - 10M simple workflows/month (5 steps each): ((50M - 10M) / 1M) × $0.30 = **$12/month**
 
 
-## Troubleshooting
-
-### Issue: "Cannot perform I/O on behalf of a different request"
-
-**Cause:** Trying to use I/O objects created in one request context from another request handler
-
-**Solution:** Always perform I/O within `step.do()` callbacks
-
-```typescript
-// ❌ Bad - I/O outside step
-const response = await fetch('https://api.example.com/data');
-const data = await response.json();
-
-await step.do('use data', async () => {
-  // Using data from outside step's I/O context
-  return data;  // This will fail!
-});
-
-// ✅ Good - I/O inside step
-const data = await step.do('fetch data', async () => {
-  const response = await fetch('https://api.example.com/data');
-  return await response.json();  // ✅ Correct
-});
-```
-
----
-
-### Issue: NonRetryableError behaves differently in dev vs production
-
-**Known Issue:** Throwing NonRetryableError with empty message in dev mode causes retries, but works correctly in production
-
-**Workaround:** Always provide a message to NonRetryableError
-
-```typescript
-// ❌ May retry in dev
-throw new NonRetryableError();
-
-// ✅ Works consistently
-throw new NonRetryableError('User not found');
-```
-
-**Source:** [workers-sdk#10113](https://github.com/cloudflare/workers-sdk/issues/10113)
-
----
 
 ## Vitest Testing (GA April 2025)
 
@@ -576,6 +861,7 @@ it('should complete workflow', async () => {
 
 ---
 
-**Last Updated**: 2025-11-25
-**Version**: 1.0.0
+**Last Updated**: 2026-01-21
+**Version**: 2.0.0
+**Changes**: Added 12 documented Known Issues (TIER 1-2 research findings): waitForEvent timeout bug, getPlatformProxy failure, redirect instance loss, Vitest CI issues, local dev limitations, state persistence rules, caching gotchas, and idempotency patterns
 **Maintainer**: Jeremy Dawes | jeremy@jezweb.net

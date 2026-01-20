@@ -1,14 +1,14 @@
 ---
 name: cloudflare-durable-objects
 description: |
-  Build stateful Durable Objects for real-time apps, WebSocket servers, coordination, and persistent state. Use when: implementing chat rooms, multiplayer games, rate limiting, session management, WebSocket hibernation, or troubleshooting class export, migration, WebSocket state loss, or binding errors.
+  Build stateful Durable Objects for real-time apps, WebSocket servers, coordination, and persistent state. Prevents 20 documented errors. Use when: implementing chat rooms, multiplayer games, rate limiting, session management, WebSocket hibernation, or troubleshooting class export, migration, WebSocket state loss, boolean binding, RPC streams, or binding errors.
 user-invocable: true
 ---
 
 # Cloudflare Durable Objects
 
 **Status**: Production Ready ✅
-**Last Updated**: 2026-01-09
+**Last Updated**: 2026-01-21
 **Dependencies**: cloudflare-worker-base (recommended)
 **Latest Versions**: wrangler@4.58.0, @cloudflare/workers-types@4.20260109.0
 **Official Docs**: https://developers.cloudflare.com/durable-objects/
@@ -16,7 +16,7 @@ user-invocable: true
 **Recent Updates (2025)**:
 - **Oct 2025**: WebSocket message size 1 MiB → 32 MiB, Data Studio UI for SQLite DOs (view/edit storage in dashboard)
 - **Aug 2025**: `getByName()` API shortcut for named DOs
-- **June 2025**: @cloudflare/actors library (beta) - recommended SDK with migrations, alarms, Actor class pattern
+- **June 2025**: @cloudflare/actors library (beta) - recommended SDK with migrations, alarms, Actor class pattern. **Note**: Beta stability - see [active issues](https://github.com/cloudflare/actors/issues) before production use (RPC serialization, vitest integration, memory management)
 - **May 2025**: Python Workers support for Durable Objects
 - **April 2025**: SQLite GA with 10GB storage (beta → GA, 1GB → 10GB), Free tier access
 - **Feb 2025**: PRAGMA optimize support, improved error diagnostics with reference IDs
@@ -157,7 +157,12 @@ export class MyDO extends DurableObject {
 - `cursor.toArray<T>()` → all rows
 - `ctx.storage.transactionSync(() => { ... })` → atomic multi-statement
 
-**Rules:** Always use `?` placeholders, create indexes, use PRAGMA optimize after schema changes
+**Best Practices:**
+- ✅ Use `?` placeholders for parameterized queries
+- ✅ Create indexes on frequently queried columns
+- ✅ Use `PRAGMA optimize` after schema changes
+- ✅ Add `STRICT` keyword to table definitions to enforce type affinity and catch type mismatches early
+- ✅ Convert booleans to integers (0/1) - booleans bind as strings "true"/"false" in SQLite backend
 
 ### Key-Value API (both backends)
 
@@ -576,7 +581,7 @@ this.ctx.acceptWebSocket(ws);  // ✅ Hibernation enabled
 
 ## Known Issues Prevention
 
-This skill prevents **15+ documented issues**:
+This skill prevents **20 documented issues**:
 
 ### Issue #1: Class Not Exported
 **Error**: `"binding not found"` or `"Class X not found"`
@@ -651,9 +656,14 @@ ctx.getWebSockets().forEach(ws => {
 
 ### Issue #7: Outgoing WebSocket Cannot Hibernate
 **Error**: High charges despite hibernation API
-**Source**: https://developers.cloudflare.com/durable-objects/best-practices/websockets/
-**Why It Happens**: Outgoing WebSockets don't support hibernation
-**Prevention**: Only use hibernation for server-side (incoming) WebSockets
+**Source**: [Cloudflare Docs](https://developers.cloudflare.com/durable-objects/best-practices/websockets/) | [GitHub Issue #4864](https://github.com/cloudflare/workerd/issues/4864)
+**Why It Happens**: Durable Objects maintaining persistent connections to external WebSocket services using `new WebSocket('url')` cannot hibernate and remain pinned in memory indefinitely
+**Use Cases Affected**:
+- Real-time database subscriptions (Supabase, Firebase)
+- Message brokers (Redis Streams, Apache Kafka)
+- WebSocket connections to external real-time services
+- Inter-service communication
+**Prevention**: Only use hibernation for server-side (incoming) WebSockets via `ctx.acceptWebSocket()`. Outgoing WebSocket connections created with `new WebSocket(url)` prevent hibernation. Redesign architecture to avoid outgoing WebSocket connections from Durable Objects if hibernation is required.
 
 ### Issue #8: Global Uniqueness Confusion
 **Error**: Unexpected DO class name conflicts
@@ -661,11 +671,21 @@ ctx.getWebSockets().forEach(ws => {
 **Why It Happens**: DO class names are globally unique per account
 **Prevention**: Understand DO class names are shared across all Workers in account
 
-### Issue #9: Partial deleteAll on KV Backend
-**Error**: Storage not fully deleted, billing continues
-**Source**: https://developers.cloudflare.com/durable-objects/api/legacy-kv-storage-api/
-**Why It Happens**: KV backend `deleteAll()` can fail partially
-**Prevention**: Use SQLite backend for atomic deleteAll
+### Issue #9: deleteAll Issues
+**Error**: Storage not fully deleted, billing continues; or internal error in alarm handler
+**Source**: [KV Storage API](https://developers.cloudflare.com/durable-objects/api/legacy-kv-storage-api/) | [GitHub Issue #2993](https://github.com/cloudflare/workerd/issues/2993)
+**Why It Happens**:
+- KV backend `deleteAll()` can fail partially (not atomic)
+- SQLite: calling `deleteAll()` in alarm handler causes internal error and retry loop (fixed in runtime)
+**Prevention**:
+- Use SQLite backend for atomic deleteAll
+- In alarm handlers, call `deleteAlarm()` BEFORE `deleteAll()`:
+```typescript
+async alarm(info: { retryCount: number }): Promise<void> {
+  await this.ctx.storage.deleteAlarm();  // ← Call first
+  await this.ctx.storage.deleteAll();    // Then delete all
+}
+```
 
 ### Issue #10: Binding Name Mismatch
 **Error**: Runtime error accessing DO binding
@@ -717,6 +737,48 @@ async alarm(info: { retryCount: number }): Promise<void> {
 **Source**: https://developers.cloudflare.com/durable-objects/concepts/durable-object-lifecycle/
 **Why It Happens**: In-progress `fetch()` requests prevent hibernation
 **Prevention**: Ensure all async I/O completes before idle period
+
+### Issue #16: Boolean Values Bind as Strings in SQLite
+**Error**: Boolean columns contain strings `"true"`/`"false"` instead of integers 0/1; SQL queries with boolean comparisons fail
+**Source**: [GitHub Issue #9964](https://github.com/cloudflare/workers-sdk/issues/9964)
+**Why It Happens**: JavaScript boolean values are serialized as strings in Durable Objects SQLite (inconsistent with D1 behavior)
+**Prevention**: Manually convert booleans to integers and use STRICT tables
+```typescript
+// Convert booleans to integers
+this.sql.exec('INSERT INTO test (bool_col) VALUES (?)', value ? 1 : 0);
+
+// Use STRICT tables to catch type mismatches early
+this.sql.exec(`
+  CREATE TABLE IF NOT EXISTS test (
+    id INTEGER PRIMARY KEY,
+    bool_col INTEGER NOT NULL
+  ) STRICT;
+`);
+```
+
+### Issue #17: RPC ReadableStream Cancel Logs False Network Errors
+**Error**: Wrangler dev logs show "Network connection lost" when canceling ReadableStream from RPC, despite correct cancellation
+**Source**: [GitHub Issue #11071](https://github.com/cloudflare/workers-sdk/issues/11071)
+**Why It Happens**: Canceling ReadableStream returned from Durable Object via RPC triggers misleading error logs in Wrangler dev (presentation issue, not runtime bug)
+**Prevention**: No workaround available. The cancellation works correctly - ignore the false error logs in Wrangler dev. Issue does not appear in production or workerd-only setup.
+
+### Issue #18: blockConcurrencyWhile Does Not Block in Local Dev (Fixed)
+**Error**: Constructor's `blockConcurrencyWhile` doesn't block requests in local dev, causing race conditions hidden during development
+**Source**: [GitHub Issue #8686](https://github.com/cloudflare/workers-sdk/issues/8686)
+**Why It Happens**: Bug in older @cloudflare/vite-plugin and wrangler versions
+**Prevention**: Upgrade to @cloudflare/vite-plugin v1.3.1+ and wrangler v4.18.0+ where this is fixed
+
+### Issue #19: RPC Between Multiple wrangler dev Sessions Not Supported
+**Error**: `"Cannot access MyDurableObject#myMethod as Durable Object RPC is not yet supported between multiple wrangler dev sessions"`
+**Source**: [GitHub Issue #11944](https://github.com/cloudflare/workers-sdk/issues/11944)
+**Why It Happens**: Accessing a Durable Object over RPC from multiple `wrangler dev` instances (e.g., separate Workers in monorepo) is not yet supported in local dev
+**Prevention**: Use `wrangler dev -c config1 -c config2` to run multiple workers in single session, or use HTTP fetch instead of RPC for cross-worker DO communication during local development
+
+### Issue #20: state.id.name Undefined in Constructor (vitest Regression)
+**Error**: `DurableObjectState.id.name` is undefined in constructor when using @cloudflare/vitest-pool-workers 0.8.71
+**Source**: [GitHub Issue #11580](https://github.com/cloudflare/workers-sdk/issues/11580)
+**Why It Happens**: Regression in vitest-pool-workers 0.8.71 (worked in 0.8.38)
+**Prevention**: Downgrade to @cloudflare/vitest-pool-workers@0.8.38 or upgrade to later version where this is fixed
 
 ---
 
@@ -770,3 +832,7 @@ export class MyDurableObject extends DurableObject<Env> {
 2. Review `templates/` for working examples
 3. Consult official docs: https://developers.cloudflare.com/durable-objects/
 4. Verify migrations configuration carefully
+
+---
+
+**Last verified**: 2026-01-21 | **Skill version**: 3.1.0 | **Changes**: Added 5 new issues (boolean binding, RPC stream cancel, blockConcurrencyWhile local dev, RPC multi-session, vitest regression), expanded Issue #7 (outgoing WebSocket use cases) and Issue #9 (deleteAll alarm interaction), added STRICT tables best practice, updated @cloudflare/actors beta warning

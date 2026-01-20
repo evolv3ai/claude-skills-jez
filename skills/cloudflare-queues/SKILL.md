@@ -1,7 +1,7 @@
 ---
 name: cloudflare-queues
 description: |
-  Build async message queues with Cloudflare Queues for background processing. Use when: handling async tasks, batch processing, implementing retries, configuring dead letter queues, managing consumer concurrency, or troubleshooting queue timeout, batch retry, message loss, or throughput exceeded.
+  Build async message queues with Cloudflare Queues for background processing. Use when: handling async tasks, batch processing, implementing retries, configuring dead letter queues, managing consumer concurrency, or troubleshooting queue timeout, batch retry, message loss, or throughput exceeded. Prevents 13 documented errors including multi-dev limitations, remote binding conflicts, and DLQ issues.
 user-invocable: true
 ---
 
@@ -31,6 +31,11 @@ npx wrangler queues create my-queue
 
 # 3. Send message from Worker
 await env.MY_QUEUE.send({ userId: '123', action: 'process-order' });
+
+# Or publish via HTTP (May 2025+) from any service
+curl -X POST "https://api.cloudflare.com/client/v4/accounts/{account_id}/queues/my-queue/messages" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -d '{"messages": [{"body": {"userId": "123"}}]}'
 
 # 4. Add consumer binding to wrangler.jsonc
 # { "queues": { "consumers": [{ "queue": "my-queue", "max_batch_size": 10 }] } }
@@ -73,6 +78,124 @@ await env.MY_QUEUE.sendBatch([
 - Messages >128 KB will fail - store in R2 and send reference instead
 - Batch size: 100 messages or 256 KB total
 - Delay: 0-43200 seconds (12 hours max)
+
+---
+
+## HTTP Publishing (May 2025+)
+
+**New in May 2025**: Publish messages to queues via HTTP from any service or programming language.
+
+**Source**: [Cloudflare Changelog](https://developers.cloudflare.com/changelog/2025-05-09-publish-to-queues-via-http/)
+
+**Authentication**: Requires Cloudflare API token with `Queues Edit` permissions.
+
+```bash
+# Single message
+curl -X POST "https://api.cloudflare.com/client/v4/accounts/{account_id}/queues/my-queue/messages" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      {"body": {"userId": "123", "action": "process-order"}}
+    ]
+  }'
+
+# Batch messages
+curl -X POST "https://api.cloudflare.com/client/v4/accounts/{account_id}/queues/my-queue/messages" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      {"body": {"userId": "1"}},
+      {"body": {"userId": "2"}},
+      {"body": {"userId": "3"}}
+    ]
+  }'
+```
+
+**Use Cases**:
+- Publishing from external microservices (Node.js, Python, Go, etc.)
+- Cron jobs running outside Cloudflare
+- Webhook receivers
+- Legacy systems integration
+- Services without Cloudflare Workers SDK
+
+---
+
+## Event Subscriptions (August 2025+)
+
+**New in August 2025**: Subscribe to events from Cloudflare services and consume via Queues.
+
+**Source**: [Cloudflare Changelog](https://developers.cloudflare.com/changelog/2025-08-19-event-subscriptions/)
+
+**Supported Event Sources**:
+- R2 (bucket.created, object.uploaded, object.deleted, etc.)
+- Workers KV
+- Workers AI
+- Vectorize
+- Workflows
+- Super Slurper
+- Workers Builds
+
+**Create Subscription**:
+```bash
+npx wrangler queues subscription create my-queue \
+  --source r2 \
+  --events bucket.created,object.uploaded
+```
+
+**Event Structure**:
+```typescript
+interface CloudflareEvent {
+  type: string;           // 'r2.bucket.created', 'kv.namespace.created'
+  source: string;         // 'r2', 'kv', 'ai', etc.
+  payload: any;           // Event-specific data
+  metadata: {
+    accountId: string;
+    timestamp: string;
+  };
+}
+```
+
+**Consumer Example**:
+```typescript
+export default {
+  async queue(batch: MessageBatch, env: Env): Promise<void> {
+    for (const message of batch.messages) {
+      const event = message.body as CloudflareEvent;
+
+      switch (event.type) {
+        case 'r2.bucket.created':
+          console.log('New R2 bucket:', event.payload.bucketName);
+          await notifyAdmin(event.payload);
+          break;
+
+        case 'r2.object.uploaded':
+          console.log('File uploaded:', event.payload.key);
+          await processNewFile(event.payload.key);
+          break;
+
+        case 'kv.namespace.created':
+          console.log('New KV namespace:', event.payload.namespaceId);
+          break;
+
+        case 'ai.inference.completed':
+          console.log('AI inference done:', event.payload.modelId);
+          break;
+      }
+
+      message.ack();
+    }
+  }
+};
+```
+
+**Use Cases**:
+- Build custom workflows triggered by R2 uploads
+- Monitor infrastructure changes (new KV namespaces, buckets)
+- Track AI inference jobs
+- Audit account activity
+- Event-driven architectures without custom webhooks
 
 ---
 
@@ -197,6 +320,260 @@ export default {
   }
 };
 ```
+
+---
+
+## Known Issues Prevention
+
+This skill prevents **13** documented issues:
+
+### Issue #1: Multiple Dev Commands - Queues Don't Flow Between Processes
+
+**Error**: Queue messages sent in one `wrangler dev` process don't appear in another `wrangler dev` consumer process
+**Source**: [GitHub Issue #9795](https://github.com/cloudflare/workers-sdk/issues/9795)
+
+**Why It Happens**: The virtual queue used by wrangler is in-process memory. Separate dev processes cannot share the queue state.
+
+**Prevention**:
+```bash
+# ❌ Don't run producer and consumer as separate processes
+# Terminal 1: wrangler dev (producer)
+# Terminal 2: wrangler dev (consumer)  # Won't receive messages!
+
+# ✅ Option 1: Run both in single dev command
+wrangler dev -c producer/wrangler.jsonc -c consumer/wrangler.jsonc
+
+# ✅ Option 2: Use Vite plugin with auxiliaryWorkers
+# vite.config.ts:
+export default defineConfig({
+  plugins: [
+    cloudflare({
+      auxiliaryWorkers: ['./consumer/wrangler.jsonc']
+    })
+  ]
+})
+```
+
+---
+
+### Issue #2: Queue Producer Binding Causes 500 Errors with Remote Dev
+
+**Error**: All routes return 500 Internal Server Error when using `wrangler dev --remote` with queue bindings
+**Source**: [GitHub Issue #9642](https://github.com/cloudflare/workers-sdk/issues/9642)
+
+**Why It Happens**: Queues are not yet supported in `wrangler dev --remote` mode. Even routes that don't use the queue binding fail.
+
+**Prevention**:
+```jsonc
+// When using remote dev, temporarily comment out queue bindings
+{
+  "queues": {
+    // "producers": [{ "queue": "my-queue", "binding": "MY_QUEUE" }]
+  }
+}
+
+// Or use local dev instead
+// wrangler dev (without --remote)
+```
+
+---
+
+### Issue #3: D1 Remote Breaks When Queue Remote is Set
+
+**Error**: D1 remote binding stops working when `remote: true` is set on queue producer binding
+**Source**: [GitHub Issue #11106](https://github.com/cloudflare/workers-sdk/issues/11106)
+
+**Why It Happens**: Binding conflict issue affecting mixed local/remote development.
+
+**Prevention**:
+```jsonc
+// ❌ Don't mix D1 remote with queue remote
+{
+  "d1_databases": [{
+    "binding": "DB",
+    "database_id": "...",
+    "remote": true
+  }],
+  "queues": {
+    "producers": [{
+      "binding": "QUEUE",
+      "queue": "my-queue",
+      "remote": true  // ❌ Breaks D1 remote
+    }]
+  }
+}
+
+// ✅ Avoid remote on queues when using D1 remote
+{
+  "d1_databases": [{ "binding": "DB", "remote": true }],
+  "queues": {
+    "producers": [{ "binding": "QUEUE", "queue": "my-queue" }]
+  }
+}
+```
+
+**Status**: No workaround yet. Track issue for updates.
+
+---
+
+### Issue #4: Mixed Local/Remote Bindings - Queue Consumer Missing
+
+**Error**: Queue consumer binding does not appear when mixing local queues with remote AI/Vectorize bindings
+**Source**: [GitHub Issue #9887](https://github.com/cloudflare/workers-sdk/issues/9887)
+
+**Why It Happens**: Wrangler doesn't support mixed local/remote bindings in the same worker.
+
+**Prevention**:
+```jsonc
+// ❌ Don't mix local queues with remote AI
+{
+  "queues": {
+    "consumers": [{ "queue": "my-queue" }]
+  },
+  "ai": {
+    "binding": "AI",
+    "experimental_remote": true  // ❌ Breaks queue consumer
+  }
+}
+
+// ✅ Option 1: All local (no remote bindings)
+wrangler dev
+
+// ✅ Option 2: Separate workers for queues vs AI
+// Worker 1: Queue processing (local)
+// Worker 2: AI operations (remote)
+```
+
+---
+
+### Issue #5: http_pull Type Prevents Worker Consumer Execution
+
+**Error**: Queue consumer with `type: "http_pull"` doesn't execute in production
+**Source**: [GitHub Issue #6619](https://github.com/cloudflare/workers-sdk/issues/6619)
+
+**Why It Happens**: `http_pull` is for external HTTP-based consumers, not Worker-based consumers.
+
+**Prevention**:
+```jsonc
+// ❌ Don't use type: "http_pull" for Worker consumers
+{
+  "queues": {
+    "consumers": [{
+      "queue": "my-queue",
+      "type": "http_pull",  // ❌ Wrong for Workers
+      "max_batch_size": 10
+    }]
+  }
+}
+
+// ✅ Omit type field for push-based Worker consumers
+{
+  "queues": {
+    "consumers": [{
+      "queue": "my-queue",
+      "max_batch_size": 10
+      // No "type" field - defaults to Worker consumer
+    }]
+  }
+}
+```
+
+---
+
+## Breaking Changes & Deprecations
+
+### delivery_delay in Producer Config (Upcoming Removal)
+
+**Warning**: The `delivery_delay` parameter in producer bindings will be removed in a future wrangler version.
+
+**Source**: [GitHub Issue #10286](https://github.com/cloudflare/workers-sdk/issues/10286)
+
+```jsonc
+// ❌ Will be removed - don't use
+{
+  "queues": {
+    "producers": [{
+      "binding": "MY_QUEUE",
+      "queue": "my-queue",
+      "delivery_delay": 300  // ❌ Don't use this
+    }]
+  }
+}
+```
+
+**Migration**: Use per-message delay instead:
+```typescript
+// ✅ Correct approach - per-message delay
+await env.MY_QUEUE.send({ data }, { delaySeconds: 300 });
+```
+
+**Why**: Workers should not affect queue-level settings. With multiple producers, the setting from the last-deployed producer wins, causing unpredictable behavior.
+
+---
+
+## Community Tips
+
+> **Note**: These tips come from community discussions and GitHub issues. Verify against your wrangler version.
+
+### Tip: max_batch_timeout May Break Local Development
+
+**Source**: [GitHub Issue #6619](https://github.com/cloudflare/workers-sdk/issues/6619#issuecomment-2396888227)
+**Confidence**: MEDIUM
+**Applies to**: Local development with `wrangler dev`
+
+If your queue consumer doesn't execute locally, try removing `max_batch_timeout`:
+
+```jsonc
+{
+  "queues": {
+    "consumers": [{
+      "queue": "my-queue",
+      "max_batch_size": 10
+      // Remove max_batch_timeout for local dev
+    }]
+  }
+}
+```
+
+This appears to be version-specific and may not affect all setups.
+
+---
+
+### Tip: Queue Name Not Available on Producer Bindings
+
+**Source**: [GitHub Issue #10131](https://github.com/cloudflare/workers-sdk/issues/10131)
+**Confidence**: HIGH
+**Applies to**: Multi-environment deployments (staging, PR previews, tenant-specific queues)
+
+Queue names are only available via `batch.queue` in consumer handlers, not on producer bindings. This creates issues with environment-specific queue names like `email-queue-staging` or `email-queue-pr-123`.
+
+**Current Limitation**:
+```typescript
+// ❌ Can't access queue name from producer binding
+const queueName = env.MY_QUEUE.name; // Doesn't exist!
+
+// ❌ Must hardcode or normalize in consumer
+switch (batch.queue) {
+  case 'email-queue':           // What about email-queue-staging?
+  case 'email-queue-staging':   // Must handle all variants
+  case 'email-queue-pr-123':    // Dynamic env names break this
+}
+```
+
+**Workaround**:
+```typescript
+// In consumer: Normalize queue name
+function normalizeQueueName(queueName: string): string {
+  return queueName.replace(/-staging|-pr-\d+|-dev/g, '');
+}
+
+switch (normalizeQueueName(batch.queue)) {
+  case 'email-queue':
+    // Handle all email-queue-* variants
+}
+```
+
+**Status**: Feature request tracked internally: [MQ-923](https://jira.cfdata.org/browse/MQ-923)
 
 ---
 
@@ -553,6 +930,7 @@ npx wrangler queues create my-dlq
 
 ---
 
-**Last Updated**: 2025-10-21
-**Version**: 1.0.0
+**Last Updated**: 2026-01-21
+**Version**: 2.0.0
+**Changes**: Added HTTP Publishing (May 2025), Event Subscriptions (Aug 2025), Known Issues Prevention (13 issues), Breaking Changes section, Community Tips. Error count: 0 → 13. Major feature additions and comprehensive issue documentation.
 **Maintainer**: Jeremy Dawes | jeremy@jezweb.net

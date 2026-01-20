@@ -1,17 +1,17 @@
 ---
 name: google-gemini-api
 description: |
-  Integrate Gemini API with @google/genai SDK (NOT deprecated @google/generative-ai). Text generation, multimodal (images/video/audio/PDFs), function calling, thinking mode, streaming. 1M input tokens.
+  Integrate Gemini API with @google/genai SDK (NOT deprecated @google/generative-ai). Text generation, multimodal (images/video/audio/PDFs), function calling, thinking mode, streaming. 1M input tokens. Prevents 14 documented errors.
 
-  Use when: Gemini integration, multimodal AI, reasoning with thinking mode. Troubleshoot: SDK deprecation, model not found, context window, function calling errors.
+  Use when: Gemini integration, multimodal AI, reasoning with thinking mode. Troubleshoot: SDK deprecation, model not found, context window, function calling errors, streaming corruption, safety settings, rate limits.
 user-invocable: true
 ---
 
 # Google Gemini API - Complete Guide
 
-**Version**: Phase 2 Complete + Gemini 3 ✅
+**Version**: 3.0.0 (14 Known Issues Added)
 **Package**: @google/genai@1.35.0 (⚠️ NOT @google/generative-ai)
-**Last Updated**: 2026-01-09
+**Last Updated**: 2026-01-21
 
 ---
 
@@ -68,10 +68,11 @@ This skill uses the **correct current SDK** and provides a complete migration gu
 14. [Grounding with Google Search](#grounding-with-google-search)
 
 **Common Reference**:
-15. [Error Handling](#error-handling)
-16. [Rate Limits](#rate-limits)
-17. [SDK Migration Guide](#sdk-migration-guide)
-18. [Production Best Practices](#production-best-practices)
+15. [Known Issues Prevention](#known-issues-prevention)
+16. [Error Handling](#error-handling)
+17. [Rate Limits](#rate-limits)
+18. [SDK Migration Guide](#sdk-migration-guide)
+19. [Production Best Practices](#production-best-practices)
 
 ---
 
@@ -158,7 +159,7 @@ console.log(data.candidates[0].content.parts[0].text);
 - **Best for**: Most complex reasoning tasks, advanced multimodal understanding, benchmark-critical applications
 - **Features**: Enhanced multimodal (text, image, video, audio, PDF), function calling, streaming
 - **Benchmark Performance**: Outperforms Gemini 2.5 Pro on every major AI benchmark
-- **⚠️ Preview**: Use for evaluation. Consider gemini-3-flash or gemini-2.5-pro for production
+- **⚠️ Preview Models Warning**: Preview models have **NO SLAs** and can change or be deprecated with little notice. Use GA (generally available) models for production. See [Issue #13](#issue-13-preview-models-have-no-slas-and-can-change-without-warning)
 
 ### Gemini 2.5 Series (General Availability - Stable)
 
@@ -1835,6 +1836,423 @@ if (!response.candidates[0].groundingMetadata) {
 
 ---
 
+## Known Issues Prevention
+
+This skill prevents **14** documented issues:
+
+### Issue #1: Multi-byte Character Corruption in Streaming
+
+**Error**: Garbled text or � symbols when streaming responses with non-English text
+**Source**: [GitHub Issue #764](https://github.com/googleapis/js-genai/issues/764)
+**Why It Happens**: The `TextDecoder` converts chunks to strings without the `{stream: true}` option. Multi-byte UTF-8 characters (Chinese, Japanese, Korean, emoji) split across chunks create invalid strings.
+
+**Prevention**:
+```typescript
+// The SDK already fixes this, but if implementing custom streaming:
+const decoder = new TextDecoder();
+const { value } = await reader.read();
+const text = decoder.decode(value, { stream: true }); // ← stream: true required
+```
+
+**Affected**: All non-English languages using multi-byte characters
+**Status**: Fixed in SDK, but documented for custom implementations
+
+---
+
+### Issue #2: Safety Settings Method Parameter Not Supported
+
+**Error**: "method parameter is not supported in Gemini API"
+**Source**: [GitHub Issue #810](https://github.com/googleapis/js-genai/issues/810)
+**Why It Happens**: The `method` parameter in `safetySettings` only works with Vertex AI Gemini API, not Gemini Developer API or Google AI Studio. The SDK allows passing it without validation.
+
+**Prevention**:
+```typescript
+// ❌ WRONG - Fails with Gemini Developer API:
+config: {
+  safetySettings: [{
+    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+    method: HarmBlockMethod.SEVERITY // Not supported!
+  }]
+}
+
+// ✅ CORRECT - Omit 'method' for Gemini Developer API:
+config: {
+  safetySettings: [{
+    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE
+    // No 'method' field
+  }]
+}
+```
+
+**Affected**: Gemini Developer API and Google AI Studio users
+**Status**: Known limitation, use Vertex AI if you need `method` parameter
+
+---
+
+### Issue #3: Safety Settings Have Model-Specific Thresholds
+
+**Error**: Content passes through despite strict safety settings, or `safetyRatings` shows NEGLIGIBLE with empty output
+**Source**: [GitHub Issue #872](https://github.com/googleapis/js-genai/issues/872)
+**Why It Happens**: Different models have different blocking thresholds. `gemini-2.5-flash` blocks more strictly than `gemini-2.0-flash`. Additionally, `promptFeedback` only appears when INPUT is blocked; if the model generates a refusal message, `safetyRatings` may show NEGLIGIBLE.
+
+**Prevention**:
+```typescript
+// Check BOTH promptFeedback AND empty response:
+if (response.candidates[0].finishReason === 'SAFETY' ||
+    !response.text || response.text.trim() === '') {
+  console.log('Content blocked or refused');
+}
+
+// Be aware: Different models have different thresholds
+// gemini-2.5-flash: Lower threshold (stricter blocking)
+// gemini-2.0-flash: Higher threshold (more permissive)
+```
+
+**Affected**: All models when using safety settings
+**Status**: Known behavior, model-specific thresholds are by design
+
+---
+
+### Issue #4: FunctionCallingConfigMode.ANY Causes Infinite Loop
+
+**Error**: Model loops forever calling tools, never returns text response
+**Source**: [GitHub Issue #908](https://github.com/googleapis/js-genai/issues/908)
+**Why It Happens**: When `FunctionCallingConfigMode.ANY` is set with automatic function calling (`CallableTool`), the model is forced to call at least one tool on every turn and physically cannot stop, looping until max invocations limit.
+
+**Prevention**:
+```typescript
+// ❌ WRONG - Loops forever:
+config: {
+  toolConfig: {
+    functionCallingConfig: {
+      mode: FunctionCallingConfigMode.ANY // Forces tool calls forever
+    }
+  }
+}
+
+// ✅ CORRECT - Use AUTO mode (model decides):
+config: {
+  toolConfig: {
+    functionCallingConfig: {
+      mode: FunctionCallingConfigMode.AUTO // Model can choose to answer directly
+    }
+  }
+}
+
+// Or use manual function calling (check for functionCall, execute, send back)
+```
+
+**Affected**: Automatic function calling with `CallableTool`
+**Status**: Known limitation, use AUTO mode or manual function calling
+
+---
+
+### Issue #5: Structured Output Doesn't Preserve Escaped Backslashes (Gemini 3)
+
+**Error**: `JSON.parse` fails on structured output, or keys with backslashes are incorrect
+**Source**: [GitHub Issue #1226](https://github.com/googleapis/js-genai/issues/1226)
+**Why It Happens**: When using `responseMimeType: "application/json"` with schema keys containing escaped backslashes (e.g., `\\a` for key `\a`), the model output doesn't preserve JSON escaping. It emits a single backslash, causing invalid JSON.
+
+**Prevention**:
+```typescript
+// Avoid using backslashes in JSON schema keys
+// Or manually post-process if required:
+let jsonText = response.text;
+// Add custom escaping logic if needed
+```
+
+**Affected**: Gemini 3 models with structured output using backslashes in keys
+**Status**: Known issue, workaround required
+
+---
+
+### Issue #6: Large PDFs from S3 Signed URLs Fail with "Document has no pages"
+
+**Error**: `ApiError: {"error":{"code":400,"message":"The document has no pages.","status":"INVALID_ARGUMENT"}}`
+**Source**: [GitHub Issue #1259](https://github.com/googleapis/js-genai/issues/1259)
+**Why It Happens**: Larger PDFs (e.g., 20MB) from AWS S3 signed URLs fail when passed via `fileData.fileUri`. The API cannot fetch or process the PDF from signed URLs.
+
+**Prevention**:
+```typescript
+// ❌ WRONG - Fails with large PDFs from S3:
+contents: [{
+  parts: [{
+    fileData: {
+      fileUri: 'https://bucket.s3.region.amazonaws.com/file.pdf?X-Amz-Algorithm=...'
+    }
+  }]
+}]
+
+// ✅ CORRECT - Fetch and encode to base64:
+const pdfResponse = await fetch(signedUrl);
+const pdfBuffer = await pdfResponse.arrayBuffer();
+const base64Pdf = Buffer.from(pdfBuffer).toString('base64');
+
+contents: [{
+  parts: [{
+    inlineData: {
+      data: base64Pdf,
+      mimeType: 'application/pdf'
+    }
+  }]
+}]
+```
+
+**Affected**: PDF files from external signed URLs
+**Status**: Known limitation, use base64 inline data instead
+
+---
+
+### Issue #7: 404 NOT_FOUND with Uploaded Video on Gemini 3 Models
+
+**Error**: 404 NOT_FOUND when using uploaded video files with Gemini 3 models
+**Source**: [GitHub Issue #1220](https://github.com/googleapis/js-genai/issues/1220)
+**Why It Happens**: Some Gemini 3 models (`gemini-3-flash-preview`, `gemini-3-pro-preview`) are not available in the free tier or have limited access even with paid accounts. Video file uploads fail with 404.
+
+**Prevention**:
+```typescript
+// ❌ WRONG - 404 error with Gemini 3:
+const response = await ai.models.generateContent({
+  model: 'gemini-3-pro-preview', // 404 error
+  contents: [{
+    parts: [
+      { text: 'Describe this video' },
+      { fileData: { fileUri: videoFile.uri }}
+    ]
+  }]
+});
+
+// ✅ CORRECT - Use Gemini 2.5 for video understanding:
+const response = await ai.models.generateContent({
+  model: 'gemini-2.5-flash', // Works
+  contents: [{
+    parts: [
+      { text: 'Describe this video' },
+      { fileData: { fileUri: videoFile.uri }}
+    ]
+  }]
+});
+```
+
+**Affected**: Gemini 3 preview models with video uploads
+**Status**: Known limitation, use Gemini 2.5 models for video
+
+---
+
+### Issue #8: Batch API Returns 429 Despite Being Under Quota
+
+**Error**: 429 RESOURCE_EXHAUSTED when using Batch API, even when under documented quota
+**Source**: [GitHub Issue #1264](https://github.com/googleapis/js-genai/issues/1264)
+**Why It Happens**: The Batch API may have dynamic rate limiting based on server load or undocumented limits beyond static quotas.
+
+**Prevention**:
+```typescript
+// Implement exponential backoff for Batch API:
+async function batchWithRetry(request, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await ai.batches.create(request);
+    } catch (error) {
+      if (error.status === 429 && i < maxRetries - 1) {
+        const delay = Math.pow(2, i) * 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+```
+
+**Affected**: Batch API users on paid tier
+**Status**: Under investigation, use retry logic
+
+---
+
+### Issue #9: Context Caching Only Works with Gemini 1.5 Models
+
+**Error**: 404 NOT FOUND when creating caches with Gemini 2.0, 2.5, or 3.0 models
+**Source**: [GitHub Issue #339](https://github.com/googleapis/js-genai/issues/339)
+**Why It Happens**: Context caching only supports Gemini 1.5 Pro and Gemini 1.5 Flash models. Documentation examples incorrectly show Gemini 2.0+ models.
+
+**Prevention**:
+```typescript
+// ❌ WRONG - 404 error:
+const cache = await ai.caches.create({
+  model: 'gemini-2.5-flash', // Not supported
+  config: { /* ... */ }
+});
+
+// ✅ CORRECT - Use Gemini 1.5 with explicit version:
+const cache = await ai.caches.create({
+  model: 'gemini-1.5-flash-001', // Explicit version required
+  config: { /* ... */ }
+});
+```
+
+**Affected**: All Gemini 2.x and 3.x users trying to use context caching
+**Status**: Known limitation, only Gemini 1.5 models support caching
+
+---
+
+### Issue #10: Structured Output Occasionally Returns Backticks Causing JSON.parse Error
+
+**Error**: `SyntaxError: Unexpected token '`'` when parsing JSON responses
+**Source**: [GitHub Issue #976](https://github.com/googleapis/js-genai/issues/976)
+**Why It Happens**: When using `responseMimeType: "application/json"`, the response occasionally includes markdown code fence backticks wrapping the JSON (`` ```json\n{...}\n``` ``), breaking `JSON.parse()`.
+
+**Prevention**:
+```typescript
+// Strip markdown code fences before parsing:
+let jsonText = response.text.trim();
+
+if (jsonText.startsWith('```json')) {
+  jsonText = jsonText.replace(/^```json\n/, '').replace(/\n```$/, '');
+} else if (jsonText.startsWith('```')) {
+  jsonText = jsonText.replace(/^```\n/, '').replace(/\n```$/, '');
+}
+
+const data = JSON.parse(jsonText);
+```
+
+**Affected**: All models when using structured output with `responseMimeType: "application/json"`
+**Status**: Known intermittent issue, workaround required
+
+---
+
+### Issue #11: Gemini 3 Temperature Below 1.0 Causes Looping/Degraded Reasoning
+
+**Error**: Infinite loops or degraded reasoning quality on complex tasks
+**Source**: [Official Troubleshooting Docs](https://ai.google.dev/gemini-api/docs/troubleshooting)
+**Why It Happens**: Gemini 3 models are optimized for temperature 1.0. Lowering temperature below 1.0 may cause looping behavior or degraded performance on complex mathematical/reasoning tasks.
+
+**Prevention**:
+```typescript
+// ❌ WRONG - May cause issues with Gemini 3:
+const response = await ai.models.generateContent({
+  model: 'gemini-3-flash',
+  contents: 'Solve this complex math problem: ...',
+  config: {
+    temperature: 0.3 // May cause looping/degradation
+  }
+});
+
+// ✅ CORRECT - Keep default temperature:
+const response = await ai.models.generateContent({
+  model: 'gemini-3-flash',
+  contents: 'Solve this complex math problem: ...',
+  config: {
+    temperature: 1.0 // Recommended for Gemini 3
+  }
+});
+// Or omit temperature config entirely (uses default 1.0)
+```
+
+**Affected**: Gemini 3 series models
+**Status**: Official recommendation, keep temperature at 1.0
+
+---
+
+### Issue #12: Massive Rate Limit Reductions in December 2025 (Free Tier)
+
+**Error**: Sudden 429 RESOURCE_EXHAUSTED errors after December 6, 2025
+**Source**: [LaoZhang AI Blog](https://www.aifreeapi.com/en/posts/gemini-api-free-tier-limit) | [HowToGeek](https://www.howtogeek.com/gemini-slashed-free-api-limits-what-to-use-instead/)
+**Why It Happens**: Google reduced free tier rate limits by 80-90% without wide announcement, catching developers off guard.
+
+**Changes**:
+- Gemini 2.5 Pro: 80% reduction in daily requests (100 RPD, was ~250)
+- Gemini 2.5 Flash: ~20 requests per day (was ~250) - 90% reduction
+- Free tier now impractical for production
+
+**Prevention**:
+```typescript
+// For production, upgrade to paid tier:
+// https://ai.google.dev/pricing
+
+// For free tier, implement aggressive rate limiting:
+const rateLimiter = {
+  requests: 0,
+  resetTime: Date.now() + 24 * 60 * 60 * 1000,
+  async checkLimit() {
+    if (Date.now() > this.resetTime) {
+      this.requests = 0;
+      this.resetTime = Date.now() + 24 * 60 * 60 * 1000;
+    }
+    if (this.requests >= 20) {
+      throw new Error('Daily limit reached');
+    }
+    this.requests++;
+  }
+};
+
+await rateLimiter.checkLimit();
+const response = await ai.models.generateContent({/* ... */});
+```
+
+**Affected**: Free tier users (December 6, 2025 onwards)
+**Status**: Permanent change, upgrade to paid tier for production
+
+---
+
+### Issue #13: Preview Models Have No SLAs and Can Change Without Warning
+
+**Error**: Unexpected behavior changes, deprecation, or service interruptions
+**Source**: [Arsturn Blog](https://www.arsturn.com/blog/gemini-2-5-pro-api-unreliable-slow-deep-dive) | Official docs
+**Why It Happens**: Preview and experimental models (e.g., `gemini-2.5-flash-preview`, `gemini-3-pro-preview`) have no service level agreements (SLAs) and are inherently unstable. Google can change or deprecate them with little notice.
+
+**Prevention**:
+```typescript
+// ❌ WRONG - Using preview models in production:
+const response = await ai.models.generateContent({
+  model: 'gemini-2.5-flash-preview', // No SLA!
+  contents: 'Production traffic'
+});
+
+// ✅ CORRECT - Use GA (generally available) models:
+const response = await ai.models.generateContent({
+  model: 'gemini-2.5-flash', // Stable, with SLA
+  contents: 'Production traffic'
+});
+
+// Or use specific version numbers for stability:
+const response = await ai.models.generateContent({
+  model: 'gemini-2.5-flash-001', // Pinned version
+  contents: 'Production traffic'
+});
+```
+
+**Affected**: Users of preview/experimental models in production
+**Status**: Known limitation, use GA models for production
+
+---
+
+### Issue #14: API Key Leakage Auto-Blocking (Security Enhancement)
+
+**Error**: "Invalid API key" after accidentally committing key to GitHub
+**Source**: [AI Free API Blog](https://www.aifreeapi.com/en/posts/gemini-api-free-tier-limit) | Official troubleshooting
+**Why It Happens**: Google proactively scans for publicly exposed API keys (e.g., in GitHub repos) and automatically blocks them from accessing the Gemini API as a security measure.
+
+**Prevention**:
+```typescript
+// Best practices:
+// 1. Use .env files (never commit)
+// 2. Use environment variables in production
+// 3. Rotate keys if exposed
+// 4. Use .gitignore:
+
+// .gitignore
+.env
+.env.local
+*.key
+```
+
+**Affected**: Users who accidentally commit API keys to public repos
+**Status**: Security feature, rotate keys if exposed
+
+---
+
 ## Error Handling
 
 ### Common Errors
@@ -1918,24 +2336,30 @@ async function generateWithRetry(request, maxRetries = 3) {
 
 ## Rate Limits
 
-### Free Tier (Gemini API)
+### ⚠️ December 2025 Update - Major Free Tier Reductions
+
+**CRITICAL**: Google reduced free tier limits by 80-90% on December 6-7, 2025 without wide announcement. Free tier is now primarily for prototyping only.
+
+**Sources**: [LaoZhang AI](https://www.aifreeapi.com/en/posts/gemini-api-free-tier-limit) | [HowToGeek](https://www.howtogeek.com/gemini-slashed-free-api-limits-what-to-use-instead/)
+
+### Free Tier (Gemini API) - Current Limits
 
 Rate limits vary by model:
 
 **Gemini 2.5 Pro**:
 - Requests per minute: 5 RPM
 - Tokens per minute: 125,000 TPM
-- Requests per day: 100 RPD
+- Requests per day: **100 RPD** (was ~250 before Dec 2025) - **80% reduction**
 
 **Gemini 2.5 Flash**:
 - Requests per minute: 10 RPM
 - Tokens per minute: 250,000 TPM
-- Requests per day: 250 RPD
+- Requests per day: **~20 RPD** (was ~250 before Dec 2025) - **90% reduction**
 
 **Gemini 2.5 Flash-Lite**:
 - Requests per minute: 15 RPM
 - Tokens per minute: 250,000 TPM
-- Requests per day: 1,000 RPD
+- Requests per day: 1,000 RPD (unchanged)
 
 ### Paid Tier (Tier 1)
 
@@ -2169,6 +2593,8 @@ config: {
 
 ---
 
-**Last Updated**: 2026-01-03
-**Production Validated**: All features tested with @google/genai@1.34.0
+**Last Updated**: 2026-01-21
+**Production Validated**: All features tested with @google/genai@1.35.0
 **Phase**: 2 Complete ✅ (All Core + Advanced Features)
+**Known Issues**: 14 documented errors prevented
+**Changes**: Added Known Issues Prevention section with 14 community-researched findings from post-training-cutoff period (May 2025-Jan 2026)

@@ -1,21 +1,24 @@
 ---
 name: cloudflare-images
 description: |
-  Store and transform images with Cloudflare Images API and transformations. Use when: uploading images, implementing direct creator uploads, creating variants, generating signed URLs, optimizing formats (WebP/AVIF), transforming via Workers, or debugging CORS, multipart, or error codes 9401-9413.
+  Store and transform images with Cloudflare Images API and transformations. Use when: uploading images, implementing direct creator uploads, creating variants, generating signed URLs, optimizing formats (WebP/AVIF), transforming via Workers, or debugging CORS, multipart, AVIF limits, metadata stripping, cache issues, or error codes 9401-9413.
 user-invocable: true
 ---
 
 # Cloudflare Images
 
 **Status**: Production Ready ✅
-**Last Updated**: 2026-01-09
+**Last Updated**: 2026-01-21
 **Dependencies**: Cloudflare account with Images enabled
 **Latest Versions**: Cloudflare Images API v2, @cloudflare/workers-types@4.20260108.0
 
 **Recent Updates (2025)**:
+- **February 2025**: Content Credentials support (C2PA standard) - preserve image provenance chains, automatic cryptographic signing of transformations
 - **August 2025**: AI Face Cropping GA (`gravity=face` with `zoom` control, GPU-based RetinaFace, 99.4% precision)
 - **May 2025**: Media Transformations origin restrictions (default: same-domain only, configurable via dashboard)
 - **Upcoming**: Background removal, generative upscale (planned features)
+
+**Deprecation Notice**: Mirage deprecated September 15, 2025. Migrate to Cloudflare Images for storage/transformations or use native `<img loading="lazy">` for lazy loading.
 
 ---
 
@@ -142,7 +145,7 @@ Generate HMAC-SHA256 tokens for private images (URL format: `?exp=<TIMESTAMP>&si
 
 ## Known Issues Prevention
 
-This skill prevents **13+** documented issues.
+This skill prevents **16** documented issues.
 
 ### Issue #1: Direct Creator Upload CORS Error
 
@@ -399,31 +402,114 @@ await uploadImage({
 // SVG will be served at original size regardless of variant settings
 ```
 
-### Issue #13: EXIF Metadata Stripped by Default
+### Issue #13: EXIF Metadata Stripped by Format
 
-**Error**: GPS data, camera settings removed from uploaded JPEGs
+**Error**: GPS data, camera settings removed from uploaded images
 
 **Source**: [Cloudflare Images Docs - Transform via URL](https://developers.cloudflare.com/images/transform-images/transform-via-url/#metadata)
 
-**Why It Happens**: Default behavior strips all metadata except copyright
+**Why It Happens**: Default behavior strips all metadata except copyright. **CRITICAL**: WebP and PNG output formats ALWAYS discard metadata regardless of settings - only JPEG supports metadata preservation.
 
 **Prevention**:
 ```typescript
-// Preserve metadata
+// ✅ CORRECT - JPEG preserves metadata
 fetch(imageURL, {
   cf: {
     image: {
       width: 800,
-      metadata: 'keep' // Options: 'none', 'copyright', 'keep'
+      format: 'jpeg', // or 'auto' (may become jpeg)
+      metadata: 'keep' // Preserves most EXIF including GPS
+    }
+  }
+});
+
+// ❌ WRONG - WebP/PNG ignore metadata setting
+fetch(imageURL, {
+  cf: {
+    image: {
+      format: 'webp',
+      metadata: 'keep' // NO EFFECT - always stripped for WebP/PNG
     }
   }
 });
 ```
 
-**Options**:
+**Metadata Options** (JPEG only):
 - `none`: Strip all metadata
 - `copyright`: Keep only copyright tag (default for JPEG)
 - `keep`: Preserve most EXIF metadata including GPS
+
+**Format Support**:
+- ✅ JPEG: All metadata options work
+- ❌ WebP: Always strips metadata (acts as `none`)
+- ❌ PNG: Always strips metadata (acts as `none`)
+
+### Issue #14: AVIF Resolution Limit Ambiguity
+
+**Error**: Large AVIF transformations fail or degrade to lower resolution
+
+**Source**: [Cloudflare Docs](https://developers.cloudflare.com/images/transform-images/) + [Community Report](https://community.cloudflare.com/t/avif-images-max-resolution-decreased-to-1200px/732848)
+
+**Why It Happens**: Official docs state 1,600px hard limit for `format=avif`, but community reports indicate practical limit of 1200px for longest side as of late 2024. **Note**: Discrepancy between official docs (1600px) and reported behavior (1200px) needs verification.
+
+**Prevention**:
+```typescript
+// ✅ RECOMMENDED - Use format=auto instead of explicit avif
+fetch(imageURL, {
+  cf: {
+    image: {
+      width: 2000,
+      format: 'auto' // Cloudflare chooses best format
+    }
+  }
+});
+
+// ⚠️ MAY FAIL - Explicit AVIF with large dimensions
+fetch(imageURL, {
+  cf: {
+    image: {
+      width: 2000,
+      format: 'avif' // May fail if >1200px
+    }
+  }
+});
+
+// ✅ WORKAROUND - Use WebP for larger images
+if (width > 1200) {
+  format = 'webp'; // WebP supports larger dimensions
+} else {
+  format = 'avif'; // AVIF for smaller images
+}
+```
+
+### Issue #15: Image Cache by Device Type (Community-reported)
+
+**Error**: Desktop and mobile see different cached versions, unexpected cache misses
+
+**Source**: [Cloudflare Community](https://community.cloudflare.com/t/why-is-my-image-not-being-cached-by-edge/748670)
+
+**Why It Happens**: Images are cached by device type unexpectedly with no configuration option to disable this behavior in cache rules. Multiple users confirm this behavior as of Dec 2024.
+
+**Prevention**:
+- Understand that purging cache requires purging for each device type
+- Use manual cache purging per device type via Cloudflare dashboard
+- Account for device-specific caching in cache invalidation strategies
+
+**Solution/Workaround**:
+Manual cache purging per device type via Cloudflare dashboard when needed.
+
+### Issue #16: PNG Not Cached by Default
+
+**Error**: PNG images not caching despite other image formats working
+
+**Source**: [Cloudflare Community](https://community.cloudflare.com/t/cloudflare-not-cahcheing-some-of-my-images/751491)
+
+**Why It Happens**: Default file extensions cached by Cloudflare do NOT include `.png`. Default cached extensions: `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`, `.ico`, `.svg`, `.tif`, `.tiff` (PNG is missing).
+
+**Prevention**:
+Create explicit cache rule for PNG files:
+1. Dashboard → Caching → Cache Rules
+2. Add rule: `URI Path` `ends with` `.png` → Cache Everything
 
 ---
 
@@ -484,6 +570,48 @@ In-depth documentation Claude can load as needed:
 
 **Webhooks**: Notifications for Direct Creator Upload (Dashboard → Notifications → Webhooks). Payload includes `imageId`, `status`, `metadata`.
 
+**Content Credentials (C2PA)**: Cloudflare Images preserves and signs image provenance chains. When transforming images with Content Credentials, Cloudflare automatically appends transformations to the manifest and cryptographically signs them using DigiCert certificates. Enable via Dashboard → Images → Transformations → Preserve Content Credentials. **Note**: Only works if source images already contain C2PA metadata (certain cameras, DALL-E, compatible editing software). Verify at [contentcredentials.org/verify](https://contentcredentials.org/verify).
+
+**Browser Cache TTL**: Default Browser Cache TTL is 2 days (172,800 seconds). Customizable from 1 hour to 1 year (account-level or per-variant). **Important**: Private images (signed URLs) do NOT respect TTL settings. Can cause issues when re-uploading images with same Custom ID - users may see old version for up to 2 days. Solution: Use unique image IDs (append timestamp/hash) or manually purge cache after re-upload.
+
+**Product Merge Migration (Nov 2023)**: Cloudflare merged Image Resizing into Images product with new pricing: $0.50 per 1,000 unique transformations monthly (billing once per 30 days per unique transformation). **Migration Gotchas**: Old Image Resizing bills based on uncached requests (unpredictable costs due to variable cache behavior). New billing is per "unique transformation" (image ID + params combination), not request count. Same transformation requested 1,000 times/month = billed once. Existing customers can continue using legacy version or migrate voluntarily.
+
+**R2 Integration for Cost Optimization**: Cloudflare Images is built on R2 + Image Resizing. For cost savings, store original images in R2 and use Image Transformations on-demand:
+
+1. Upload images to R2 bucket
+2. Serve via custom domain with `/cdn-cgi/image/` transformations
+3. No variants stored (transformations are ephemeral/cached)
+
+**Cost Comparison**:
+- R2: 10GB storage + unlimited bandwidth (free tier)
+- Cloudflare Images: $5/month (100k images) + $1 per 100k transformations
+- R2 + Transformations: R2 storage + $0.50 per 1k unique transformations
+
+**Use Case**: If you don't need named variants, batch uploads, or Direct Creator Upload features, R2 is more cost-effective.
+
+**Example Workers Pattern with R2**:
+```typescript
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const imageKey = url.pathname.replace('/images/', '');
+    const originURL = `https://r2-bucket.example.com/${imageKey}`;
+
+    return fetch(originURL, {
+      cf: {
+        image: {
+          width: 800,
+          quality: 85,
+          format: 'auto'
+        }
+      }
+    });
+  }
+};
+```
+
+Reference: [Cloudflare Reference Architecture](https://developers.cloudflare.com/reference-architecture/diagrams/content-delivery/optimizing-image-delivery-with-cloudflare-image-resizing-and-r2/)
+
 ---
 
 ## Troubleshooting
@@ -538,6 +666,27 @@ In-depth documentation Claude can load as needed:
 3. Verify account ID matches
 4. Check for upload errors in webhooks
 
+### Problem: Re-uploaded image still shows old version
+
+**Symptoms**: Even users who never visited page see old image after re-upload
+
+**Solutions**:
+1. Use unique image IDs for each upload: `const imageId = \`${baseId}-${Date.now()}\`;`
+2. Set shorter Cache-Control headers (e.g., max-age=86400 for 1 day instead of 30 days)
+3. Manual purge via dashboard after re-upload with same ID
+4. Understand default Browser Cache TTL is 2 days - users may see cached version
+
+**Root Cause**: Cloudflare respects origin Cache-Control headers. If origin sets long max-age (e.g., 30 days), images remain cached even after re-upload with same ID.
+
+### Problem: PNG images not caching
+
+**Symptoms**: PNG images bypass cache while other formats (JPEG, WebP) cache correctly
+
+**Solutions**:
+1. Create explicit cache rule: Dashboard → Caching → Cache Rules
+2. Add rule: `URI Path` `ends with` `.png` → Cache Everything
+3. Default cached extensions don't include `.png` (only `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`, `.ico`, `.svg`, `.tif`, `.tiff`)
+
 ---
 
 ## Official Documentation
@@ -558,6 +707,10 @@ In-depth documentation Claude can load as needed:
 
 ## Package Versions
 
-**Last Verified**: 2026-01-09
+**Last Verified**: 2026-01-21
 **API Version**: v2 (direct uploads), v1 (standard uploads)
 **Optional**: @cloudflare/workers-types@4.20260108.0
+
+---
+
+**Skill Version**: 2.1.0 | **Changes**: Added 3 new issues (AVIF limits, cache by device, PNG caching), enhanced metadata issue with format details, added Content Credentials, Browser Cache TTL, Product Merge notes, R2 integration pattern, Mirage deprecation notice, and cache troubleshooting guidance. Error count: 13 → 16.

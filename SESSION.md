@@ -3,8 +3,16 @@
 **Project**: Claude Skills Repository
 **Focus**: Community Knowledge Research - Edge Cases & Gotchas
 **Started**: 2026-01-20
-**Last Updated**: 2026-01-20
-**Last Checkpoint**: [none yet]
+**Last Updated**: 2026-01-21
+**Last Checkpoint**: [pending commit]
+
+## Summary
+
+**HIGH Priority**: 16/16 skills ✅ (committed hash 488b636)
+**MEDIUM Priority**: 29/29 skills ✅ (pending commit)
+**LOW Priority**: 0/42 skills (not started)
+
+**Total Errors Added**: ~250+ new documented errors across 45 skills
 
 **Planning Docs**:
 - `planning/SKILL_RESEARCH_SESSION.md` - Research queue (87 skills)
@@ -34,27 +42,60 @@ Applies structured research findings to skills:
 
 ## Research Progress
 
-### Completed (9 skills)
-| Skill | Date | Findings | Applied |
-|-------|------|----------|---------|
-| claude-agent-sdk | 2026-01-20 | 8 (5 T1, 2 T2, 1 T3) | ✅ v3.0→3.1 |
-| cloudflare-worker-base | 2026-01-20 | 12 (8 T1, 2 T2, 2 T3) | ✅ v3.0→3.1 |
-| cloudflare-d1 | 2026-01-20 | 15 (8 T1, 4 T2, 3 T3) | ✅ v2.x→3.0 |
-| ai-sdk-core | 2026-01-20 | 18 (12 T1, 3 T2, 3 T3) | ✅ v2.0→2.1 |
-| openai-api | 2026-01-20 | 14 (8 T1, 4 T2, 2 T3) | ✅ v2.0→2.1 |
-| cloudflare-r2 | 2026-01-20 | 14 (8 T1, 3 T2, 3 T3) | ✅ v1.0→2.0 |
-| cloudflare-kv | 2026-01-20 | 11 (7 T1, 2 T2, 2 T3) | ✅ 4→6 errors |
-| ai-sdk-ui | 2026-01-20 | 17 (12 T1, 3 T2, 2 T3) | ✅ v2.x→3.1 |
-| tailwind-v4-shadcn | 2026-01-20 | 15 (6 T1, 6 T2, 2 T3) | ✅ v2.0→3.0 |
-| claude-api | 2026-01-20 | 15 (8 T1, 4 T2, 2 T3) | ✅ v2.1→2.2 |
-| clerk-auth | 2026-01-20 | 11 (7 T1, 2 T2, 2 T3) | ✅ v3.0→3.1 |
-| hono-routing | 2026-01-20 | 12 (7 T1, 3 T2, 2 T3) | ✅ v3.0→3.1 |
-| tanstack-query | 2026-01-20 | 12 (8 T1, 2 T2, 2 T3) | ✅ 8→16 errors |
-| tanstack-router | 2026-01-20 | 18 (12 T1, 3 T2, 2 T3) | ✅ 8→20 errors |
-| react-hook-form-zod | 2026-01-20 | 16 (11 T1, 3 T2, 2 T3) | ✅ 12→20 errors |
-| drizzle-orm-d1 | 2026-01-20 | 9 (6 T1, 2 T2, 1 T3) | ✅ 12→18 errors |
+### HIGH Priority - COMPLETE ✅ (16 skills)
+| Skill | Findings | Applied |
+|-------|----------|---------|
+| claude-agent-sdk | 8 (5 T1, 2 T2, 1 T3) | ✅ v3.0→3.1 |
+| cloudflare-worker-base | 12 (8 T1, 2 T2, 2 T3) | ✅ v3.0→3.1 |
+| cloudflare-d1 | 15 (8 T1, 4 T2, 3 T3) | ✅ v2.x→3.0 |
+| cloudflare-r2 | 14 (8 T1, 3 T2, 3 T3) | ✅ v1.0→2.0 |
+| cloudflare-kv | 11 (7 T1, 2 T2, 2 T3) | ✅ 4→6 errors |
+| ai-sdk-core | 18 (12 T1, 3 T2, 3 T3) | ✅ v2.0→2.1 |
+| ai-sdk-ui | 17 (12 T1, 3 T2, 2 T3) | ✅ v2.x→3.1 |
+| openai-api | 14 (8 T1, 4 T2, 2 T3) | ✅ v2.0→2.1 |
+| claude-api | 15 (8 T1, 4 T2, 2 T3) | ✅ v2.1→2.2 |
+| tailwind-v4-shadcn | 15 (6 T1, 6 T2, 2 T3) | ✅ v2.0→3.0 |
+| clerk-auth | 11 (7 T1, 2 T2, 2 T3) | ✅ v3.0→3.1 |
+| hono-routing | 12 (7 T1, 3 T2, 2 T3) | ✅ v3.0→3.1 |
+| tanstack-query | 12 (8 T1, 2 T2, 2 T3) | ✅ 8→16 errors |
+| tanstack-router | 18 (12 T1, 3 T2, 2 T3) | ✅ 8→20 errors |
+| react-hook-form-zod | 16 (11 T1, 3 T2, 2 T3) | ✅ 12→20 errors |
+| drizzle-orm-d1 | 9 (6 T1, 2 T2, 1 T3) | ✅ 12→18 errors |
 
-### HIGH Priority - COMPLETE ✅
+### MEDIUM Priority - COMPLETE ✅ (29 skills)
+| Skill | Errors Before→After | Version |
+|-------|---------------------|---------|
+| cloudflare-workflows | 0→12 | v1.0→2.0 |
+| cloudflare-queues | 0→13 | v1.0→2.0 |
+| cloudflare-durable-objects | 15→20 | v3.0→3.1 |
+| cloudflare-workers-ai | 0→7 | - |
+| cloudflare-vectorize | 10→14 | - |
+| cloudflare-agents | 16→23 | - |
+| cloudflare-browser-rendering | 6→8 | - |
+| cloudflare-hyperdrive | 0→11 | v3.0 |
+| cloudflare-turnstile | 12→15 | - |
+| cloudflare-images | 13→16 | v2.0→2.1 |
+| cloudflare-mcp-server | 22→24 | v3.0→3.1 |
+| openai-agents | 9→11 | v0.3.7→0.4.1 |
+| openai-assistants | 4→10 | - |
+| openai-responses | 8→11 | v2.0→2.1 |
+| google-gemini-api | 0→14 | v2.1→3.0 |
+| google-gemini-embeddings | 8→13 | v1.35→1.37 |
+| elevenlabs-agents | 27→34 | - |
+| better-auth | 17→22 | v5.0→5.1 |
+| typescript-mcp | 10→20 | - |
+| fastmcp | 28→30 | - |
+| nextjs | 18→25 | v3.1 |
+| zustand-state-management | 5→6 | v5.0.10 |
+| vercel-blob | 10→16 | v2.0→2.1 |
+| vercel-kv | 10→15 | v1.0→2.0 |
+| firecrawl-scraper | 0→10 | v1.0→2.0 |
+| tanstack-start | 0→9 | DRAFT→2.0 |
+| tanstack-table | 6→12 | v1.0→2.0 |
+| tiptap | 5→7 | v3.15→3.16 |
+| neon-vercel-postgres | 15→19 | v1.x→2.0 |
+
+### LOW Priority - PENDING (42 skills)
 
 See `planning/SKILL_RESEARCH_SESSION.md` for full queue.
 

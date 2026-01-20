@@ -1,9 +1,9 @@
 ---
 name: cloudflare-vectorize
 description: |
-  Build semantic search with Cloudflare Vectorize V2. Covers async mutations, 5M vectors/index, 31ms latency, returnMetadata enum changes, and V1 deprecation. Prevents 8 errors including dimension mismatches.
+  Build semantic search with Cloudflare Vectorize V2. Covers async mutations, 5M vectors/index, 31ms latency, returnMetadata enum changes, and V1 deprecation. Prevents 14 errors including dimension mismatches, TypeScript types, testing setup.
 
-  Use when: building RAG or semantic search, troubleshooting returnMetadata, V2 timing, metadata index, or dimension errors.
+  Use when: building RAG or semantic search, troubleshooting returnMetadata, V2 timing, metadata index, dimension errors, vitest setup, or wrangler --json output.
 user-invocable: true
 ---
 
@@ -12,24 +12,25 @@ user-invocable: true
 Complete implementation guide for Cloudflare Vectorize - a globally distributed vector database for building semantic search, RAG (Retrieval Augmented Generation), and AI-powered applications with Cloudflare Workers.
 
 **Status**: Production Ready ✅
-**Last Updated**: 2026-01-09
+**Last Updated**: 2026-01-21
 **Dependencies**: cloudflare-worker-base (for Worker setup), cloudflare-workers-ai (for embeddings)
-**Latest Versions**: wrangler@4.58.0, @cloudflare/workers-types@4.20260109.0
-**Token Savings**: ~65%
-**Errors Prevented**: 8
-**Dev Time Saved**: ~3 hours
+**Latest Versions**: wrangler@4.59.3, @cloudflare/workers-types@4.20260109.0
+**Token Savings**: ~70%
+**Errors Prevented**: 14
+**Dev Time Saved**: ~4 hours
 
 ## What This Skill Provides
 
 ### Core Capabilities
 - ✅ **Index Management**: Create, configure, and manage vector indexes
-- ✅ **Vector Operations**: Insert, upsert, query, delete, and list vectors
+- ✅ **Vector Operations**: Insert, upsert, query, delete, and list vectors (list-vectors added August 2025)
 - ✅ **Metadata Filtering**: Advanced filtering with 10 metadata indexes per index
 - ✅ **Semantic Search**: Find similar vectors using cosine, euclidean, or dot-product metrics
 - ✅ **RAG Patterns**: Complete retrieval-augmented generation workflows
 - ✅ **Workers AI Integration**: Native embedding generation with @cf/baai/bge-base-en-v1.5
 - ✅ **OpenAI Integration**: Support for text-embedding-3-small/large models
 - ✅ **Document Processing**: Text chunking and batch ingestion pipelines
+- ✅ **Testing Setup**: Vitest configuration with Vectorize bindings
 
 ### Templates Included
 1. **basic-search.ts** - Simple vector search with Workers AI
@@ -237,7 +238,26 @@ metadata: {
 - **Number indexes**: Float64 precision
 - **Filter size**: Max 2048 bytes (compact JSON)
 
-### 3. Key Restrictions
+### 3. Vector Dimension Limit
+
+**Current Limit**: 1536 dimensions per vector
+**Source**: [GitHub Issue #8729](https://github.com/cloudflare/workers-sdk/issues/8729)
+
+**Supported Embedding Models**:
+- Workers AI `@cf/baai/bge-base-en-v1.5`: 768 dimensions ✅
+- OpenAI `text-embedding-3-small`: 1536 dimensions ✅
+- OpenAI `text-embedding-3-large`: 3072 dimensions ❌ (requires dimension reduction)
+
+**Unsupported Models** (>1536 dimensions):
+- `nomic-embed-code`: 3584 dimensions
+- `Qodo-Embed-1-7B`: >1536 dimensions
+
+**Workaround**:
+Use dimensionality reduction (e.g., PCA) to compress embeddings to 1536 or fewer dimensions, though this may reduce semantic quality.
+
+**Feature Request**: Higher dimension support is under consideration. Use [Limit Increase Request Form](https://forms.gle/nyamy2SM9zwWTXKE6) if this blocks your use case.
+
+### 4. Key Restrictions
 
 ```typescript
 // ❌ INVALID metadata keys
@@ -255,6 +275,84 @@ metadata: {
   "nested": { "allowed": true }  // Access as "nested.allowed" in filters
 }
 ```
+
+## Best Practices
+
+### Batch Insert Performance
+
+**Critical**: Use batch size of 5000 vectors for optimal performance.
+
+**Performance Data**:
+- **Individual inserts**: 2.5M vectors in 36+ hours (incomplete)
+- **Batch inserts (5000)**: 4M vectors in ~12 hours
+- **18× faster with proper batching**
+
+**Why 5000?**
+- Vectorize's internal Write-Ahead Log (WAL) optimized for this size
+- Avoids Cloudflare API rate limits
+- Balances throughput and memory usage
+
+**Optimal Pattern**:
+```typescript
+const BATCH_SIZE = 5000;
+
+async function insertVectors(vectors: VectorizeVector[]) {
+  for (let i = 0; i < vectors.length; i += BATCH_SIZE) {
+    const batch = vectors.slice(i, i + BATCH_SIZE);
+    const result = await env.VECTORIZE.insert(batch);
+    console.log(`Inserted batch ${i / BATCH_SIZE + 1}, mutationId: ${result.mutationId}`);
+
+    // Optional: Rate limiting delay
+    if (i + BATCH_SIZE < vectors.length) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+}
+```
+
+**Sources**:
+- [Community Report](https://community.cloudflare.com/t/performance-issues-with-large-scale-inserts-in-vectorize/788917)
+- [Official Best Practices](https://developers.cloudflare.com/vectorize/best-practices/insert-vectors/)
+
+---
+
+### Query Accuracy Modes
+
+Vectorize uses approximate nearest neighbor (ANN) search by default with ~80% accuracy compared to exact search.
+
+**Default Mode**: Approximate scoring (~80% accuracy)
+- Faster latency
+- Good for RAG, search, recommendations
+- topK up to 100
+
+**High-Precision Mode**: Near 100% accuracy
+- Enabled via `returnValues: true`
+- Higher latency
+- Limited to topK=20
+
+**Trade-off Example**:
+```typescript
+// Fast, ~80% accuracy, topK up to 100
+const results = await env.VECTORIZE.query(embedding, {
+  topK: 50,
+  returnValues: false  // Default
+});
+
+// Slower, ~100% accuracy, topK max 20
+const preciseResults = await env.VECTORIZE.query(embedding, {
+  topK: 10,
+  returnValues: true   // High-precision scoring
+});
+```
+
+**When to Use High-Precision**:
+- Critical applications (fraud detection, legal compliance)
+- Small result sets (topK < 20)
+- Accuracy is higher priority than latency
+
+**Source**: [Cloudflare Blog - Building Vectorize](https://blog.cloudflare.com/building-vectorize-a-distributed-vector-database-on-cloudflare-developer-platform/)
+
+---
 
 ## Common Errors & Solutions
 
@@ -331,6 +429,136 @@ Solution: V2 changed returnMetadata from boolean to string enum:
   - ✅ V2: { returnMetadata: 'all' }
 ```
 
+### Error 11: Wrangler --json Output Contains Log Prefix
+
+**Error**: `wrangler vectorize list --json` output starts with log message, breaking JSON parsing
+**Source**: [GitHub Issue #11011](https://github.com/cloudflare/workers-sdk/issues/11011)
+
+**Affected Commands**:
+- `wrangler vectorize list --json`
+- `wrangler vectorize list-metadata-index --json`
+
+**Problem**:
+```bash
+$ wrangler vectorize list --json
+📋 Listing Vectorize indexes...
+[
+  { "created_on": "2025-10-18T13:28:30.259277Z", ... }
+]
+```
+
+The log message makes output invalid JSON, breaking piping to `jq` or other tools.
+
+**Solution**: Strip first line before parsing:
+```bash
+# Using tail
+wrangler vectorize list --json | tail -n +2 | jq '.'
+
+# Using sed
+wrangler vectorize list --json | sed '1d' | jq '.'
+```
+
+---
+
+### Error 12: TypeScript Types Missing Filter Operators
+
+**Error**: `wrangler types` generates incomplete `VectorizeVectorMetadataFilterOp` type
+**Source**: [GitHub Issue #10092](https://github.com/cloudflare/workers-sdk/issues/10092)
+**Status**: OPEN (tracked internally as VS-461)
+
+**Problem**:
+Generated type only includes `$eq` and `$ne`, missing V2 operators: `$in`, `$nin`, `$lt`, `$lte`, `$gt`, `$gte`
+
+**Impact**:
+TypeScript shows false errors when using valid V2 metadata filter operators:
+```typescript
+const vectorizeRes = env.VECTORIZE.queryById(imgId, {
+  filter: { gender: { $in: genderFilters } }, // ❌ TS error but works!
+  topK,
+  returnMetadata: 'indexed',
+});
+```
+
+**Workaround**: Manual type override until wrangler types is fixed:
+```typescript
+// Add to your types file
+type VectorizeMetadataFilter = Record<string,
+  | string
+  | number
+  | boolean
+  | {
+      $eq?: string | number | boolean;
+      $ne?: string | number | boolean;
+      $in?: (string | number | boolean)[];
+      $nin?: (string | number | boolean)[];
+      $lt?: number | string;
+      $lte?: number | string;
+      $gt?: number | string;
+      $gte?: number | string;
+    }
+>;
+```
+
+---
+
+### Error 13: Windows Dev Registry Failure (FIXED)
+
+**Error**: `ENOENT: no such file or directory` when running `wrangler dev` on Windows
+**Source**: [GitHub Issue #10383](https://github.com/cloudflare/workers-sdk/issues/10383)
+**Status**: FIXED in wrangler@4.32.0
+
+**Problem**:
+Wrangler attempted to create external worker files with colons in the name (invalid on Windows):
+```
+Error: ENOENT: ... '__WRANGLER_EXTERNAL_VECTORIZE_WORKER:<project>:<binding>'
+```
+
+**Solution**:
+Update to wrangler@4.32.0 or later:
+```bash
+npm install -g wrangler@latest
+```
+
+---
+
+### Error 14: topK Limit Depends on returnValues/returnMetadata
+
+**Error**: `topK exceeds maximum allowed value`
+**Source**: [Vectorize Limits](https://developers.cloudflare.com/vectorize/platform/limits/)
+
+**Problem**: Maximum topK value changes based on query options:
+
+| Configuration | Max topK |
+|---------------|----------|
+| `returnValues: false`, `returnMetadata: 'none'` | 100 |
+| `returnValues: true` OR `returnMetadata: 'all'` | 20 |
+| `returnMetadata: 'indexed'` | 100 |
+
+**Common Error**:
+```typescript
+// ❌ ERROR - topK too high with returnValues
+query(embedding, {
+  topK: 100,            // Exceeds limit!
+  returnValues: true    // Max topK=20 when true
+});
+```
+
+**Solution**:
+```typescript
+// ✅ OK - respects conditional limit
+query(embedding, {
+  topK: 20,
+  returnValues: true
+});
+
+// ✅ OK - higher topK without values
+query(embedding, {
+  topK: 100,
+  returnValues: false,
+  returnMetadata: 'indexed'
+});
+```
+
 ---
 
 ## V2 Migration Checklist
@@ -352,6 +580,152 @@ Solution: V2 changed returnMetadata from boolean to string enum:
 
 ---
 
+## Testing Considerations
+
+### Vitest with Vectorize Bindings
+
+**Issue**: Using `@cloudflare/vitest-pool-workers` with Vectorize or Workers AI bindings causes runtime failure.
+**Source**: [GitHub Issue #7434](https://github.com/cloudflare/workers-sdk/issues/7434)
+
+**Error**: `wrapped binding module can't be resolved`
+
+**Workaround**:
+1. Create `wrangler-test.jsonc` without Vectorize/AI bindings
+2. Point vitest config to test-specific wrangler file
+3. Mock bindings in your tests
+
+**Example**:
+```typescript
+// wrangler-test.jsonc (no Vectorize binding)
+{
+  "name": "my-worker-test",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-10-21"
+  // No vectorize binding
+}
+
+// vitest.config.ts
+import { defineWorkersProject } from '@cloudflare/vitest-pool-workers/config';
+
+export default defineWorkersProject({
+  test: {
+    poolOptions: {
+      workers: {
+        wrangler: {
+          configPath: "./wrangler-test.jsonc"
+        }
+      }
+    }
+  }
+});
+
+// Mock in tests
+import { vi } from 'vitest';
+
+const mockVectorize = {
+  query: vi.fn().mockResolvedValue({
+    matches: [
+      { id: 'test-1', score: 0.95, metadata: { category: 'docs' } }
+    ],
+    count: 1
+  }),
+  insert: vi.fn().mockResolvedValue({ mutationId: "test-mutation-id" }),
+  upsert: vi.fn().mockResolvedValue({ mutationId: "test-mutation-id" })
+};
+
+// Use mock in tests
+test('vector search', async () => {
+  const env = { VECTORIZE_INDEX: mockVectorize };
+  // ... test logic
+});
+```
+
+---
+
+## Community Tips
+
+**Note**: These tips come from community discussions and official blog posts. Verify against your Vectorize version.
+
+### Tip 1: Range Queries at Scale May Have Reduced Accuracy (Community-sourced)
+
+**Source**: [Query Best Practices](https://developers.cloudflare.com/vectorize/best-practices/query-vectors/)
+**Confidence**: MEDIUM
+**Applies to**: Datasets with ~10M+ vectors
+
+Range queries (`$lt`, `$lte`, `$gt`, `$gte`) on large datasets may experience reduced accuracy.
+
+**Optimization Strategy**:
+```typescript
+// ❌ High-cardinality range at scale
+metadata: {
+  timestamp_ms: 1704067200123
+}
+filter: { timestamp_ms: { $gte: 1704067200000 } }
+
+// ✅ Bucketed into discrete values
+metadata: {
+  timestamp_bucket: "2025-01-01-00:00",  // 1-hour buckets
+  timestamp_ms: 1704067200123  // Original (non-indexed)
+}
+filter: {
+  timestamp_bucket: {
+    $in: ["2025-01-01-00:00", "2025-01-01-01:00"]
+  }
+}
+```
+
+**When This Matters**:
+- Time-based filtering over months/years
+- User IDs, transaction IDs (UUID ranges)
+- Any high-cardinality continuous data
+
+**Alternative**: Use equality filters (`$eq`, `$in`) with bucketed values.
+
+---
+
+### Tip 2: List Vectors Operation (Added August 2025)
+
+**Source**: [Vectorize Changelog](https://developers.cloudflare.com/vectorize/platform/changelog/)
+
+Vectorize V2 added support for the `list-vectors` operation for paginated iteration through vector IDs.
+
+**Use Cases**:
+- Auditing vector collections
+- Bulk vector operations
+- Debugging index contents
+
+**API**:
+```typescript
+const result = await env.VECTORIZE_INDEX.list({
+  limit: 1000,  // Max 1000 per page
+  cursor?: string
+});
+
+// result.vectors: Array<{ id: string }>
+// result.cursor: string | undefined
+// result.count: number
+
+// Pagination example
+let cursor: string | undefined;
+const allVectorIds: string[] = [];
+
+do {
+  const result = await env.VECTORIZE_INDEX.list({
+    limit: 1000,
+    cursor
+  });
+  allVectorIds.push(...result.vectors.map(v => v.id));
+  cursor = result.cursor;
+} while (cursor);
+```
+
+**Limitations**:
+- Returns IDs only (not values or metadata)
+- Max 1000 vectors per page
+- Use cursor for pagination
+
+---
+
 ## Official Documentation
 
 - **Vectorize V2 Docs**: https://developers.cloudflare.com/vectorize/
@@ -363,6 +737,7 @@ Solution: V2 changed returnMetadata from boolean to string enum:
 ---
 
 **Status**: Production Ready ✅ (Vectorize V2 GA - September 2024)
-**Last Updated**: 2026-01-09
+**Last Updated**: 2026-01-21
 **Token Savings**: ~70%
-**Errors Prevented**: 10 (includes V2 breaking changes)
+**Errors Prevented**: 14 (includes V2 breaking changes, testing setup, TypeScript types)
+**Changes**: Added 4 new errors (wrangler --json, TypeScript types, Windows dev, topK limits), batch performance best practices, query accuracy modes, testing setup, community tips on range queries and list-vectors operation.

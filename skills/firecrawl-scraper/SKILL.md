@@ -1,9 +1,9 @@
 ---
 name: firecrawl-scraper
 description: |
-  Convert websites into LLM-ready data with Firecrawl API. Features: scrape, crawl, map, search, extract, agent (autonomous), batch operations, and change tracking. Handles JavaScript, anti-bot bypass, PDF/DOCX parsing, and branding extraction.
+  Convert websites into LLM-ready data with Firecrawl API. Features: scrape, crawl, map, search, extract, agent (autonomous), batch operations, and change tracking. Handles JavaScript, anti-bot bypass, PDF/DOCX parsing, and branding extraction. Prevents 10 documented errors.
 
-  Use when: scraping websites, crawling sites, web search + scrape, autonomous data gathering, monitoring content changes, extracting brand/design systems, or troubleshooting content not loading, JavaScript rendering, or bot detection.
+  Use when: scraping websites, crawling sites, web search + scrape, autonomous data gathering, monitoring content changes, extracting brand/design systems, or troubleshooting content not loading, JavaScript rendering, bot detection, v2 migration, job status errors, DNS resolution, or stealth mode pricing.
 user-invocable: true
 ---
 
@@ -555,6 +555,26 @@ export default {
 
 ## Rate Limits & Pricing
 
+### Warning: Stealth Mode Pricing Change (May 2025)
+
+Stealth mode now costs **5 credits per request** when actively used. Default behavior uses "auto" mode which only charges stealth credits if basic fails.
+
+**Recommended pattern**:
+```python
+# Use auto mode (default) - only charges 5 credits if stealth is needed
+doc = app.scrape(url, formats=["markdown"])
+
+# Or conditionally enable stealth for specific errors
+if error_status_code in [401, 403, 500]:
+    doc = app.scrape(url, formats=["markdown"], proxy="stealth")
+```
+
+### Unified Billing (November 2025)
+
+Credits and tokens merged into single system. Extract endpoint uses credits (15 tokens = 1 credit).
+
+### Pricing Tiers
+
 | Tier | Credits/Month | Notes |
 |------|---------------|-------|
 | Free | 500 | Good for testing |
@@ -563,10 +583,10 @@ export default {
 | Growth | 500,000 | $399/month |
 
 **Credit Costs**:
-- Scrape: 1-4 credits (depends on options)
+- Scrape: 1 credit (basic), 5 credits (stealth)
 - Crawl: 1 credit per page
 - Search: 2 credits per 10 results
-- Extract: 5 credits per page
+- Extract: 5 credits per page (changed from tokens in v2.6.0)
 - Agent: Dynamic (complexity-based)
 - Change Tracking JSON mode: +5 credits
 
@@ -581,6 +601,311 @@ export default {
 | Timeout error | Slow page | Increase `timeout`, use `stealth: true` |
 | Bot detection | Anti-scraping | Use `stealth: true`, add `location` |
 | Invalid API key | Wrong format | Must start with `fc-` |
+
+---
+
+## Known Issues Prevention
+
+This skill prevents **10** documented issues:
+
+### Issue #1: Stealth Mode Pricing Change (May 2025)
+
+**Error**: Unexpected credit costs when using stealth mode
+**Source**: [Stealth Mode Docs](https://docs.firecrawl.dev/features/stealth-mode) | [Changelog](https://www.firecrawl.dev/changelog)
+**Why It Happens**: Starting May 8th, 2025, Stealth Mode proxy requests cost **5 credits per request** (previously included in standard pricing). This is a significant billing change.
+**Prevention**: Use auto mode (default) which only charges stealth credits if basic fails
+
+```python
+# RECOMMENDED: Use auto mode (default)
+doc = app.scrape(url, formats=['markdown'])
+# Auto retries with stealth (5 credits) only if basic fails
+
+# Or conditionally enable based on error status
+try:
+    doc = app.scrape(url, formats=['markdown'], proxy='basic')
+except Exception as e:
+    if e.status_code in [401, 403, 500]:
+        doc = app.scrape(url, formats=['markdown'], proxy='stealth')
+```
+
+**Stealth Mode Options**:
+- `auto` (default): Charges 5 credits only if stealth succeeds after basic fails
+- `basic`: Standard proxies, 1 credit cost
+- `stealth`: 5 credits per request when actively used
+
+---
+
+### Issue #2: v2.0.0 Breaking Changes - Method Renames
+
+**Error**: `AttributeError: 'FirecrawlApp' object has no attribute 'scrape_url'`
+**Source**: [v2.0.0 Release](https://github.com/firecrawl/firecrawl/releases/tag/v2.0.0) | [Migration Guide](https://docs.firecrawl.dev/migrate-to-v2)
+**Why It Happens**: v2.0.0 (August 2025) renamed SDK methods across all languages
+**Prevention**: Use new method names
+
+**JavaScript/TypeScript**:
+- `scrapeUrl()` → `scrape()`
+- `crawlUrl()` → `crawl()` or `startCrawl()`
+- `asyncCrawlUrl()` → `startCrawl()`
+- `checkCrawlStatus()` → `getCrawlStatus()`
+
+**Python**:
+- `scrape_url()` → `scrape()`
+- `crawl_url()` → `crawl()` or `start_crawl()`
+
+```python
+# OLD (v1)
+doc = app.scrape_url("https://example.com")
+
+# NEW (v2)
+doc = app.scrape("https://example.com")
+```
+
+---
+
+### Issue #3: v2.0.0 Breaking Changes - Format Changes
+
+**Error**: `'extract' is not a valid format`
+**Source**: [v2.0.0 Release](https://github.com/firecrawl/firecrawl/releases/tag/v2.0.0)
+**Why It Happens**: Old `"extract"` format renamed to `"json"` in v2.0.0
+**Prevention**: Use new object format for JSON extraction
+
+```python
+# OLD (v1)
+doc = app.scrape_url(
+    url="https://example.com",
+    params={
+        "formats": ["extract"],
+        "extract": {"prompt": "Extract title"}
+    }
+)
+
+# NEW (v2)
+doc = app.scrape(
+    url="https://example.com",
+    formats=[{"type": "json", "prompt": "Extract title"}]
+)
+
+# With schema
+doc = app.scrape(
+    url="https://example.com",
+    formats=[{
+        "type": "json",
+        "prompt": "Extract product info",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "price": {"type": "number"}
+            }
+        }
+    }]
+)
+```
+
+**Screenshot format also changed**:
+```python
+# NEW: Screenshot as object
+formats=[{
+    "type": "screenshot",
+    "fullPage": True,
+    "quality": 80,
+    "viewport": {"width": 1920, "height": 1080}
+}]
+```
+
+---
+
+### Issue #4: v2.0.0 Breaking Changes - Crawl Options
+
+**Error**: `'allowBackwardCrawling' is not a valid parameter`
+**Source**: [v2.0.0 Release](https://github.com/firecrawl/firecrawl/releases/tag/v2.0.0)
+**Why It Happens**: Several crawl parameters renamed or removed in v2.0.0
+**Prevention**: Use new parameter names
+
+**Parameter Changes**:
+- `allowBackwardCrawling` → Use `crawlEntireDomain` instead
+- `maxDepth` → Use `maxDiscoveryDepth` instead
+- `ignoreSitemap` (bool) → `sitemap` ("only", "skip", "include")
+
+```python
+# OLD (v1)
+app.crawl_url(
+    url="https://docs.example.com",
+    params={
+        "allowBackwardCrawling": True,
+        "maxDepth": 3,
+        "ignoreSitemap": False
+    }
+)
+
+# NEW (v2)
+app.crawl(
+    url="https://docs.example.com",
+    crawl_entire_domain=True,
+    max_discovery_depth=3,
+    sitemap="include"  # "only", "skip", or "include"
+)
+```
+
+---
+
+### Issue #5: v2.0.0 Default Behavior Changes
+
+**Error**: Stale cached content returned unexpectedly
+**Source**: [v2.0.0 Release](https://github.com/firecrawl/firecrawl/releases/tag/v2.0.0)
+**Why It Happens**: v2.0.0 changed several defaults
+**Prevention**: Be aware of new defaults
+
+**Default Changes**:
+- `maxAge` now defaults to **2 days** (cached by default)
+- `blockAds`, `skipTlsVerification`, `removeBase64Images` enabled by default
+
+```python
+# Force fresh data if needed
+doc = app.scrape(url, formats=['markdown'], max_age=0)
+
+# Disable cache entirely
+doc = app.scrape(url, formats=['markdown'], store_in_cache=False)
+```
+
+---
+
+### Issue #6: Job Status Race Condition
+
+**Error**: `"Job not found"` when checking crawl status immediately after creation
+**Source**: [GitHub Issue #2662](https://github.com/firecrawl/firecrawl/issues/2662)
+**Why It Happens**: Database replication delay between job creation and status endpoint availability
+**Prevention**: Wait 1-3 seconds before first status check, or implement retry logic
+
+```python
+import time
+
+# Start crawl
+job = app.start_crawl(url="https://docs.example.com")
+print(f"Job ID: {job.id}")
+
+# REQUIRED: Wait before first status check
+time.sleep(2)  # 1-3 seconds recommended
+
+# Now status check succeeds
+status = app.get_crawl_status(job.id)
+
+# Or implement retry logic
+def get_status_with_retry(job_id, max_retries=3, delay=1):
+    for attempt in range(max_retries):
+        try:
+            return app.get_crawl_status(job_id)
+        except Exception as e:
+            if "Job not found" in str(e) and attempt < max_retries - 1:
+                time.sleep(delay)
+                continue
+            raise
+
+status = get_status_with_retry(job.id)
+```
+
+---
+
+### Issue #7: DNS Errors Return HTTP 200
+
+**Error**: DNS resolution failures return `success: false` with HTTP 200 status instead of 4xx
+**Source**: [GitHub Issue #2402](https://github.com/firecrawl/firecrawl/issues/2402) | Fixed in v2.7.0
+**Why It Happens**: Changed in v2.7.0 for consistent error handling
+**Prevention**: Check `success` field and `code` field, don't rely on HTTP status alone
+
+```typescript
+const result = await app.scrape('https://nonexistent-domain-xyz.com');
+
+// DON'T rely on HTTP status code
+// Response: HTTP 200 with { success: false, code: "SCRAPE_DNS_RESOLUTION_ERROR" }
+
+// DO check success field
+if (!result.success) {
+    if (result.code === 'SCRAPE_DNS_RESOLUTION_ERROR') {
+        console.error('DNS resolution failed');
+    }
+    throw new Error(result.error);
+}
+```
+
+**Note**: DNS resolution errors still charge 1 credit despite failure.
+
+---
+
+### Issue #8: Bot Detection Still Charges Credits
+
+**Error**: Cloudflare error page returned as "successful" scrape, credits charged
+**Source**: [GitHub Issue #2413](https://github.com/firecrawl/firecrawl/issues/2413)
+**Why It Happens**: Fire-1 engine charges credits even when bot detection prevents access
+**Prevention**: Validate content isn't an error page before processing; use stealth mode for protected sites
+
+```python
+# First attempt without stealth
+doc = app.scrape(url="https://protected-site.com", formats=["markdown"])
+
+# Validate content isn't an error page
+if "cloudflare" in doc.markdown.lower() or "access denied" in doc.markdown.lower():
+    # Retry with stealth (costs 5 credits if successful)
+    doc = app.scrape(url, formats=["markdown"], stealth=True)
+```
+
+**Cost Impact**: Basic scrape charges 1 credit even on failure, stealth retry charges additional 5 credits.
+
+---
+
+### Issue #9: Self-Hosted Anti-Bot Fingerprinting Weakness
+
+**Error**: `"All scraping engines failed!"` (SCRAPE_ALL_ENGINES_FAILED) on sites with anti-bot measures
+**Source**: [GitHub Issue #2257](https://github.com/firecrawl/firecrawl/issues/2257)
+**Why It Happens**: Self-hosted Firecrawl lacks advanced anti-fingerprinting techniques present in cloud service
+**Prevention**: Use Firecrawl cloud service for sites with strong anti-bot measures, or configure proxy
+
+```bash
+# Self-hosted fails on Cloudflare-protected sites
+curl -X POST 'http://localhost:3002/v2/scrape' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-d '{
+  "url": "https://www.example.com/",
+  "pageOptions": { "engine": "playwright" }
+}'
+# Error: "All scraping engines failed!"
+
+# Workaround: Use cloud service instead
+# Cloud service has better anti-fingerprinting
+```
+
+**Note**: This affects self-hosted v2.3.0+ with default docker-compose setup. Warning present: "⚠️ WARNING: No proxy server provided. Your IP address may be blocked."
+
+---
+
+### Issue #10: Cache Performance Best Practices (Community-sourced)
+
+**Suboptimal**: Not leveraging cache can make requests 500% slower
+**Source**: [Fast Scraping Docs](https://docs.firecrawl.dev/features/fast-scraping) | [Blog Post](https://www.firecrawl.dev/blog/mastering-firecrawl-scrape-endpoint)
+**Why It Matters**: Default `maxAge` is 2 days in v2+, but many use cases need different strategies
+**Prevention**: Use appropriate cache strategy for your content type
+
+```python
+# Fresh data (real-time pricing, stock prices)
+doc = app.scrape(url, formats=["markdown"], max_age=0)
+
+# 10-minute cache (news, blogs)
+doc = app.scrape(url, formats=["markdown"], max_age=600000)  # milliseconds
+
+# Use default cache (2 days) for static content
+doc = app.scrape(url, formats=["markdown"])  # maxAge defaults to 172800000
+
+# Don't store in cache (one-time scrape)
+doc = app.scrape(url, formats=["markdown"], store_in_cache=False)
+
+# Require minimum age before re-scraping (v2.7.0+)
+doc = app.scrape(url, formats=["markdown"], min_age=3600000)  # 1 hour minimum
+```
+
+**Performance Impact**:
+- Cached response: Milliseconds
+- Fresh scrape: Seconds
+- Speed difference: **Up to 500%**
 
 ---
 
@@ -606,5 +931,6 @@ export default {
 ---
 
 **Token Savings**: ~65% vs manual integration
-**Error Prevention**: API auth, rate limiting, format handling, JS rendering
+**Error Prevention**: 10 documented issues (v2 migration, stealth pricing, job status race, DNS errors, bot detection billing, self-hosted limitations, cache optimization)
 **Production Ready**: Yes
+**Last verified**: 2026-01-21 | **Skill version**: 2.0.0 | **Changes**: Added Known Issues Prevention section with 10 documented errors from TIER 1-2 research findings; added v2 migration guidance; documented stealth mode pricing change and unified billing model

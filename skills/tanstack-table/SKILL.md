@@ -1,9 +1,9 @@
 ---
 name: TanStack Table
 description: |
-  Build headless data tables with TanStack Table v8. Server-side pagination, filtering, sorting, and virtualization for Cloudflare Workers + D1.
+  Build headless data tables with TanStack Table v8. Server-side pagination, filtering, sorting, and virtualization for Cloudflare Workers + D1. Prevents 12 documented errors.
 
-  Use when building tables with large datasets, coordinating with TanStack Query, or fixing state management or performance issues.
+  Use when building tables with large datasets, coordinating with TanStack Query, or fixing state management, performance, or React 19+ compatibility issues.
 user-invocable: true
 ---
 
@@ -164,6 +164,30 @@ function VirtualizedTable() {
 }
 ```
 
+### Warning: Hidden Containers (Tabs/Modals)
+
+**Known Issue**: When using virtualization inside tabbed content or modals that hide inactive content with `display: none`, the virtualizer continues performing layout calculations while hidden, causing:
+- Infinite re-render loops (large datasets: 50k+ rows)
+- Incorrect scroll position when tab becomes visible
+- Empty table or reset scroll (small datasets)
+
+**Source**: [GitHub Issue #6109](https://github.com/TanStack/table/issues/6109)
+
+**Prevention**:
+```typescript
+const rowVirtualizer = useVirtualizer({
+  count: rows.length,
+  getScrollElement: () => containerRef.current,
+  estimateSize: () => 50,
+  overscan: 10,
+  // Disable when container is hidden to prevent infinite re-renders
+  enabled: containerRef.current?.getClientRects().length !== 0,
+})
+
+// OR: Conditionally render instead of hiding with CSS
+{isVisible && <VirtualizedTable />}
+```
+
 ---
 
 ## Column/Row Pinning
@@ -226,6 +250,23 @@ column.pin('right')  // Pin column to right
 column.pin(false)    // Unpin column
 row.pin('top')       // Pin row to top
 row.pin('bottom')    // Pin row to bottom
+```
+
+### Warning: Column Pinning with Column Groups
+
+**Known Issue**: Pinning parent group columns (created with `columnHelper.group()`) causes incorrect positioning and duplicated headers. `column.getStart('left')` returns wrong values for group headers.
+
+**Source**: [GitHub Issue #5397](https://github.com/TanStack/table/issues/5397)
+
+**Prevention**:
+```typescript
+// Disable pinning for grouped columns
+const isPinnable = (column) => !column.parent
+
+// OR: Pin individual columns within group, not the group itself
+table.getColumn('firstName')?.pin('left')
+table.getColumn('lastName')?.pin('left')
+// Don't pin the parent group column
 ```
 
 ---
@@ -373,6 +414,25 @@ function GroupedTable() {
 // 'sum', 'min', 'max', 'extent', 'mean', 'median', 'unique', 'uniqueCount', 'count'
 ```
 
+### Warning: Performance Bottleneck with Grouping (Community-sourced)
+
+**Known Issue**: The grouping feature causes significant performance degradation on medium-to-large datasets. With grouping enabled, render times can increase from <1 second to 30-40 seconds on 50k rows due to excessive memory usage in `createRow` calculations.
+
+**Source**: [Blog Post (JP Camara)](https://jpcamara.com/2023/03/07/making-tanstack-table.html) | [GitHub Issue #5926](https://github.com/TanStack/table/issues/5926)
+
+**Verified**: Community testing + GitHub issue report
+
+**Prevention**:
+```typescript
+// 1. Use server-side grouping for large datasets
+// 2. Implement pagination to limit rows per page
+// 3. Disable grouping for 10k+ rows
+const shouldEnableGrouping = data.length < 10000
+
+// 4. OR: Use React.memo on row components
+const MemoizedRow = React.memo(TableRow)
+```
+
 ---
 
 ## Known Issues & Solutions
@@ -405,6 +465,109 @@ function GroupedTable() {
 - **Error**: Table slow/laggy with large datasets
 - **Fix**: Use TanStack Virtual for client-side OR implement server-side pagination
 
+**Issue #7: React Compiler Incompatibility (React 19+)**
+- **Error**: `"Table doesn't re-render when data changes"` (with React Compiler enabled)
+- **Source**: [GitHub Issue #5567](https://github.com/TanStack/table/issues/5567)
+- **Why It Happens**: React Compiler's automatic memoization conflicts with table core instance, preventing re-renders when data/state changes
+- **Prevention**: Add `"use no memo"` directive at top of components using `useReactTable`:
+
+```typescript
+"use no memo"
+
+function TableComponent() {
+  const table = useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() })
+  // Now works correctly with React Compiler
+}
+```
+
+**Note**: This issue also affects column visibility and row selection. Full fix coming in v9.
+
+**Issue #8: Server-Side Pagination Row Selection Bug**
+- **Error**: `toggleAllRowsSelected(false)` only deselects current page, not all pages
+- **Source**: [GitHub Issue #5929](https://github.com/TanStack/table/issues/5929)
+- **Why It Happens**: Selection state persists across pages (intentional for server-side use cases), but header checkbox state is calculated incorrectly
+- **Prevention**: Manually clear selection state when toggling off:
+
+```typescript
+const toggleAllRows = (value: boolean) => {
+  if (!value) {
+    table.setRowSelection({}) // Clear entire selection object
+  } else {
+    table.toggleAllRowsSelected(true)
+  }
+}
+```
+
+**Issue #9: Client-Side onPaginationChange Returns Incorrect pageIndex**
+- **Error**: `onPaginationChange` always returns `pageIndex: 0` instead of current page
+- **Source**: [GitHub Issue #5970](https://github.com/TanStack/table/issues/5970)
+- **Why It Happens**: Client-side pagination mode has state tracking bug (only occurs in client mode, works correctly in server/manual mode)
+- **Prevention**: Switch to manual pagination for correct behavior:
+
+```typescript
+// Instead of relying on client-side pagination
+const table = useReactTable({
+  data,
+  columns,
+  manualPagination: true, // Forces correct state tracking
+  pageCount: Math.ceil(data.length / pagination.pageSize),
+  state: { pagination },
+  onPaginationChange: setPagination,
+})
+```
+
+**Issue #10: Row Selection Not Cleaned Up When Data Removed**
+- **Error**: Selected rows that no longer exist in data remain in selection state
+- **Source**: [GitHub Issue #5850](https://github.com/TanStack/table/issues/5850)
+- **Why It Happens**: Intentional behavior to support server-side pagination (where rows disappear from current page but should stay selected)
+- **Prevention**: Manually clean up selection when removing data:
+
+```typescript
+const removeRow = (idToRemove: string) => {
+  // Remove from data
+  setData(data.filter(row => row.id !== idToRemove))
+
+  // Clean up selection if it was selected
+  const { rowSelection } = table.getState()
+  if (rowSelection[idToRemove]) {
+    table.setRowSelection((old) => {
+      const filtered = Object.entries(old).filter(([id]) => id !== idToRemove)
+      return Object.fromEntries(filtered)
+    })
+  }
+}
+
+// OR: Use table.resetRowSelection(true) to clear all
+```
+
+**Issue #11: Performance Degradation with React DevTools Open**
+- **Error**: Table performance significantly degrades with React DevTools open (development only)
+- **Why It Happens**: DevTools inspects table instance and row models on every render, especially noticeable with 500+ rows
+- **Fix**: Close React DevTools during performance testing. This is not a production issue.
+
+**Issue #12: TypeScript getValue() Type Inference with Grouped Columns**
+- **Error**: `getValue()` returns `unknown` instead of accessor's actual type inside `columnHelper.group()`
+- **Source**: [GitHub Issue #5860](https://github.com/TanStack/table/issues/5860)
+- **Fix**: Manually specify type or use `renderValue()`:
+
+```typescript
+// Option 1: Type assertion
+cell: (info) => {
+  const value = info.getValue() as string
+  return value.toUpperCase()
+}
+
+// Option 2: Use renderValue() (better type inference)
+cell: (info) => {
+  const value = info.renderValue()
+  return typeof value === 'string' ? value.toUpperCase() : value
+}
+```
+
 ---
 
 **Related Skills**: tanstack-query (data fetching), cloudflare-d1 (database backend), tailwind-v4-shadcn (UI styling)
+
+---
+
+**Last verified**: 2026-01-21 | **Skill version**: 2.0.0 | **Changes**: Added 7 new known issues from TIER 1-2 research findings (React 19 Compiler, server-side row selection, virtualization in hidden containers, client-side pagination bug, column pinning with groups, row selection cleanup, DevTools performance, TypeScript getValue). Error count: 6 → 12.

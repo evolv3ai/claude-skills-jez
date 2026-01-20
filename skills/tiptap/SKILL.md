@@ -10,9 +10,9 @@ user-invocable: true
 # Tiptap Rich Text Editor
 
 **Status**: Production Ready
-**Last Updated**: 2026-01-09
+**Last Updated**: 2026-01-21
 **Dependencies**: React 19+, Tailwind v4, shadcn/ui (recommended)
-**Latest Versions**: @tiptap/react@3.15.3, @tiptap/starter-kit@3.15.3, @tiptap/pm@3.15.3 (verified 2026-01-09)
+**Latest Versions**: @tiptap/react@3.16.0, @tiptap/starter-kit@3.16.0, @tiptap/pm@3.16.0 (verified 2026-01-21)
 
 ---
 
@@ -28,6 +28,8 @@ npm install @tiptap/react @tiptap/starter-kit @tiptap/pm @tiptap/extension-image
 - `@tiptap/pm` is required peer dependency (ProseMirror engine)
 - StarterKit bundles 20+ essential extensions (headings, lists, bold, italic, etc.)
 - Image/color/typography are common additions not in StarterKit
+
+**Important**: If using Tiptap v3.14.0+, drag handle functionality requires minimum v3.14.0 (regression fixed in that release). For Pro extensions with drag handles, React 18 is recommended due to tippyjs-react dependency.
 
 ### 2. Create SSR-Safe Editor
 
@@ -227,7 +229,7 @@ async function uploadImageToR2(file: File, env: Env): Promise<string> {
 
 ## Known Issues Prevention
 
-This skill prevents **5** documented issues:
+This skill prevents **7** documented issues:
 
 ### Issue #1: SSR Hydration Mismatch
 **Error**: "SSR has been detected, please set `immediatelyRender` explicitly to `false`"
@@ -258,6 +260,66 @@ This skill prevents **5** documented issues:
 **Source**: [GitHub Issue #6812](https://github.com/ueberdosis/tiptap/issues/6812)
 **Why It Happens**: CRA incompatibility with v3 module structure
 **Prevention**: Skill documents Vite as preferred bundler + provides working config
+
+### Issue #6: ProseMirror Multiple Versions Conflict
+**Error**: `Error: Looks like multiple versions of prosemirror-model were loaded`
+**Source**: [GitHub Issue #577](https://github.com/ueberdosis/tiptap/issues/577) (131 comments), [Issue #6171](https://github.com/ueberdosis/tiptap/issues/6171)
+**Why It Happens**: Installing additional Tiptap extensions can pull different versions of prosemirror-model or prosemirror-view, creating duplicate dependencies in node_modules. The unique-id extension is particularly problematic in testing environments.
+**Prevention**: Use package resolutions to force a single ProseMirror version
+
+```json
+// package.json
+{
+  "resolutions": {
+    "prosemirror-model": "~1.21.0",
+    "prosemirror-view": "~1.33.0",
+    "prosemirror-state": "~1.4.3"
+  }
+}
+```
+
+Or reinstall dependencies:
+```bash
+rm -rf node_modules package-lock.json
+npm install
+```
+
+**Note**: The @tiptap/pm package is designed to prevent this issue, but extensions may still introduce conflicts.
+
+### Issue #7: EditorProvider vs useEditor Confusion (Community-sourced)
+**Error**: `SSR has been detected, please set 'immediatelyRender' explicitly to 'false'` (when both used together)
+**Source**: [GitHub Issue #5856 Comment](https://github.com/ueberdosis/tiptap/issues/5856#issuecomment-2493124171)
+**Why It Happens**: Users commonly use EditorProvider and useEditor together, but EditorProvider is a wrapper around useEditor for React Context setup - they should not be used simultaneously.
+**Prevention**: Choose one pattern only
+
+**Incorrect Pattern**:
+```typescript
+// Don't use both together
+<EditorProvider>
+  <MyComponent />
+</EditorProvider>
+
+function MyComponent() {
+  const editor = useEditor({ ... }) // ❌ Wrong - EditorProvider already created editor
+}
+```
+
+**Correct Patterns**:
+```typescript
+// Option 1: Use EditorProvider only
+<EditorProvider immediatelyRender={false} extensions={[StarterKit]}>
+  <EditorContent />
+</EditorProvider>
+
+// Option 2: Use useEditor only
+function Editor() {
+  const editor = useEditor({
+    extensions: [StarterKit],
+    immediatelyRender: false,
+  })
+  return <EditorContent editor={editor} />
+}
+```
 
 ---
 
@@ -359,9 +421,14 @@ editor.commands.insertContent('**Bold** text', { contentType: 'markdown' })
 ```
 
 **When to use**: Storing content as markdown, displaying/editing rich text
-**Install**: `npm install @tiptap/markdown@3.15.3`
+**Install**: `npm install @tiptap/markdown@3.16.0`
 **Status**: Beta (released Oct 2025, API stable but may change)
 **CRITICAL**: Always specify `contentType: 'markdown'` when setting markdown content
+
+**Recent Fixes** (v3.15.0-v3.16.0):
+- Fixed incorrect Markdown output when underline is mixed with bold/italic and ranges don't fully overlap
+- Improved serialization for overlapping formatting marks
+- Source: [v3.16.0 Release](https://github.com/ueberdosis/tiptap/releases/tag/v3.16.0)
 
 ### Pattern 3: Form Integration with react-hook-form
 
@@ -507,17 +574,24 @@ const SlashCommands = Extension.create({
 ## Dependencies
 
 **Required**:
-- `@tiptap/react@^3.15.3` - React integration
-- `@tiptap/starter-kit@^3.15.3` - Essential extensions bundle
-- `@tiptap/pm@^3.15.3` - ProseMirror peer dependency
+- `@tiptap/react@^3.16.0` - React integration (React 19 supported)
+- `@tiptap/starter-kit@^3.16.0` - Essential extensions bundle
+- `@tiptap/pm@^3.16.0` - ProseMirror peer dependency
 - `react@^19.0.0` - React framework
 
+**React Version Compatibility**:
+- **Core Tiptap**: Supports React 19 as of v2.10.0
+- **UI Components**: Work best with React 18 (Next.js 15 recommended per [official docs](https://tiptap.dev/docs/editor/getting-started/install/nextjs))
+- **Pro Extensions**: May require React 18 - drag-handle extension depends on archived tippyjs-react without React 19 support ([Issue #5876](https://github.com/ueberdosis/tiptap/issues/5876))
+
 **Optional**:
-- `@tiptap/extension-image@^3.15.3` - Image support
-- `@tiptap/extension-link@^3.15.3` - Link support (NEW in v3, included in StarterKit)
-- `@tiptap/extension-color@^3.15.3` - Text color
-- `@tiptap/extension-typography@^3.15.3` - Smart typography
-- `@tiptap/extension-collaboration@^3.15.3` - Real-time collaboration
+- `@tiptap/extension-audio@^3.16.0` - Audio support (NEW in v3.16.0)
+- `@tiptap/extension-image@^3.16.0` - Image support
+- `@tiptap/extension-link@^3.16.0` - Link support (NEW in v3, included in StarterKit)
+- `@tiptap/extension-color@^3.16.0` - Text color
+- `@tiptap/extension-typography@^3.16.0` - Smart typography
+- `@tiptap/extension-collaboration@^3.16.0` - Real-time collaboration
+- `@tiptap/extension-markdown@^3.16.0` - Markdown support (Beta)
 - `@tailwindcss/typography@^0.5.19` - Prose styling
 - `yjs@^13.6.0` - Collaborative editing backend
 - `react-medium-image-zoom@^5.2.0` - Image zoom functionality
@@ -535,19 +609,21 @@ const SlashCommands = Extension.create({
 
 ---
 
-## Package Versions (Verified 2026-01-09)
+## Package Versions (Verified 2026-01-21)
 
 ```json
 {
   "dependencies": {
-    "@tiptap/react": "^3.15.3",
-    "@tiptap/starter-kit": "^3.15.3",
-    "@tiptap/pm": "^3.15.3",
-    "@tiptap/extension-image": "^3.15.3",
-    "@tiptap/extension-color": "^3.15.3",
-    "@tiptap/extension-text-style": "^3.15.3",
-    "@tiptap/extension-typography": "^3.15.3",
-    "@tiptap/extension-link": "^3.15.3"
+    "@tiptap/react": "^3.16.0",
+    "@tiptap/starter-kit": "^3.16.0",
+    "@tiptap/pm": "^3.16.0",
+    "@tiptap/extension-audio": "^3.16.0",
+    "@tiptap/extension-image": "^3.16.0",
+    "@tiptap/extension-color": "^3.16.0",
+    "@tiptap/extension-text-style": "^3.16.0",
+    "@tiptap/extension-typography": "^3.16.0",
+    "@tiptap/extension-link": "^3.16.0",
+    "@tiptap/extension-markdown": "^3.16.0"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
@@ -567,8 +643,8 @@ This skill is based on real-world implementations:
 - **shadcn minimal-tiptap**: 3.14M downloads/week
 
 **Token Savings**: ~71% (14k → 4k tokens)
-**Errors Prevented**: 5/5 critical setup errors
-**Validation**: ✅ SSR compatibility, ✅ Image uploads, ✅ Tailwind v4, ✅ Performance
+**Errors Prevented**: 7/7 documented errors (5 critical setup + 2 community patterns)
+**Validation**: ✅ SSR compatibility, ✅ Image uploads, ✅ Tailwind v4, ✅ Performance, ✅ React 19 compatibility
 
 ---
 

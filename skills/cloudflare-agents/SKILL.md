@@ -1,9 +1,9 @@
 ---
 name: cloudflare-agents
 description: |
-  Build AI agents with Cloudflare Agents SDK on Workers + Durable Objects. Provides WebSockets, state persistence, scheduling, and multi-agent coordination. Prevents 16 documented errors.
+  Build AI agents with Cloudflare Agents SDK on Workers + Durable Objects. Provides WebSockets, state persistence, scheduling, and multi-agent coordination. Prevents 23 documented errors.
 
-  Use when: building WebSocket agents, RAG with Vectorize, MCP servers, or troubleshooting "Agent class must extend", "new_sqlite_classes", binding errors.
+  Use when: building WebSocket agents, RAG with Vectorize, MCP servers, or troubleshooting "Agent class must extend", "new_sqlite_classes", binding errors, WebSocket payload limits.
 user-invocable: true
 ---
 
@@ -15,12 +15,47 @@ user-invocable: true
 **Latest Versions**: agents@0.3.3, @modelcontextprotocol/sdk@latest
 **Production Tested**: Cloudflare's own MCP servers (https://github.com/cloudflare/mcp-server-cloudflare)
 
-**Recent Updates (2025)**:
-- **Nov 2025**: Agents SDK v0.2.24+ with resumable streaming, MCP client improvements, schedule fixes
+**Recent Updates (2025-2026)**:
+- **Jan 2026**: Agents SDK v0.3.6 with callable methods fix, protocol version support updates
+- **Nov 2025**: Agents SDK v0.2.24+ with **resumable streaming** (streams persist across disconnects, page refreshes, and sync across tabs/devices), MCP client improvements, schedule fixes
 - **Sept 2025**: AI SDK v5 compatibility, automatic message migration
 - **Aug 2025**: MCP Elicitation support, http-streamable transport, task queues, email integration
 - **April 2025**: MCP support (MCPAgent class), `import { context }` from agents
 - **March 2025**: Package rename (agents-sdk → agents)
+
+### Resumable Streaming (agents@0.2.24+)
+
+AIChatAgent now supports **resumable streaming**, enabling clients to reconnect and continue receiving streamed responses without data loss. This solves critical real-world scenarios:
+
+- Long-running AI responses that exceed connection timeout
+- Users on unreliable networks (mobile, airplane WiFi)
+- Users switching between devices mid-conversation
+- Background tasks where users navigate away and return
+- Real-time collaboration where multiple clients need to stay in sync
+
+**Key capability**: Streams persist across page refreshes, broken connections, and sync across open tabs and devices.
+
+**Implementation** (automatic in AIChatAgent):
+```typescript
+export class ChatAgent extends AIChatAgent<Env> {
+  async onChatMessage(onFinish) {
+    return streamText({
+      model: openai('gpt-4o-mini'),
+      messages: this.messages,
+      onFinish
+    }).toTextStreamResponse();
+
+    // ✅ Stream automatically resumable
+    // - Client disconnects? Stream preserved
+    // - Page refresh? Stream continues
+    // - Multiple tabs? All stay in sync
+  }
+}
+```
+
+No code changes needed - just use AIChatAgent with agents@0.2.24 or later.
+
+**Source**: [Agents SDK v0.2.24 Changelog](https://developers.cloudflare.com/changelog/2025-11-26-agents-resumable-streaming/)
 
 ---
 
@@ -643,6 +678,61 @@ await this.sql`INSERT INTO users (email) VALUES (${userEmail})`  // ← Prepared
 const users = await this.sql`SELECT * FROM users WHERE email = ${email}`  // ← Returns array
 ```
 
+### State Type Safety Gotcha
+
+**CRITICAL**: Providing a type parameter to state methods does NOT validate that the result matches your type definition. In TypeScript, properties (fields) that do not exist or conform to the type you provided will be dropped silently.
+
+```typescript
+interface MyState {
+  count: number;
+  name: string;
+}
+
+export class MyAgent extends Agent<Env, MyState> {
+  initialState = { count: 0, name: "default" };
+
+  async increment() {
+    // TypeScript allows this, but runtime may differ
+    const currentState = this.state; // Type is MyState
+
+    // If state was corrupted/modified externally:
+    // { count: "invalid", otherField: 123 }
+    // TypeScript still shows it as MyState
+    // count field doesn't match (string vs number)
+    // otherField is dropped silently
+  }
+}
+```
+
+**Prevention**: Add runtime validation for critical state operations:
+
+```typescript
+// Validate state shape at runtime
+function validateState(state: unknown): state is MyState {
+  return (
+    typeof state === 'object' &&
+    state !== null &&
+    'count' in state &&
+    typeof (state as MyState).count === 'number' &&
+    'name' in state &&
+    typeof (state as MyState).name === 'string'
+  );
+}
+
+async increment() {
+  if (!validateState(this.state)) {
+    console.error('State validation failed', this.state);
+    // Reset to valid state
+    await this.setState(this.initialState);
+    return;
+  }
+
+  // Safe to use
+  const newCount = this.state.count + 1;
+  await this.setState({ ...this.state, count: newCount });
+}
+```
+
 **See**: https://developers.cloudflare.com/agents/api-reference/store-and-sync-state/
 
 ---
@@ -1079,6 +1169,18 @@ export default app;
 - **/mcp**: Streamable HTTP (modern, recommended)
 - **/sse**: Server-Sent Events (legacy, deprecated)
 
+### MCP Protocol Version Support
+
+The Agents SDK supports multiple MCP protocol versions. As of agents@0.3.x, version validation is permissive to accept newer protocol versions:
+
+- **Supported versions**: `2024-11-05`, `2025-11-25`, and future versions
+- **Error (before 0.3.x)**: `Error: Unsupported MCP protocol version: 2025-11-25`
+- **Fixed**: Version validation now accepts any non-ancient protocol version
+
+This aligns with the MCP community's move to stateless transports. If you encounter protocol version errors, update to agents@0.3.x or later.
+
+**Source**: [GitHub Issue #769](https://github.com/cloudflare/agents/issues/769)
+
 ### MCP with OAuth
 
 ```typescript
@@ -1121,7 +1223,7 @@ npx @modelcontextprotocol/inspector@latest
 5. **Use tagged template literals for SQL** - Prevents SQL injection
 6. **Handle WebSocket disconnections** - State persists, connections don't
 7. **Verify scheduled task callback exists** - Throws error if method missing
-8. **Use global unique instance names** - Same name = same agent globally
+8. **Use idFromName() for user-specific agents** - NEVER use newUniqueId() for persistent state (see Issue #23)
 9. **Check state size limits** - Max 1GB total per agent
 10. **Monitor task payload size** - Max 2MB per scheduled task
 11. **Use workflow bindings correctly** - Must be configured in wrangler.jsonc
@@ -1129,6 +1231,8 @@ npx @modelcontextprotocol/inspector@latest
 13. **Close browser instances** - Prevent resource leaks
 14. **Use setState() for persistence** - Don't just modify this.state
 15. **Test migrations locally first** - Migrations are atomic, can't rollback
+16. **Prune WebSocket message history** - Stay under 1MB cumulative payload (see Issue #17)
+17. **Validate state shape at runtime** - TypeScript types don't enforce runtime validation (see State Type Safety)
 
 ### Never Do ❌
 
@@ -1138,16 +1242,18 @@ npx @modelcontextprotocol/inspector@latest
 4. **Don't construct SQL strings manually** - Use tagged templates
 5. **Don't exceed 1GB state per agent** - Hard limit
 6. **Don't schedule tasks with non-existent callbacks** - Runtime error
-7. **Don't assume same name = different agent** - Global uniqueness
+7. **Don't use newUniqueId() for user-specific agents** - State won't persist (see Issue #23)
 8. **Don't use SSE for MCP** - Deprecated, use /mcp transport
 9. **Don't forget browser binding** - Required for web browsing
 10. **Don't modify this.state directly** - Use setState() instead
+11. **Don't let WebSocket payloads exceed 1MB** - Connection will crash (see Issue #17)
+12. **Don't trust TypeScript types for state validation** - Add runtime checks (see State Type Safety)
 
 ---
 
 ## Known Issues Prevention
 
-This skill prevents **16+** documented issues:
+This skill prevents **23** documented issues:
 
 ### Issue 1: Migrations Not Atomic
 **Error**: "Cannot gradually deploy migration"
@@ -1185,11 +1291,30 @@ This skill prevents **16+** documented issues:
 **Why**: WebSocket connections don't persist, but agent state does
 **Prevention**: Store important data in agent state via setState(), not connection state
 
-### Issue 7: Scheduled Task Callback Doesn't Exist
-**Error**: "Method X does not exist on Agent"
-**Source**: https://developers.cloudflare.com/agents/api-reference/schedule-tasks/
-**Why**: this.schedule() calls method that isn't defined
-**Prevention**: Ensure callback method exists before scheduling
+### Issue 7: Scheduled Task Callback Doesn't Exist / Long AI Requests Timeout
+**Error**: "Method X does not exist on Agent" or "IoContext timed out due to inactivity" or "A call to blockConcurrencyWhile() waited for too long"
+**Source**: https://developers.cloudflare.com/agents/api-reference/schedule-tasks/ and [GitHub Issue #600](https://github.com/cloudflare/agents/issues/600)
+**Why**: this.schedule() calls method that isn't defined, OR scheduled callbacks failed when AI requests exceeded 30 seconds due to `blockConcurrencyWhile` wrapper (fixed in agents@0.2.x via PR #653)
+**Prevention**: Ensure callback method exists before scheduling. For long-running AI requests, update to agents@0.2.x or later.
+
+**Historical issue** (before 0.2.x): Scheduled callbacks were wrapped in `blockConcurrencyWhile`, which enforced a 30-second limit. AI requests exceeding this would fail even though they were valid async operations.
+
+```typescript
+// ✅ Fixed in 0.2.x - schedule callbacks can now run for their full duration
+export class MyAgent extends Agent<Env> {
+  async onRequest(request: Request) {
+    await this.schedule(60, "processAIRequest", { query: "..." });
+  }
+
+  async processAIRequest(data: { query: string }) {
+    // This can now take > 30s without timeout
+    const result = await streamText({
+      model: openai('gpt-4o'),
+      messages: [{ role: 'user', content: data.query }]
+    });
+  }
+}
+```
 
 ### Issue 8: State Size Limit Exceeded
 **Error**: "Maximum database size exceeded"
@@ -1292,6 +1417,192 @@ const result = streamText({
 - Want automatic streaming
 - Need multi-provider support
 
+### Issue 17: WebSocket Payload Size Limit (1MB)
+**Error**: `Error: internal error; reference = [reference ID]`
+**Source**: [GitHub Issue #119](https://github.com/cloudflare/agents/issues/119)
+**Why**: WebSocket connections fail when cumulative message payload exceeds approximately 1 MB. After 5-6 tool calls returning large data (e.g., 200KB+ each), the payload exceeds the limit and the connection crashes with "internal error".
+**Prevention**: Prune message history client-side to stay under 950KB
+
+**The problem**: All messages—including large tool results—are streamed back to the client and LLM for continued conversations, causing cumulative payload growth.
+
+```typescript
+// Workaround: Prune old messages client-side
+function pruneMessages(messages: Message[]): Message[] {
+  let totalSize = 0;
+  const pruned = [];
+
+  // Keep recent messages until we hit size limit
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msgSize = JSON.stringify(messages[i]).length;
+    if (totalSize + msgSize > 950_000) break; // 950KB limit
+    pruned.unshift(messages[i]);
+    totalSize += msgSize;
+  }
+
+  return pruned;
+}
+
+// Use before sending to agent
+const prunedMessages = pruneMessages(allMessages);
+```
+
+**Better solution** (proposed): Server-side context management where only message summaries are sent to the client, not full tool results.
+
+### Issue 18: Duplicate Assistant Messages with needsApproval Tools
+**Error**: Duplicate messages with identical `toolCallId`, original stuck in `input-available` state
+**Source**: [GitHub Issue #790](https://github.com/cloudflare/agents/issues/790)
+**Why**: When using `needsApproval: true` on tools, the system creates duplicate assistant messages instead of updating the original one. The server-generated message (state `input-available`) never transitions to `approval-responded` when client approves.
+**Prevention**: Understand this is a known limitation. Track both message IDs in your UI until fixed.
+
+```typescript
+// Current behavior (agents@0.3.3)
+export class MyAgent extends AIChatAgent<Env> {
+  tools = {
+    sensitiveAction: tool({
+      needsApproval: true,  // ⚠️ Causes duplicate messages
+      execute: async (args) => {
+        return { result: "action completed" };
+      }
+    })
+  };
+}
+
+// Result: Two messages persist
+// 1. Server message: ID "assistant_1768917665170_4mub00d32", state "input-available"
+// 2. Client message: ID "oFwQwEpvLd8f1Gwd", state "approval-responded"
+```
+
+**Workaround**: Handle both messages in your UI or avoid `needsApproval` until this is resolved.
+
+### Issue 19: Duplicate Messages with Client-Side Tool Execution (Fixed in 0.2.31+)
+**Error**: `Duplicate item found with id rs_xxx` (OpenAI API rejection)
+**Source**: [GitHub Issue #728](https://github.com/cloudflare/agents/issues/728)
+**Fixed In**: agents@0.2.31+
+**Why**: When using `useAgentChat` with client-side tools lacking server-side execute functions, the agents library created duplicate assistant messages sharing identical reasoning IDs, triggering OpenAI API rejection.
+**Prevention**: Update to agents@0.2.31 or later
+
+**Historical issue** (before 0.2.31): Client-side tool execution created new messages instead of updating existing ones, leaving the original stuck in incomplete state and causing duplicate `providerMetadata.openai.itemId` values.
+
+```typescript
+// ✅ Fixed in 0.2.31+ - no changes needed
+// Just ensure you're on agents@0.2.31 or later
+```
+
+### Issue 20: Async Querying Cache TTL Not Honored (Fixed)
+**Error**: `401 Unauthorized` errors after token expiration despite `cacheTtl` setting
+**Source**: [GitHub Issue #725](https://github.com/cloudflare/agents/issues/725)
+**Fixed In**: Check agents release notes
+**Why**: The `useAgent` hook had a caching problem where the queryPromise was computed once per `cacheKey` and kept forever, even after TTL expired. The `useMemo` implementation didn't include time in dependencies, so TTL was never enforced.
+**Prevention**: Update to latest agents version
+
+**Historical workaround** (before fix):
+```typescript
+// Force cache invalidation by including token version in queryDeps
+const [tokenVersion, setTokenVersion] = useState(0);
+
+const { state } = useAgent({
+  query: async () => ({ token: await getJWT() }),
+  queryDeps: [tokenVersion], // ✅ Force new cache key
+  cacheTtl: 60_000,
+});
+
+// Manually refresh token before expiry
+useEffect(() => {
+  const interval = setInterval(() => {
+    setTokenVersion(v => v + 1);
+  }, 50_000); // Refresh every 50s
+  return () => clearInterval(interval);
+}, []);
+```
+
+### Issue 21: jsonSchemaValidator Breaks After DO Hibernation (Fixed)
+**Error**: `TypeError: validator.getValidator is not a function`
+**Source**: [GitHub Issue #663](https://github.com/cloudflare/agents/issues/663)
+**Fixed In**: Check agents release notes
+**Why**: When a Durable Object hibernated and restored, the Agents SDK serialized MCP connection options using `JSON.stringify()`, converting class instances like `CfWorkerJsonSchemaValidator` into plain objects without methods. Upon restoration via `JSON.parse()`, the validator lost its methods.
+**Prevention**: Update to latest agents version (validator now built-in)
+
+**Historical issue** (before fix):
+```typescript
+// ❌ Before fix - manual validator caused errors
+import { CfWorkerJsonSchemaValidator } from '@modelcontextprotocol/sdk/cloudflare-worker';
+
+const mcpAgent = new McpAgent({
+  client: {
+    jsonSchemaValidator: new CfWorkerJsonSchemaValidator(), // Got serialized to {}
+  }
+});
+```
+
+**Current approach** (fixed):
+```typescript
+// ✅ Now automatic - no manual validator needed
+const mcpAgent = new McpAgent({
+  // SDK handles validator internally
+});
+```
+
+### Issue 22: WorkerTransport ClientCapabilities Lost After Hibernation (Fixed in 0.3.5+)
+**Error**: `Error: Client does not support form elicitation`
+**Source**: [GitHub Issue #777](https://github.com/cloudflare/agents/issues/777)
+**Fixed In**: agents@0.3.5+
+**Why**: When using `WorkerTransport` with MCP servers in serverless environments, client capabilities failed to persist across Durable Object hibernation cycles because the `TransportState` interface only stored `sessionId` and `initialized` status, not `clientCapabilities`.
+**Prevention**: Update to agents@0.3.5 or later
+
+**Historical issue** (before 0.3.5):
+```typescript
+// Client advertised elicitation capability during handshake,
+// but after hibernation, capability info was lost
+await server.elicitInput({ /* form */ }); // ❌ Error: capabilities lost
+```
+
+**Solution** (fixed in 0.3.5):
+```typescript
+// TransportState now includes clientCapabilities
+interface TransportState {
+  sessionId: string;
+  initialized: boolean;
+  clientCapabilities?: ClientCapabilities; // ✅ Now persisted
+}
+```
+
+### Issue 23: idFromName() vs newUniqueId() Critical Pattern
+**Error**: State never persists, new agent instance every request
+**Source**: [Cloudflare blog - Building agents with OpenAI](https://blog.cloudflare.com/building-agents-with-openai-and-cloudflares-agents-sdk/)
+**Why**: If you use `newUniqueId()` instead of `idFromName()`, you'll get a new agent instance each time, and your memory/state will never persist. This is a common early bug that silently kills statefulness.
+**Prevention**: Always use `idFromName()` for user-specific agents, never `newUniqueId()`
+
+```typescript
+// ❌ WRONG: Creates new agent every time (state never persists)
+export default {
+  async fetch(request: Request, env: Env) {
+    const id = env.MyAgent.newUniqueId(); // New ID = new instance
+    const agent = env.MyAgent.get(id);
+
+    // State never persists - different instance each time
+    return agent.fetch(request);
+  }
+}
+
+// ✅ CORRECT: Same user = same agent = persistent state
+export default {
+  async fetch(request: Request, env: Env) {
+    const userId = getUserId(request);
+    const id = env.MyAgent.idFromName(userId); // Same ID for same user
+    const agent = env.MyAgent.get(id);
+
+    // State persists across requests for this user
+    return agent.fetch(request);
+  }
+}
+```
+
+**Why It Matters**:
+- `newUniqueId()`: Generates a random unique ID each call → new agent instance
+- `idFromName(string)`: Deterministic ID from string → same agent for same input
+
+**Rule of thumb**: Use `idFromName()` for 99% of cases. Only use `newUniqueId()` when you genuinely need a one-time, ephemeral agent instance.
+
 ---
 
 ## Dependencies
@@ -1370,6 +1681,7 @@ const result = streamText({
 
 ---
 
-**Last Verified**: 2026-01-09
-**Package Versions**: agents@0.3.3
+**Last Verified**: 2026-01-21
+**Package Versions**: agents@0.3.6
 **Compliance**: Cloudflare Agents SDK official documentation
+**Changes**: Added 7 new issues from community research (WebSocket payload limits, state type safety, idFromName gotcha), updated to agents@0.3.6

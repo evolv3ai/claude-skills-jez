@@ -1,7 +1,7 @@
 ---
 name: cloudflare-browser-rendering
 description: |
-  Add headless Chrome automation with Puppeteer/Playwright on Cloudflare Workers. Use when: taking screenshots, generating PDFs, web scraping, crawling sites, browser automation, or troubleshooting XPath errors, browser timeouts, binding not passed errors, or session limits.
+  Add headless Chrome automation with Puppeteer/Playwright on Cloudflare Workers. Use when: taking screenshots, generating PDFs, web scraping, crawling sites, browser automation, or troubleshooting XPath errors, browser timeouts, binding not passed errors, session limits, page.evaluate __name errors, or waitForSelector timeout issues.
 user-invocable: true
 ---
 
@@ -10,9 +10,9 @@ user-invocable: true
 Production-ready knowledge domain for building browser automation workflows with Cloudflare Browser Rendering.
 
 **Status**: Production Ready ✅
-**Last Updated**: 2026-01-09
+**Last Updated**: 2026-01-21
 **Dependencies**: cloudflare-worker-base (for Worker setup)
-**Latest Versions**: @cloudflare/puppeteer@1.0.4, @cloudflare/playwright@1.1.0, wrangler@4.58.0
+**Latest Versions**: @cloudflare/puppeteer@1.0.4, @cloudflare/playwright@1.1.0, wrangler@4.59.3
 
 **Recent Updates (2025)**:
 - **Sept 2025**: Playwright v1.55 GA, Stagehand framework support (Workers AI), /links excludeExternalLinks param
@@ -231,6 +231,7 @@ await browser.close();
 - **Session API**: Puppeteer has advanced session management (sessions/history/limits), Playwright basic
 - **Auto-waiting**: Playwright has built-in auto-waiting, Puppeteer requires manual `waitForSelector()`
 - **MCP Support**: Playwright MCP v0.0.30 (July 2025), Playwright MCP server available
+- **Latest Version**: Playwright v1.57 support (Jan 2026 update)
 
 **Recommendation**: Use Puppeteer for session reuse patterns. Use Playwright if migrating existing tests or need MCP integration.
 
@@ -407,9 +408,9 @@ export default {
 **Free Tier**: 10 min/day, 3 concurrent, 3 launches/min, 60s timeout
 **Paid Tier**: 10 hrs/month included ($0.09/hr after), 30 concurrent ($2.00/browser after), 30 launches/min, 60s-10min timeout
 
-**Concurrency Calculation**: Monthly average of daily peak usage (e.g., 15 browsers avg = (15 - 10 included) × $2.00 = $10.00/mo)
+**Concurrency Calculation**: Monthly average of daily peak usage (e.g., 35 browsers avg = (35 - 30 included) × $2.00 = $10.00/mo)
 
-**Rate Limiting**: Enforced per-second (180 req/min = 3 req/sec, not bursty). Check `puppeteer.limits(env.MYBROWSER)` before launching:
+**Rate Limiting**: Enforced with a **fixed per-second fill rate** (NOT burst-friendly). 30 req/min = 1 req every 2 seconds. You CANNOT send all 30 requests at once, even if quota is unused. Check `puppeteer.limits(env.MYBROWSER)` before launching:
 
 ```typescript
 const limits = await puppeteer.limits(env.MYBROWSER);
@@ -423,7 +424,7 @@ if (limits.allowedBrowserAcquisitions === 0) {
 
 ## Known Issues Prevention
 
-This skill prevents **6 documented issues**:
+This skill prevents **8 documented issues**:
 
 ---
 
@@ -453,20 +454,32 @@ const innerHtml = await page.evaluate(() => {
 
 ---
 
-### Issue #2: Browser Binding Not Passed
+### Issue #2: Browser Binding Not Passed (Fetcher Type Confusion)
 
-**Error:** "Cannot read properties of undefined (reading 'fetch')"
-**Source:** https://developers.cloudflare.com/browser-rendering/faq/#cannot-read-properties-of-undefined-reading-fetch
-**Why It Happens:** `puppeteer.launch()` called without browser binding
-**Prevention:** Always pass `env.MYBROWSER` to launch
+**Error:** "Cannot read properties of undefined (reading 'fetch')" or "RPC receiver does not implement the method 'launch'"
+**Source:** [GitHub Issue #10772](https://github.com/cloudflare/workers-sdk/issues/10772), https://developers.cloudflare.com/browser-rendering/faq/#cannot-read-properties-of-undefined-reading-fetch
+**Why It Happens:** `puppeteer.launch()` called without browser binding, or trying to call `env.MYBROWSER.launch()` directly. The browser binding is a **Fetcher** (REST API wrapper), not a browser instance.
+**Prevention:** Always pass `env.MYBROWSER` to `puppeteer.launch()` or `chromium.launch()` wrapper
 
 **Solution:**
 ```typescript
 // ❌ Missing browser binding
 const browser = await puppeteer.launch(); // Error!
 
-// ✅ Pass binding
+// ❌ Wrong - trying to call launch() on Fetcher directly
+const browser = await env.MYBROWSER.launch(); // "RPC receiver does not implement the method 'launch'"
+
+// ✅ Pass binding to Puppeteer/Playwright wrapper
 const browser = await puppeteer.launch(env.MYBROWSER);
+// or for Playwright:
+const browser = await chromium.launch(env.MYBROWSER);
+```
+
+**TypeScript Type Explanation:**
+```typescript
+interface Env {
+  MYBROWSER: Fetcher; // It's a Fetcher, not a Browser!
+}
 ```
 
 ---
@@ -493,9 +506,9 @@ const browser = await puppeteer.launch(env.MYBROWSER, {
 ### Issue #4: Concurrency Limits Reached
 
 **Error:** "Rate limit exceeded" or new browser launch fails
-**Source:** https://developers.cloudflare.com/browser-rendering/platform/limits/
-**Why It Happens:** Exceeded concurrent browser limit (3 free, 10-30 paid)
-**Prevention:** Reuse sessions, use tabs instead of multiple browsers, check limits before launching
+**Source:** https://developers.cloudflare.com/browser-rendering/platform/limits/, [Changelog 2025-09-25](https://developers.cloudflare.com/browser-rendering/changelog/)
+**Why It Happens:** Exceeded concurrent browser limit (3 free, 30 paid as of Sept 2025)
+**Prevention:** Reuse sessions, use tabs instead of multiple browsers, check limits before launching, throttle requests to per-second rate
 
 **Solutions:**
 ```typescript
@@ -545,24 +558,102 @@ const page2 = await browser.newPage(); // Same browser, different tabs
 **Error:** Website blocks requests as bot traffic
 **Source:** https://developers.cloudflare.com/browser-rendering/faq/#will-browser-rendering-bypass-cloudflares-bot-protection
 **Why It Happens:** Browser Rendering requests always identified as bots
-**Prevention:** Cannot bypass; if scraping your own zone, create WAF skip rule
+**Prevention:** Cannot bypass; if scraping your own zone, create WAF skip rule (requires Enterprise plan for Bot Management)
 
 **Solution:**
 ```typescript
 // ❌ Cannot bypass bot protection
 // Requests will always be identified as bots
 
-// ✅ If scraping your own Cloudflare zone:
+// ✅ If scraping your own Cloudflare zone (Enterprise plan only):
 // 1. Go to Security > WAF > Custom rules
 // 2. Create skip rule with custom header:
 //    Header: X-Custom-Auth
 //    Value: your-secret-token
 // 3. Pass header in your scraping requests
 
+await page.setExtraHTTPHeaders({
+  'X-Custom-Auth': 'your-secret-token'
+});
+
 // Note: Automatic headers are included:
 // - cf-biso-request-id
 // - cf-biso-devtools
 ```
+
+**Important:** Free/Pro/Business plans CANNOT bypass bot detection even on their own sites. Enterprise plan with Bot Management is required for WAF allowlisting.
+
+---
+
+### Issue #7: page.evaluate() Function Name Injection (__name Error)
+
+**Error:** `ReferenceError: __name is not defined`
+**Source:** [GitHub Issue #7107](https://github.com/cloudflare/workers-sdk/issues/7107)
+**Why It Happens:** esbuild minification (wrangler 3.80.1+) injects `__name()` helper calls in arrow functions with nested function declarations. These run in browser context where the helper doesn't exist.
+**Prevention:** Keep `page.evaluate()` functions simple - avoid nested function declarations
+**Applies to:** wrangler 3.80.1 - 3.83.0 (fixed in 3.83.0+)
+
+**Solution:**
+```typescript
+// ❌ Avoid nested function declarations
+const data = await page.evaluate(async () => {
+  function toNumber(str: string | undefined): number | undefined {
+    const num = typeof str === 'string' ? str.replaceAll('.', '').replaceAll(',', '.').match(/[+-]?([0-9]*[.])?[0-9]+/) : false;
+    if (num) {
+      return Number(num[0]);
+    } else {
+      return undefined;
+    }
+  }
+  return toNumber('123.456');
+});
+// Error: ReferenceError: __name is not defined
+
+// ✅ Inline the logic without nested functions
+const data = await page.evaluate(async () => {
+  const str = '123.456';
+  const num = typeof str === 'string' ? str.replaceAll('.', '').replaceAll(',', '.').match(/[+-]?([0-9]*[.])?[0-9]+/) : false;
+  return num ? Number(num[0]) : undefined;
+});
+
+// ✅ Or update to wrangler 3.83.0+
+// npm install wrangler@latest
+```
+
+**Note:** This also affects `page.waitForSelector()` with complex callbacks. Fixed in wrangler 3.83.0+ (Nov 2024).
+
+---
+
+### Issue #8: waitForSelector() Timeout Behavior Changed
+
+**Error:** Code that relied on indefinite waiting now times out
+**Source:** [Changelog 2026-01-07](https://developers.cloudflare.com/browser-rendering/changelog/)
+**Why It Happens:** `waitForSelector()` previously did NOT timeout when selectors weren't found (hung indefinitely). This was fixed to properly honor timeout values.
+**Prevention:** Always set explicit timeouts and handle timeout errors
+**Applies to:** All code written before Jan 2026 that relied on indefinite waiting
+
+**Solution:**
+```typescript
+// ❌ Old behavior - would hang forever if selector not found
+await page.waitForSelector('#dynamic-element');
+
+// ✅ New behavior - properly times out (set explicit timeout)
+try {
+  await page.waitForSelector('#dynamic-element', { timeout: 5000 });
+} catch (error) {
+  if (error.name === 'TimeoutError') {
+    console.log('Element not found within 5 seconds');
+    // Handle missing element gracefully
+  } else {
+    throw error;
+  }
+}
+
+// ✅ Use longer timeout for slow-loading elements
+await page.waitForSelector('#slow-element', { timeout: 30000 }); // 30 seconds
+```
+
+**Note:** This is a breaking fix (behavior change). Code that relied on indefinite waiting will now timeout and throw errors. Always handle `TimeoutError` gracefully.
 
 ---
 
@@ -718,7 +809,7 @@ Deep-dive documentation:
 
 ---
 
-## Package Versions (Verified 2025-10-22)
+## Package Versions (Verified 2026-01-21)
 
 ```json
 {
@@ -727,7 +818,7 @@ Deep-dive documentation:
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251014.0",
-    "wrangler": "^4.54.0"
+    "wrangler": "^4.59.3"
   }
 }
 ```
@@ -740,6 +831,8 @@ Deep-dive documentation:
   }
 }
 ```
+
+**Note:** Playwright v1.1.0 includes support for Playwright v1.57 (Jan 2026). Wrangler 3.83.0+ fixes the `page.evaluate()` __name injection bug.
 
 ---
 

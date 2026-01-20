@@ -1,9 +1,9 @@
 ---
 name: nextjs
 description: |
-  Build Next.js 16 apps with App Router, Server Components/Actions, Cache Components ("use cache"), and async route params. Includes proxy.ts and React 19.2.
+  Build Next.js 16 apps with App Router, Server Components/Actions, Cache Components ("use cache"), and async route params. Includes proxy.ts and React 19.2. Prevents 25 documented errors.
 
-  Use when: building Next.js 16 projects, or troubleshooting async params (Promise types), "use cache" directives, parallel route 404s.
+  Use when: building Next.js 16 projects, or troubleshooting async params (Promise types), "use cache" directives, parallel route 404s, Turbopack issues, i18n caching, navigation throttling.
 user-invocable: true
 allowed-tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
 ---
@@ -50,7 +50,7 @@ Use this skill when you need:
 - **React 19.2 features** (View Transitions, `useEffectEvent()`, React Compiler)
 - **Turbopack** (stable and default in Next.js 16)
 - **Image defaults changed** (TTL, sizes, qualities in Next.js 16)
-- **Error prevention** (18+ documented Next.js 16 errors with solutions)
+- **Error prevention** (25 documented Next.js 16 errors with solutions)
 
 ---
 
@@ -171,6 +171,32 @@ export async function MyComponent() {
 ```
 
 **Codemod**: Run `npx @next/codemod@canary upgrade latest` to automatically migrate.
+
+**Codemod Limitations** (Community-sourced):
+The official codemod handles ~80% of async API migrations but misses edge cases:
+- Async APIs accessed in custom hooks
+- Conditional logic accessing params
+- Components imported from external packages
+- Complex server actions with multiple async calls
+
+After running the codemod, search for `@next-codemod-error` comments marking places it couldn't auto-fix.
+
+**Manual Migration for Client Components**:
+```typescript
+// For client components, use React.use() to unwrap promises
+'use client';
+
+import { use } from 'react';
+
+export default function ClientComponent({
+  params
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = use(params); // Unwrap Promise in client
+  return <div>{id}</div>;
+}
+```
 
 **See Template**: `templates/app-router-async-params.tsx`
 
@@ -389,6 +415,17 @@ export default config
 - **Next.js 16**: Opt-in caching with `"use cache"` directive
 
 **Why the Change**: Explicit caching gives developers more control and makes caching behavior predictable.
+
+**Important Caching Defaults** (Community-sourced):
+
+| Feature | Next.js 14 | Next.js 15/16 |
+|---------|-----------|---------------|
+| **fetch() requests** | Cached by default | NOT cached by default |
+| **Router Cache (dynamic pages)** | Cached on client | NOT cached by default |
+| **Router Cache (static pages)** | Cached | Still cached |
+| **Route Handlers (GET)** | Cached | Dynamic by default |
+
+**Best Practice**: Default to dynamic in Next.js 16. Start with no caching and add it where beneficial, rather than debugging unexpected cache hits. Always test with production builds - the development server behaves differently.
 
 **Cache Components enable**:
 - Component-level caching (cache specific components, not entire pages)
@@ -767,6 +804,25 @@ export default function ModalDefault() {
 
 **Why Required**: Next.js 16 changed soft navigation handling. Without `default.js`, unmatched slots error during client-side navigation.
 
+**Advanced Edge Case** (Community-sourced):
+Even WITH `default.js` files, hard navigating or refreshing routes with parallel routes can return 404 errors. The workaround is adding a catch-all route.
+
+**Source**: [GitHub Issue #48090](https://github.com/vercel/next.js/issues/48090), [#73939](https://github.com/vercel/next.js/issues/73939)
+
+**Workaround**:
+```typescript
+// app/@modal/[...catchAll]/page.tsx
+export default function CatchAll() {
+  return null;
+}
+
+// OR use catch-all in default.tsx
+// app/@modal/default.tsx
+export default function ModalDefault({ params }: { params: { catchAll?: string[] } }) {
+  return null; // Handles all unmatched routes
+}
+```
+
 **See Template**: `templates/parallel-routes-with-default.tsx`
 
 ---
@@ -919,6 +975,81 @@ const config: NextConfig = {
 
 export default config
 ```
+
+---
+
+### Turbopack Production Limitations (as of Next.js 16.1)
+
+**Known Issues**:
+
+#### 1. Prisma Incompatibility
+**Source**: [GitHub Discussion #77721](https://github.com/vercel/next.js/discussions/77721)
+
+Turbopack production builds fail with Prisma ORM (v6.5.0+). Error: "The 'path' argument must be of type string."
+
+**Workaround**:
+```bash
+# Use webpack for production builds
+npm run build -- --webpack
+```
+
+Or in `next.config.ts`:
+```typescript
+const config: NextConfig = {
+  experimental: {
+    turbo: false, // Disable Turbopack for production
+  },
+};
+```
+
+---
+
+#### 2. Source Maps Security Risk
+**Source**: [GitHub Discussion #77721](https://github.com/vercel/next.js/discussions/77721)
+
+Turbopack currently **always builds production source maps for the browser**, exposing source code in production deployments.
+
+**Workaround**:
+```typescript
+// next.config.ts
+const config: NextConfig = {
+  productionBrowserSourceMaps: false, // Disable source maps
+};
+```
+
+Or exclude `.map` files in deployment:
+```bash
+# .vercelignore or similar
+*.map
+```
+
+---
+
+#### 3. External Module Hash Mismatches (Monorepos)
+**Source**: [GitHub Issue #87737](https://github.com/vercel/next.js/issues/87737)
+
+Turbopack generates external module references with hashes that don't match when `node_modules` structure differs (pnpm, yarn workspaces, monorepos). This causes "Module not found" errors in production builds.
+
+**Symptoms**:
+- Build succeeds locally but fails in CI/CD
+- Hash mismatches between bundled references and actual module files
+
+**Workaround**:
+```typescript
+// next.config.ts
+const config: NextConfig = {
+  experimental: {
+    serverExternalPackages: ['package-name'], // Explicitly externalize packages
+  },
+};
+```
+
+---
+
+#### 4. Bundle Size Differences (Community-sourced)
+**Source**: [GitHub Discussion #77721](https://github.com/vercel/next.js/discussions/77721)
+
+Bundle sizes built with Turbopack may differ from webpack builds. This is expected and being optimized as Turbopack matures.
 
 ---
 
@@ -1317,6 +1448,210 @@ export async function createPost(formData: FormData) {
 
 ---
 
+### 19. Error: Client-side navigation throttled with multiple redirects
+**Error**: `Throttling navigation to prevent the browser from hanging`
+**Source**: [GitHub Issue #87245](https://github.com/vercel/next.js/issues/87245)
+
+**Cause**: When `proxy.ts` (or `middleware.ts`) performs a redirect to add query params AND a Server Component also calls `redirect()` to add different query params, client-side navigation via `<Link>` fails in production builds. This is a regression from Next.js 14 to 16.
+
+**Symptoms**:
+- Works in `next dev` (development mode)
+- Works with direct URL access (full page load)
+- Fails with client-side navigation via `<Link>` in production build
+- Prefetch causes infinite redirect loop
+
+**Solution**: Disable prefetch on links that navigate to pages with redirect logic:
+```typescript
+// ✅ Workaround: Disable prefetch
+<Link href="/my-route" prefetch={false}>
+  Navigate
+</Link>
+```
+
+---
+
+### 20. Error: Cache Components fail with i18n dynamic segments
+**Error**: Route becomes dynamic despite `generateStaticParams`
+**Source**: [GitHub Issue #86870](https://github.com/vercel/next.js/issues/86870)
+
+**Cause**: Cache components (`"use cache"` directive) do NOT work on dynamic segments when using internationalization (i18n) frameworks like `intlayer`, `next-intl`, or `lingui`. Accessing `params` forces the route to be dynamic, even with `generateStaticParams` at the layout level.
+
+**Why It Happens**: Every i18n framework requires accessing `params` to get the locale. Accessing `params` is an async call in Next.js 16, which opts the entire page out of caching.
+
+**Solution**: Add `generateStaticParams` at EACH dynamic segment level:
+```typescript
+// app/[locale]/[id]/page.tsx
+export async function generateStaticParams() {
+  return [
+    { locale: 'en', id: '1' },
+    { locale: 'en', id: '2' },
+    // ... all combinations
+  ];
+}
+
+'use cache'
+
+export default async function Page({ params }: Props) {
+  // Now caching works
+}
+```
+
+**Additional Context**: The `[locale]` dynamic segment receives invalid values like `_next` during compilation, causing `RangeError: Incorrect locale information provided` when initializing i18n providers.
+
+---
+
+### 21. Error: instanceof fails for custom error classes in Server Components
+**Error**: `instanceof CustomError` returns `false` even though it is CustomError
+**Source**: [GitHub Issue #87614](https://github.com/vercel/next.js/issues/87614)
+
+**Cause**: Module duplication in Server Components causes custom error classes to be loaded twice, creating different prototypes.
+
+**Solution**: Use `error.name` or `error.constructor.name` instead of `instanceof`:
+```typescript
+// ❌ Wrong: instanceof doesn't work
+try {
+  throw new CustomError('Test error');
+} catch (error) {
+  if (error instanceof CustomError) { // ❌ false
+    // Never reached
+  }
+}
+
+// ✅ Correct: Use error.name
+try {
+  throw new CustomError('Test error');
+} catch (error) {
+  if (error instanceof Error && error.name === 'CustomError') { // ✅ true
+    // Handle CustomError
+  }
+}
+
+// ✅ Alternative: Use constructor.name
+if (error.constructor.name === 'CustomError') {
+  // Handle CustomError
+}
+```
+
+---
+
+### 22. Error: TypeScript doesn't catch non-serializable props to Client Components
+**Error**: Runtime error when passing functions/class instances to Client Components
+**Source**: [GitHub Issue #86748](https://github.com/vercel/next.js/issues/86748)
+
+**Cause**: The Next.js TypeScript plugin doesn't catch non-serializable props being passed from Server Components to Client Components. This causes runtime errors that are not detected at compile time.
+
+**Why It Happens**: Only serializable data (JSON-compatible) can cross the Server/Client boundary. Functions, class instances, and Symbols cannot be serialized.
+
+**Solution**: Only pass serializable props:
+```typescript
+// ❌ Wrong: Function not serializable
+const user = {
+  name: 'John',
+  getProfile: () => console.log('profile'), // ❌ Not serializable
+};
+<ClientComponent user={user} />
+
+// ✅ Correct: Only serializable props
+interface SerializableUser {
+  name: string;
+  email: string;
+  // No functions, no class instances, no Symbols
+}
+
+// ✅ Alternative: Create functions in Client Component
+'use client';
+
+export default function ClientComponent({ user }: { user: { name: string } }) {
+  const getProfile = () => console.log('profile'); // Define in client
+  return <div onClick={getProfile}>{user.name}</div>;
+}
+```
+
+**Runtime Validation**:
+```typescript
+import { z } from 'zod';
+
+const UserSchema = z.object({
+  name: z.string(),
+  email: z.string(),
+});
+
+type User = z.infer<typeof UserSchema>;
+```
+
+---
+
+### 23. Error: Turbopack production build fails with Prisma
+**Error**: `The 'path' argument must be of type string`
+**Source**: [GitHub Discussion #77721](https://github.com/vercel/next.js/discussions/77721)
+
+**Cause**: Turbopack production builds fail with Prisma ORM (v6.5.0+).
+
+**Solution**: Use webpack for production builds:
+```bash
+npm run build -- --webpack
+```
+
+Or disable Turbopack in config:
+```typescript
+// next.config.ts
+const config: NextConfig = {
+  experimental: {
+    turbo: false,
+  },
+};
+```
+
+---
+
+### 24. Error: Turbopack exposes source code via source maps
+**Error**: Source code visible in production builds
+**Source**: [GitHub Discussion #77721](https://github.com/vercel/next.js/discussions/77721)
+
+**Cause**: Turbopack always builds production source maps for the browser, exposing source code.
+
+**Solution**: Disable production source maps:
+```typescript
+// next.config.ts
+const config: NextConfig = {
+  productionBrowserSourceMaps: false,
+};
+```
+
+Or exclude `.map` files in deployment:
+```bash
+# .vercelignore
+*.map
+```
+
+---
+
+### 25. Error: Module not found in production (Turbopack monorepo)
+**Error**: `Module not found` in production despite successful local build
+**Source**: [GitHub Issue #87737](https://github.com/vercel/next.js/issues/87737)
+
+**Cause**: Turbopack generates external module references with hashes that don't match when `node_modules` structure differs (pnpm, yarn workspaces, monorepos).
+
+**Symptoms**:
+- Build succeeds locally but fails in CI/CD
+- Hash mismatches between bundled references and actual module files
+
+**Solution**: Explicitly externalize packages:
+```typescript
+// next.config.ts
+const config: NextConfig = {
+  experimental: {
+    serverExternalPackages: ['package-name'],
+  },
+};
+```
+
+---
+
+**See Reference**: `references/top-errors.md`
+
+---
+
 ## Templates & Resources
 
 **Next.js 16-Specific Templates** (in `templates/`):
@@ -1379,14 +1714,17 @@ export async function createPost(formData: FormData) {
 - **Total**: ~10k tokens
 - **Savings**: ~18k tokens (~64%)
 
-**Errors Prevented**: 18+ common mistakes = 100% error prevention
+**Errors Prevented**: 25 documented errors = 100% error prevention
 
 ---
 
 ## Maintenance
 
-**Last Verified**: 2026-01-09
-**Next Review**: 2026-04-09 (Quarterly)
+**Last Verified**: 2026-01-21
+**Skill Version**: 3.1.0
+**Changes**: Added 7 new errors (navigation throttling, i18n caching, Turbopack limitations, instanceof failures, non-serializable props). Expanded async params codemod limitations, caching defaults, and parallel routes edge cases.
+
+**Next Review**: 2026-04-21 (Quarterly)
 **Maintainer**: Jezweb | jeremy@jezweb.net
 **Repository**: https://github.com/jezweb/claude-skills
 

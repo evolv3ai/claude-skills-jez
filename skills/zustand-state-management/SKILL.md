@@ -1,17 +1,17 @@
 ---
 name: zustand-state-management
 description: |
-  Build type-safe global state in React with Zustand. Supports TypeScript, persist middleware, devtools, slices pattern, and Next.js SSR with hydration handling.
+  Build type-safe global state in React with Zustand. Supports TypeScript, persist middleware, devtools, slices pattern, and Next.js SSR with hydration handling. Prevents 6 documented errors.
 
-  Use when setting up React state, migrating from Redux/Context, or troubleshooting hydration errors, TypeScript inference, or infinite render loops.
+  Use when setting up React state, migrating from Redux/Context, or troubleshooting hydration errors, TypeScript inference, infinite render loops, or persist race conditions.
 user-invocable: true
 ---
 
 # Zustand State Management
 
-**Last Updated**: 2026-01-09
-**Latest Version**: zustand@5.0.9 (current)
-**Dependencies**: React 18+, TypeScript 5+
+**Last Updated**: 2026-01-21
+**Latest Version**: zustand@5.0.10 (released 2026-01-12)
+**Dependencies**: React 18-19, TypeScript 5+
 
 ---
 
@@ -104,7 +104,7 @@ const useStore = create<UserPreferences>()(
 
 ## Known Issues Prevention
 
-This skill prevents **5** documented issues:
+This skill prevents **6** documented issues:
 
 ### Issue #1: Next.js Hydration Mismatch
 
@@ -209,11 +209,18 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 ### Issue #4: Infinite Render Loop
 
 **Error**: Component re-renders infinitely, browser freezes
+```
+Uncaught Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate.
+```
 
-**Source**: GitHub Discussions #2642
+**Source**:
+- GitHub Discussions #2642
+- [Issue #2863](https://github.com/pmndrs/zustand/issues/2863)
 
 **Why It Happens**:
 Creating new object references in selectors causes Zustand to think state changed.
+
+**v5 Breaking Change**: Zustand v5 made this error MORE explicit compared to v4. In v4, this behavior was "non-ideal" but could go unnoticed. In v5, you'll immediately see the "Maximum update depth exceeded" error.
 
 **Prevention**:
 ```typescript
@@ -287,6 +294,26 @@ const useStore = create<BearSlice & FishSlice>()((...a) => ({
 }))
 ```
 
+### Issue #6: Persist Middleware Race Condition (Fixed v5.0.10+)
+
+**Error**: Inconsistent state during concurrent rehydration attempts
+
+**Source**:
+- [GitHub PR #3336](https://github.com/pmndrs/zustand/pull/3336)
+- [Release v5.0.10](https://github.com/pmndrs/zustand/releases/tag/v5.0.10)
+
+**Why It Happens**:
+In Zustand v5.0.9 and earlier, concurrent calls to rehydrate during persist middleware initialization could cause a race condition where multiple hydration attempts would interfere with each other, leading to inconsistent state.
+
+**Prevention**:
+Upgrade to Zustand v5.0.10 or later. No code changes needed - the fix is internal to the persist middleware.
+
+```bash
+npm install zustand@latest  # Ensure v5.0.10+
+```
+
+**Note**: This was fixed in v5.0.10 (January 2026). If you're using v5.0.9 or earlier and experiencing state inconsistencies with persist middleware, upgrade immediately.
+
 ---
 
 ## Middleware
@@ -317,6 +344,8 @@ const useStore = create<CounterStore>()(
   ),
 )
 ```
+
+**v4→v5 Migration Note**: In Zustand v4, devtools was imported from `'zustand/middleware/devtools'`. In v5, use `'zustand/middleware'` (as shown above). If you see "Module not found: Can't resolve 'zustand/middleware/devtools'", update your import path.
 
 **Combining Middlewares** (order matters):
 ```typescript
@@ -399,6 +428,29 @@ const useStore = create<TodoStore>()(immer((set) => ({
   addTodo: (text) => set((state) => { state.todos.push({ id: Date.now().toString(), text }) }),
 })))
 ```
+
+**v5.0.3→v5.0.4 Migration Note**: If upgrading from v5.0.3 to v5.0.4+ and immer middleware stops working, verify you're using the import path shown above (`zustand/middleware/immer`). Some users reported issues after the v5.0.4 update that were resolved by confirming the correct import.
+
+**Experimental SSR Safe Middleware** (v5.0.9+):
+
+**Status**: Experimental (API may change)
+
+Zustand v5.0.9 introduced experimental `unstable_ssrSafe` middleware for Next.js usage. This provides an alternative approach to the `_hasHydrated` pattern (see Issue #1).
+
+```typescript
+import { unstable_ssrSafe } from 'zustand/middleware'
+
+const useStore = create<Store>()(
+  unstable_ssrSafe(
+    persist(
+      (set) => ({ /* state */ }),
+      { name: 'my-store' }
+    )
+  )
+)
+```
+
+**Recommendation**: Continue using the `_hasHydrated` pattern documented in Issue #1 until this API stabilizes. Monitor [Discussion #2740](https://github.com/pmndrs/zustand/discussions/2740) for updates on when this becomes stable.
 
 ---
 

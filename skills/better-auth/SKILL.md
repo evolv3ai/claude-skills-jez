@@ -3,7 +3,7 @@ name: better-auth
 description: |
   Self-hosted auth for TypeScript/Cloudflare Workers with social auth, 2FA, passkeys, organizations, RBAC, and 15+ plugins. Requires Drizzle ORM or Kysely for D1 (no direct adapter). Self-hosted alternative to Clerk/Auth.js.
 
-  Use when: self-hosting auth on D1, building OAuth provider, multi-tenant SaaS, or troubleshooting D1 adapter errors, session caching, rate limits.
+  Use when: self-hosting auth on D1, building OAuth provider, multi-tenant SaaS, or troubleshooting D1 adapter errors, session caching, rate limits, Expo crashes, additionalFields bugs.
 user-invocable: true
 allowed-tools:
   - Read
@@ -16,7 +16,7 @@ allowed-tools:
 
 # better-auth - D1 Adapter & Error Prevention Guide
 
-**Package**: better-auth@1.4.10 (Jan 9, 2026)
+**Package**: better-auth@1.4.16 (Jan 21, 2026)
 **Breaking Changes**: ESM-only (v1.4.0), Admin impersonation prevention default (v1.4.6), Multi-team table changes (v1.3), D1 requires Drizzle/Kysely (no direct adapter)
 
 ---
@@ -136,6 +136,25 @@ export function createAuth(env: Env) {
 
 If your Drizzle schema uses `snake_case` column names (e.g., `email_verified`), but better-auth expects `camelCase` (e.g., `emailVerified`), the `CamelCasePlugin` automatically converts between the two.
 
+**⚠️ Cloudflare Workers Note**: D1 database bindings are only available inside the request handler (the `fetch()` function). You cannot initialize better-auth outside the request context. Use a factory function pattern:
+
+```typescript
+// ❌ WRONG - DB binding not available outside request
+const db = drizzle(env.DB, { schema }) // env.DB doesn't exist here
+export const auth = betterAuth({ database: drizzleAdapter(db, { provider: "sqlite" }) })
+
+// ✅ CORRECT - Create auth instance per-request
+export default {
+  fetch(request, env, ctx) {
+    const db = drizzle(env.DB, { schema })
+    const auth = betterAuth({ database: drizzleAdapter(db, { provider: "sqlite" }) })
+    return auth.handler(request)
+  }
+}
+```
+
+**Community Validation**: Multiple production implementations confirm this pattern (Medium, AnswerOverflow, official Hono examples).
+
 ---
 
 ## Framework Integrations
@@ -162,6 +181,23 @@ export const auth = betterAuth({
 **Why it's needed**: TanStack Start uses a special cookie handling system. Without this plugin, auth functions like `signInEmail()` and `signUpEmail()` won't set cookies properly, causing authentication to fail.
 
 **Important**: The `reactStartCookies` plugin **must be the last plugin in the array**.
+
+**Session Nullability Pattern**: When using `useSession()` in TanStack Start, the session object always exists, but `session.user` and `session.session` are `null` when not logged in:
+
+```typescript
+const { data: session } = authClient.useSession()
+
+// When NOT logged in:
+console.log(session) // { user: null, session: null }
+console.log(!!session) // true (unexpected!)
+
+// Correct check:
+if (session?.user) {
+  // User is logged in
+}
+```
+
+**Always check `session?.user` or `session?.session`, not just `session`**. This is expected behavior (session object container always exists).
 
 **API Route Setup** (`/src/routes/api/auth/$.ts`):
 ```typescript
@@ -1274,19 +1310,30 @@ wrangler d1 migrations apply my-app-db --remote
 
 **Symptoms**: Session reads fail, user data missing fields.
 
-**Solution**: Use `CamelCasePlugin` with Kysely or configure Drizzle properly:
+**⚠️ CRITICAL (v1.4.10+)**: Using Kysely's `CamelCasePlugin` **breaks join parsing** in better-auth adapter. The plugin converts join keys like `_joined_user_user_id` to `_joinedUserUserId`, causing user data to be null in session queries.
 
-**With Kysely**:
+**Solution for Drizzle**: Define schema with camelCase from the start (as shown in examples).
+
+**Solution for Kysely with CamelCasePlugin**: Use **separate Kysely instance** without CamelCasePlugin for better-auth:
+
 ```typescript
-import { CamelCasePlugin } from "kysely";
-
-new Kysely({
+// DB for better-auth (no CamelCasePlugin)
+const authDb = new Kysely({
   dialect: new D1Dialect({ database: env.DB }),
-  plugins: [new CamelCasePlugin()], // Converts between naming conventions
+})
+
+// DB for app queries (with CamelCasePlugin)
+const appDb = new Kysely({
+  dialect: new D1Dialect({ database: env.DB }),
+  plugins: [new CamelCasePlugin()],
+})
+
+export const auth = betterAuth({
+  database: { db: authDb, type: "sqlite" },
 })
 ```
 
-**With Drizzle**: Define schema with camelCase from the start (as shown in examples).
+**Source**: [GitHub Issue #7136](https://github.com/better-auth/better-auth/issues/7136)
 
 ---
 
@@ -1339,20 +1386,34 @@ id = "your-kv-namespace-id"
 
 **Symptoms**: `Access-Control-Allow-Origin` errors in browser console.
 
-**Solution**: Configure CORS headers in Worker:
+**Solution**: Configure CORS headers in Worker and ensure `trustedOrigins` match:
 
 ```typescript
 import { cors } from "hono/cors";
 
+// CRITICAL: Both must match frontend origin exactly
 app.use(
   "/api/auth/*",
   cors({
-    origin: ["https://yourdomain.com", "http://localhost:3000"],
+    origin: "http://localhost:5173", // Frontend URL (no trailing slash)
     credentials: true, // Allow cookies
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
+
+// And in better-auth config
+export const auth = betterAuth({
+  trustedOrigins: ["http://localhost:5173"], // Same as CORS origin
+  // ...
+});
 ```
+
+**Common Mistakes**:
+- Typo in origin URL (trailing slash, http vs https, wrong port)
+- Mismatched origins between CORS config and `trustedOrigins`
+- CORS middleware registered AFTER auth routes (must be before)
+
+**Source**: [GitHub Issue #7434](https://github.com/better-auth/better-auth/issues/7434)
 
 ---
 
@@ -1728,6 +1789,156 @@ return c.json({ members });
 
 ---
 
+### Issue 18: Expo Client fromJSONSchema Crash (v1.4.16)
+
+**Problem**: Importing `expoClient` from `@better-auth/expo/client` crashes with `TypeError: Cannot read property 'fromJSONSchema' of undefined` on v1.4.16.
+
+**Symptoms**: Runtime crash immediately when importing expoClient in React Native/Expo apps.
+
+**Root Cause**: Regression introduced after PR #6933 (cookie-based OAuth state fix for Expo). One of 3 commits after f4a9f15 broke the build.
+
+**Solution**:
+- **Temporary**: Use continuous build at commit `f4a9f15` (pre-regression)
+- **Permanent**: Wait for fix (issue #7491 open as of 2026-01-20)
+
+```typescript
+// Crashes on v1.4.16
+import { expoClient } from '@better-auth/expo/client'
+
+// Workaround: Use continuous build at f4a9f15
+// Or wait for fix in next release
+```
+
+**Source**: [GitHub Issue #7491](https://github.com/better-auth/better-auth/issues/7491)
+
+---
+
+### Issue 19: additionalFields string[] Returns Stringified JSON
+
+**Problem**: After v1.4.12, `additionalFields` with `type: 'string[]'` return stringified arrays (`'["a","b"]'`) instead of native arrays when querying via Drizzle directly.
+
+**Symptoms**: `user.notificationTokens` is a string, not an array. Code expecting arrays breaks.
+
+**Root Cause**: In Drizzle adapter, `string[]` fields are stored with `mode: 'json'`, which expects arrays. But better-auth v1.4.4+ passes strings to Drizzle, causing double-stringification. When querying **directly via Drizzle**, the value is a string, but when using **better-auth `internalAdapter`**, a transformer correctly returns an array.
+
+**Solution**:
+1. **Use better-auth `internalAdapter`** instead of querying Drizzle directly (has transformer)
+2. **Change Drizzle schema** to `.jsonb()` for string[] fields
+3. **Manually parse** JSON strings until fixed
+
+```typescript
+// Config
+additionalFields: {
+  notificationTokens: {
+    type: 'string[]',
+    required: true,
+    input: true,
+  },
+}
+
+// Create user
+notificationTokens: ['token1', 'token2']
+
+// Result in DB (when querying via Drizzle directly)
+// '["token1","token2"]' (string, not array)
+```
+
+**Source**: [GitHub Issue #7440](https://github.com/better-auth/better-auth/issues/7440)
+
+---
+
+### Issue 20: additionalFields "returned" Property Blocks Input
+
+**Problem**: Setting `returned: false` on `additionalFields` prevents field from being saved via API, even with `input: true`.
+
+**Symptoms**: Field never saved to database when creating/updating via API endpoints.
+
+**Root Cause**: The `returned: false` property blocks both read AND write operations, not just reads as intended. The `input: true` property should control write access independently.
+
+**Solution**:
+- Don't use `returned: false` if you need API write access
+- Write via server-side methods (`auth.api.*`) instead
+
+```typescript
+// Organization plugin config
+additionalFields: {
+  secretField: {
+    type: 'string',
+    required: true,
+    input: true,      // Should allow API writes
+    returned: false,  // Should only block reads, but blocks writes too
+  },
+}
+
+// API request to create organization
+// secretField is never saved to database
+```
+
+**Source**: [GitHub Issue #7489](https://github.com/better-auth/better-auth/issues/7489)
+
+---
+
+### Issue 21: freshAge Based on Creation Time, Not Activity
+
+**Problem**: `session.freshAge` checks time-since-creation, NOT recent activity. Active sessions become "not fresh" after `freshAge` elapses, even if used constantly.
+
+**Symptoms**: "Fresh session required" endpoints reject valid active sessions.
+
+**Why It Happens**: The `freshSessionMiddleware` checks `Date.now() - (session.updatedAt || session.createdAt)`, but `updatedAt` only changes when the session is refreshed based on `updateAge`. If `updateAge > freshAge`, the session becomes "not fresh" before `updatedAt` is bumped.
+
+**Solution**:
+1. **Set `updateAge <= freshAge`** to ensure freshness is updated before expiry
+2. **Avoid "fresh session required"** gating for long-lived sessions
+3. **Accept as design**: freshAge is strictly time-since-creation (maintainer confirmed)
+
+```typescript
+// Config
+session: {
+  expiresIn: 60 * 60 * 24 * 7,    // 7 days
+  freshAge: 60 * 60 * 24,          // 24 hours
+  updateAge: 60 * 60 * 24 * 3,     // 3 days (> freshAge!) ⚠️ PROBLEM
+
+  // CORRECT - updateAge <= freshAge
+  updateAge: 60 * 60 * 12,         // 12 hours (< freshAge)
+}
+
+// Timeline with bad config:
+// T+0h: User signs in (createdAt = now)
+// T+12h: User makes requests (session active, still fresh)
+// T+25h: User makes request (session active, BUT NOT FRESH - freshAge elapsed)
+// Result: "Fresh session required" endpoints reject active session
+```
+
+**Source**: [GitHub Issue #7472](https://github.com/better-auth/better-auth/issues/7472)
+
+---
+
+### Issue 22: OAuth Token Endpoints Return Wrapped JSON
+
+**Problem**: OAuth 2.1 and OIDC token endpoints return `{ "response": { ...tokens... } }` instead of spec-compliant top-level JSON. OAuth clients expect `{ "access_token": "...", "token_type": "bearer" }` at root.
+
+**Symptoms**: OAuth clients fail with `Bearer undefined` or `invalid_token`.
+
+**Root Cause**: The endpoint pipeline returns `{ response, headers, status }` for internal use, which gets serialized directly for HTTP requests. This breaks OAuth/OIDC spec requirements.
+
+**Solution**:
+- **Temporary**: Manually unwrap `.response` field on client
+- **Permanent**: Wait for fix (issue #7355 open, accepting contributions)
+
+```typescript
+// Expected (spec-compliant)
+{ "access_token": "...", "token_type": "bearer", "expires_in": 3600 }
+
+// Actual (wrapped)
+{ "response": { "access_token": "...", "token_type": "bearer", "expires_in": 3600 } }
+
+// Result: OAuth clients fail to parse, send `Bearer undefined`
+```
+
+**Source**: [GitHub Issue #7355](https://github.com/better-auth/better-auth/issues/7355)
+
+---
+
 ## Migration Guides
 
 ### From Clerk
@@ -1927,9 +2138,9 @@ Check changelog: https://github.com/better-auth/better-auth/releases
 - **With skill**: ~8,000 tokens (focused on errors + patterns + all plugins + API reference)
 - **Savings**: ~77% (~27,000 tokens)
 
-**Errors prevented**: 14 documented issues with exact solutions
-**Key value**: D1 adapter requirement, nodejs_compat flag, OAuth 2.1 Provider, Bearer/OneTap/SCIM/Anonymous plugins, rate limiting, session caching, database hooks, Expo integration, 80+ endpoint reference
+**Errors prevented**: 22 documented issues with exact solutions
+**Key value**: D1 adapter requirement, nodejs_compat flag, OAuth 2.1 Provider, Bearer/OneTap/SCIM/Anonymous plugins, rate limiting, session caching, database hooks, Expo integration, 80+ endpoint reference, additionalFields bugs, freshAge behavior, OAuth token wrapping
 
 ---
 
-**Last verified**: 2026-01-03 | **Skill version**: 5.0.0 | **Changes**: Added 8 additional plugins (Bearer, One Tap, SCIM, Anonymous, Username, Generic OAuth, Multi-Session, API Key). Added rate limiting configuration. Added session cookie caching (Compact/JWT/JWE). Added new social providers (Patreon, Kick, Vercel). Added Cloudflare Workers nodejs_compat requirement. Added database hooks. Added complete Expo/React Native integration.
+**Last verified**: 2026-01-21 | **Skill version**: 5.1.0 | **Changes**: Added 5 new issues from post-training-cutoff research (Expo fromJSONSchema crash, additionalFields string[] bug, additionalFields returned property bug, freshAge not activity-based, OAuth token wrapping). Expanded Issue #3 with Kysely CamelCasePlugin join parsing failure. Expanded Issue #5 with Hono CORS pattern. Added Cloudflare Workers DB binding constraints note. Added TanStack Start session nullability pattern. Updated to v1.4.16.

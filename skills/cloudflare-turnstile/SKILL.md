@@ -1,19 +1,22 @@
 ---
 name: cloudflare-turnstile
 description: |
-  Add bot protection with Turnstile (CAPTCHA alternative). Use when: protecting forms, securing login/signup, preventing spam, migrating from reCAPTCHA, integrating with React/Next.js/Hono, implementing E2E tests, or debugging CSP errors, token validation failures, or error codes 100*/300*/600*.
+  Add bot protection with Turnstile (CAPTCHA alternative). Use when: protecting forms, securing login/signup, preventing spam, migrating from reCAPTCHA, integrating with React/Next.js/Hono, implementing E2E tests, or debugging CSP errors, token validation failures, Chrome/Edge first-load issues, multiple widget rendering bugs, timeout-or-duplicate errors, or error codes 100*/106010/300*/600*.
 user-invocable: true
 ---
 
 # Cloudflare Turnstile
 
 **Status**: Production Ready ✅
-**Last Updated**: 2026-01-09
+**Last Updated**: 2026-01-21
 **Dependencies**: None (optional: @marsidev/react-turnstile for React)
 **Latest Versions**: @marsidev/react-turnstile@1.4.1, turnstile-types@1.2.3
 
 **Recent Updates (2025)**:
+- **December 2025**: @marsidev/react-turnstile v1.4.1 fixes race condition in script loading
+- **August 2025**: v1.3.0 adds `rerenderOnCallbackChange` prop for React closure issues
 - **March 2025**: Upgraded Turnstile Analytics with TopN statistics (7 dimensions: hostnames, browsers, countries, user agents, ASNs, OS, source IPs), anomaly detection, enhanced bot behavior monitoring
+- **January 2025**: Brief remoteip validation enforcement (resolved, but highlights importance of correct IP passing)
 - **2025**: WCAG 2.1 AA compliance, Free plan (20 widgets, 7-day analytics), Enterprise features (unlimited widgets, ephemeral IDs, any hostname support, 30-day analytics, offlabel branding)
 
 ---
@@ -38,7 +41,7 @@ const token = formData.get('cf-turnstile-response')
 const verifyFormData = new FormData()
 verifyFormData.append('secret', env.TURNSTILE_SECRET_KEY)
 verifyFormData.append('response', token)
-verifyFormData.append('remoteip', request.headers.get('CF-Connecting-IP'))
+verifyFormData.append('remoteip', request.headers.get('CF-Connecting-IP'))  // REQUIRED - see Critical Rules
 
 const result = await fetch(
   'https://challenges.cloudflare.com/turnstile/v0/siteverify',
@@ -93,6 +96,7 @@ import { Turnstile } from '@marsidev/react-turnstile'
 ✅ **Validate action/hostname** - Check additional fields when specified
 ✅ **Rotate keys periodically** - Use dashboard or API to rotate secrets
 ✅ **Monitor analytics** - Track solve rates and failures
+✅ **Always pass client IP to Siteverify** - Use `CF-Connecting-IP` header (Workers) or `X-Forwarded-For` (Node.js). Cloudflare briefly enforced strict remoteip validation in Jan 2025, causing widespread failures for sites not passing correct IP
 
 ### Never Do
 
@@ -110,7 +114,7 @@ import { Turnstile } from '@marsidev/react-turnstile'
 
 ## Known Issues Prevention
 
-This skill prevents **12** documented issues:
+This skill prevents **15** documented issues:
 
 ### Issue #1: Missing Server-Side Validation
 **Error**: Zero token validation in Turnstile Analytics dashboard
@@ -181,8 +185,105 @@ This skill prevents **12** documented issues:
 ### Issue #12: Token Reuse Attempt
 **Error**: `success: false` with "token already spent" error
 **Source**: https://developers.cloudflare.com/turnstile/troubleshooting/testing
-**Why It Happens**: Each token can only be validated once
+**Why It Happens**: Each token can only be validated once. Turnstile tokens are single-use - after validation (success OR failure), the token is consumed and cannot be revalidated. Developers must explicitly call `turnstile.reset()` to generate a new token for subsequent submissions.
 **Prevention**: Templates document single-use constraint and token refresh patterns
+
+```typescript
+// CRITICAL: Reset widget after validation to get new token
+const turnstileRef = useRef(null)
+
+async function handleSubmit(e) {
+  e.preventDefault()
+  const token = formData.get('cf-turnstile-response')
+
+  const result = await fetch('/api/submit', {
+    method: 'POST',
+    body: JSON.stringify({ token })
+  })
+
+  // Reset widget regardless of success/failure
+  // Token is consumed either way
+  if (turnstileRef.current) {
+    turnstile.reset(turnstileRef.current)
+  }
+}
+
+<Turnstile
+  ref={turnstileRef}
+  siteKey={TURNSTILE_SITE_KEY}
+  onSuccess={setToken}
+/>
+```
+
+### Issue #13: Error 106010 - Chrome/Edge First-Load Failure
+**Error**: `106010` - "Generic parameter error" on first widget load in Chrome/Edge browsers
+**Source**: [Cloudflare Error Codes](https://developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/error-codes/), [Community Report](https://community.cloudflare.com/t/turnstile-inconsistent-errors/856678)
+**Why It Happens**: Unknown browser-specific issue affecting Chrome and Edge on first page load. Console shows 400 error to `https://challenges.cloudflare.com/cdn-cgi/challenge-platform`. Firefox is not affected. Subsequent page reloads work correctly.
+**Prevention**: Implement error callback with auto-retry logic
+
+```typescript
+turnstile.render('#container', {
+  sitekey: SITE_KEY,
+  retry: 'auto',
+  'retry-interval': 8000,
+  'error-callback': (errorCode) => {
+    if (errorCode === '106010') {
+      console.warn('Chrome/Edge first-load issue (106010), auto-retrying...')
+      // Auto-retry will handle it
+    }
+  }
+})
+```
+
+**Workaround**: Widget works correctly after page reload. Auto-retry setting resolves in most cases. Test in Incognito mode to rule out browser extensions. Review CSP rules to ensure Cloudflare Turnstile endpoints are allowed.
+
+### Issue #14: Multiple Widgets Visual Status Stuck (Community-sourced)
+**Error**: Widget displays "Pending..." status even after successful token generation
+**Source**: [GitHub Issue #119](https://github.com/marsidev/react-turnstile/issues/119)
+**Why It Happens**: CSS repaint issue when rendering multiple `<Turnstile/>` components on a single page. Only reproducible on full HD desktop screens. Token IS successfully generated (validation works), but visual status doesn't update. Hovering over widget triggers repaint and shows correct status.
+**Prevention**: Force CSS repaint in success callback
+
+```tsx
+<Turnstile
+  siteKey={KEY}
+  onSuccess={(token) => {
+    setToken(token)
+    // Force repaint by toggling display
+    const widget = document.querySelector('.cf-turnstile')
+    if (widget) {
+      widget.style.display = 'none'
+      setTimeout(() => widget.style.display = 'block', 0)
+    }
+  }}
+/>
+```
+
+**Note**: This is a visual-only issue, not a validation failure. The token is correctly generated and functional.
+
+### Issue #15: Jest Compatibility with @marsidev/react-turnstile (Updated Dec 2025)
+**Error**: `Jest encountered an unexpected token` when importing @marsidev/react-turnstile
+**Source**: [GitHub Issue #114](https://github.com/marsidev/react-turnstile/issues/114), [GitHub Issue #112](https://github.com/marsidev/react-turnstile/issues/112)
+**Why It Happens**: ESM module resolution issues with Jest 30.2.0 (latest as of Dec 2025). Issue #112 closed as "not planned" by maintainer. Jest users are stuck; Vitest migration works.
+**Prevention**: Mock the Turnstile component in Jest setup OR migrate to Vitest
+
+```typescript
+// Option 1: Jest mocking (jest.setup.ts)
+jest.mock('@marsidev/react-turnstile', () => ({
+  Turnstile: () => <div data-testid="turnstile-mock" />,
+}))
+
+// Option 2: transformIgnorePatterns in jest.config.js
+module.exports = {
+  transformIgnorePatterns: [
+    'node_modules/(?!(@marsidev/react-turnstile)/)'
+  ]
+}
+
+// Option 3 (Recommended): Migrate to Vitest
+// Vitest handles ESM modules correctly without mocking
+```
+
+**Status**: Maintainer closed issue as "not planned". Recommend migrating to Vitest for new projects.
 
 ## Configuration
 
@@ -230,7 +331,7 @@ app.post('/api/login', async (c) => {
   const verifyFormData = new FormData()
   verifyFormData.append('secret', c.env.TURNSTILE_SECRET_KEY)
   verifyFormData.append('response', token.toString())
-  verifyFormData.append('remoteip', c.req.header('CF-Connecting-IP') || '')
+  verifyFormData.append('remoteip', c.req.header('CF-Connecting-IP') || '')  // CRITICAL - always pass client IP
 
   const verifyResult = await fetch(
     'https://challenges.cloudflare.com/turnstile/v0/siteverify',
@@ -419,14 +520,19 @@ turnstile.render('#container', {
 **Solution**: Document in error message that users should disable Safari's "Hide IP address" setting (Safari → Settings → Privacy → Hide IP address → Off)
 
 ### Problem: Next.js + Jest tests failing with @marsidev/react-turnstile
-**Solution**: Mock the Turnstile component in Jest setup:
+**Solution**: Mock the Turnstile component in Jest setup (or migrate to Vitest, which handles ESM modules correctly):
 ```typescript
-// jest.setup.ts
+// Option 1: Jest mocking (jest.setup.ts)
 jest.mock('@marsidev/react-turnstile', () => ({
   Turnstile: () => <div data-testid="turnstile-mock" />,
 }))
+
+// Option 2: Migrate to Vitest (recommended for new projects)
+// Vitest handles ESM modules without mocking required
 ```
+
+**Note**: This issue persists in Jest 30.2.0 (Dec 2025). Maintainer closed as "not planned". See Issue #15 for full details.
 
 ---
 
-**Errors Prevented**: 12 documented issues (Safari 18 Hide IP, Brave confetti, Next.js Jest, CSP blocking, token reuse, expiration, hostname allowlist, widget crash 300030, config error 600010, missing validation, GET request, secret exposure)
+**Errors Prevented**: 15 documented issues (Safari 18 Hide IP, Brave confetti, Next.js Jest, CSP blocking, token reuse, expiration, hostname allowlist, widget crash 300030, config error 600010, missing validation, GET request, secret exposure, Chrome/Edge 106010, multiple widgets rendering, token regeneration pattern)

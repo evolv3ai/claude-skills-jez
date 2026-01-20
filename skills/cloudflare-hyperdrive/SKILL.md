@@ -1,7 +1,7 @@
 ---
 name: cloudflare-hyperdrive
 description: |
-  Connect Workers to PostgreSQL/MySQL with Hyperdrive's global pooling and caching. Use when: connecting to existing databases, setting up connection pools, using node-postgres/mysql2, integrating Drizzle/Prisma, or troubleshooting pool acquisition failures, TLS errors, or nodejs_compat missing.
+  Connect Workers to PostgreSQL/MySQL with Hyperdrive's global pooling and caching. Use when: connecting to existing databases, setting up connection pools, using node-postgres/mysql2, integrating Drizzle/Prisma, or troubleshooting pool acquisition failures, TLS errors, or nodejs_compat missing. Prevents 11 documented errors.
 user-invocable: true
 ---
 
@@ -155,6 +155,270 @@ npx wrangler deploy
 
 ---
 
+## Known Issues Prevention
+
+This skill prevents **11** documented issues with sources and solutions.
+
+### Issue #1: Windows/macOS Local Development - Hostname Resolution Failure
+
+**Error**: Connection fails with hostname like `xxx.hyperdrive.local`
+**Source**: [GitHub Issue #11556](https://github.com/cloudflare/workers-sdk/issues/11556)
+**Platforms**: Windows, macOS 26 Tahoe, Ubuntu 24.04 LTS (wrangler@4.54.0+)
+**Why It Happens**: Hyperdrive local proxy hostname fails to resolve on certain platforms
+**Prevention**:
+
+Use environment variable for local development:
+```bash
+export CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="postgres://user:password@localhost:5432/db"
+npx wrangler dev
+```
+
+Or use `wrangler dev --remote` (caution: uses production database)
+
+**Status**: Open issue, workaround available
+
+---
+
+### Issue #2: postgres.js Hangs with IP Addresses
+
+**Error**: Connection hangs indefinitely with no error message
+**Source**: [GitHub Issue #6179](https://github.com/cloudflare/workers-sdk/issues/6179)
+**Why It Happens**: Using IP address instead of hostname in connection string causes postgres.js to hang
+**Prevention**:
+
+```typescript
+// ❌ WRONG - IP address causes indefinite hang
+const connection = "postgres://user:password@192.168.1.100:5432/db"
+
+// ✅ CORRECT - Use hostname
+const connection = "postgres://user:password@db.example.com:5432/db"
+```
+
+**Additional Gotcha**: Miniflare (local dev) only supports A-z0-9 characters in passwords, despite Postgres allowing special characters. Use simple passwords for local development.
+
+---
+
+### Issue #3: MySQL 8.0.43 Authentication Plugin Not Supported
+
+**Error**: "unsupported authentication method"
+**Source**: [GitHub Issue #10617](https://github.com/cloudflare/workers-sdk/issues/10617)
+**Why It Happens**: MySQL 8.0.43+ introduces new authentication method not supported by Hyperdrive
+**Prevention**:
+
+Use MySQL 8.0.40 or earlier, or configure user to use supported auth plugin:
+```sql
+ALTER USER 'username'@'%' IDENTIFIED WITH caching_sha2_password BY 'password';
+```
+
+**Supported Auth Plugins**: Only `caching_sha2_password` and `mysql_native_password`
+**Status**: Known issue tracked as CFSQL-1392
+
+---
+
+### Issue #4: Local SSL/TLS Not Supported for Remote Databases
+
+**Error**: SSL required but connection fails in local development
+**Source**: [GitHub Issue #10124](https://github.com/cloudflare/workers-sdk/issues/10124)
+**Why It Happens**: Hyperdrive local mode doesn't support SSL connections to remote databases (e.g., Neon, cloud providers)
+**Prevention**:
+
+Use conditional connection in code:
+```typescript
+const url = env.isLocal ? env.DB_URL : env.HYPERDRIVE.connectionString;
+const client = postgres(url, {
+  fetch_types: false,
+  max: 2,
+});
+```
+
+**Alternative**: Use `wrangler dev --remote` (⚠️ connects to production database)
+**Timeline**: SSL support planned for 2026 (requires workerd/Workers runtime changes, tracked as SQC-645)
+
+---
+
+### Issue #5: Transaction Mode Resets SET Statements Between Queries
+
+**Error**: SET statements don't persist across queries
+**Source**: [Cloudflare Hyperdrive Docs - How Hyperdrive Works](https://developers.cloudflare.com/hyperdrive/configuration/how-hyperdrive-works/)
+**Why It Happens**: Hyperdrive operates in transaction mode where connections are returned to pool after each transaction and RESET
+**Prevention**:
+
+```typescript
+// ❌ WRONG - SET won't persist across queries
+await client.query('SET search_path TO myschema');
+await client.query('SELECT * FROM mytable'); // Uses default search_path!
+
+// ✅ CORRECT - SET within transaction
+await client.query('BEGIN');
+await client.query('SET search_path TO myschema');
+await client.query('SELECT * FROM mytable'); // Now uses myschema
+await client.query('COMMIT');
+```
+
+**⚠️ WARNING**: Wrapping multiple operations in a single transaction to maintain SET state will affect Hyperdrive's performance and scaling.
+
+---
+
+### Issue #6: Prisma Client Reuse Causes Hangs in Workers (Community-sourced)
+
+**Error**: Worker hangs and times out after first request
+**Source**: [GitHub Issue #28193](https://github.com/prisma/prisma/issues/28193)
+**Verified**: Multiple users confirmed
+**Why It Happens**: Prisma's connection pool attempts to reuse connections across request contexts, violating Workers' I/O isolation
+**Prevention**:
+
+```typescript
+// ❌ WRONG - Global Prisma client reused across requests
+const prisma = new PrismaClient({ adapter });
+
+export default {
+  async fetch(request: Request, env: Bindings) {
+    // First request: works
+    // Subsequent requests: hang indefinitely
+    const users = await prisma.user.findMany();
+    return Response.json({ users });
+  }
+};
+
+// ✅ CORRECT - Create new client per request
+export default {
+  async fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
+    const pool = new Pool({
+      connectionString: env.HYPERDRIVE.connectionString,
+      max: 5
+    });
+    const adapter = new PrismaPg(pool);
+    const prisma = new PrismaClient({ adapter });
+
+    try {
+      const users = await prisma.user.findMany();
+      return Response.json({ users });
+    } finally {
+      ctx.waitUntil(pool.end());
+    }
+  }
+};
+```
+
+---
+
+### Issue #7: Neon Serverless Driver Incompatible with Hyperdrive (Community-sourced)
+
+**Error**: Hyperdrive provides no benefit with Neon serverless driver
+**Source**: [Neon GitHub Repo](https://github.com/neondatabase/serverless), [Cloudflare Docs](https://developers.cloudflare.com/workers/databases/third-party-integrations/neon/)
+**Why It Happens**: Neon's serverless driver uses WebSockets instead of TCP, bypassing Hyperdrive's connection pooling
+**Prevention**:
+
+```typescript
+// ❌ WRONG - Neon serverless driver bypasses Hyperdrive
+import { neon } from '@neondatabase/serverless';
+const sql = neon(env.HYPERDRIVE.connectionString);
+// This uses WebSockets, not TCP - Hyperdrive doesn't help
+
+// ✅ CORRECT - Use traditional TCP driver with Hyperdrive
+import postgres from 'postgres';
+const sql = postgres(env.HYPERDRIVE.connectionString, {
+  prepare: true,
+  max: 5
+});
+```
+
+**Official Recommendation**: Neon documentation states "On Cloudflare Workers, consider using Cloudflare Hyperdrive instead of this driver"
+
+---
+
+### Issue #8: Supabase - Must Use Direct Connection String, Not Pooled (Community-sourced)
+
+**Error**: Double-pooling causes connection issues
+**Source**: [Cloudflare Docs - Supabase](https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/postgres-database-providers/supabase/)
+**Why It Happens**: Using Supabase pooled connection (Supavisor) creates double-pooling; Supavisor doesn't support prepared statements
+**Prevention**:
+
+```bash
+# ❌ WRONG - Using Supabase pooled connection (Supavisor)
+npx wrangler hyperdrive create my-supabase \
+  --connection-string="postgres://user:password@aws-0-us-west-1.pooler.supabase.com:6543/postgres"
+
+# ✅ CORRECT - Use Supabase direct connection
+npx wrangler hyperdrive create my-supabase \
+  --connection-string="postgres://user:password@db.projectref.supabase.co:5432/postgres"
+```
+
+**Reason**: Hyperdrive provides its own pooling; double-pooling causes issues and breaks caching
+
+---
+
+### Issue #9: Drizzle ORM with Nitro 3 - 95% Failure Rate with useDatabase (Community-sourced)
+
+**Error**: 500 errors approximately 95% of the time
+**Source**: [GitHub Issue #3893](https://github.com/nitrojs/nitro/issues/3893)
+**Verified**: Reproduced by multiple users
+**Why It Happens**: Nitro 3's built-in `useDatabase` (db0/integrations/drizzle) has I/O isolation issues
+**Prevention**:
+
+```typescript
+// ❌ WRONG - Nitro's useDatabase fails ~95% of the time
+import { useDatabase } from 'db0';
+import { drizzle } from 'db0/integrations/drizzle';
+
+export default eventHandler(async () => {
+  const db = useDatabase();
+  const users = await drizzle(db).select().from(usersTable);
+  // Fails ~95% of the time with 500 error
+});
+
+// ✅ CORRECT - Create Drizzle client directly
+import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
+
+export default eventHandler(async (event) => {
+  const sql = postgres(event.context.cloudflare.env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: true
+  });
+  const db = drizzle(sql);
+  const users = await db.select().from(usersTable);
+  event.context.cloudflare.ctx.waitUntil(sql.end());
+  return { users };
+});
+```
+
+**Error Message**: "Cannot perform I/O on behalf of a different request"
+
+---
+
+### Issue #10: postgres.js Version Requirements for Caching (Community-sourced)
+
+**Error**: Prepared statement caching doesn't work properly
+**Source**: [Cloudflare Docs](https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/postgres-drivers-and-libraries/postgres-js/)
+**Why It Happens**: postgres.js versions before 3.4.5 don't support Hyperdrive's prepared statement caching properly
+**Prevention**:
+
+```bash
+# Minimum version for Hyperdrive compatibility
+npm install postgres@3.4.5
+
+# Current recommended version
+npm install postgres@3.4.8
+```
+
+**Related**: May 2025 prepared statement caching improvements require minimum version 3.4.5
+
+---
+
+### Issue #11: WebSocket-Based Database Drivers Not Compatible
+
+**Error**: Hyperdrive provides no benefit or causes connection issues
+**Source**: General pattern from Neon serverless driver issue
+**Why It Happens**: Hyperdrive requires TCP connections; WebSocket-based drivers bypass the TCP pooling layer
+**Prevention**:
+
+Use traditional TCP-based drivers (pg, postgres.js, mysql2) instead of WebSocket-based drivers.
+
+**Affected Drivers**: Any database driver using WebSockets instead of TCP
+
+---
+
 ## How Hyperdrive Works
 
 Hyperdrive eliminates 7 connection round trips (TCP + TLS + auth) by:
@@ -235,22 +499,70 @@ ctx.waitUntil(sql.end());
 ```
 
 ### Prisma ORM
+
+**⚠️ CRITICAL**: Do NOT reuse Prisma client across requests in Workers. Create new client per request.
+
 ```typescript
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import { Pool } from "pg";
 
-const pool = new Pool({ connectionString: env.HYPERDRIVE.connectionString, max: 5 });
-const adapter = new PrismaPg(pool);
+// ❌ WRONG - Global client causes hangs after first request
 const prisma = new PrismaClient({ adapter });
-const users = await prisma.user.findMany();
-ctx.waitUntil(pool.end());
+
+export default {
+  async fetch(request: Request, env: Bindings) {
+    const users = await prisma.user.findMany(); // Hangs after first request
+    return Response.json({ users });
+  }
+};
+
+// ✅ CORRECT - Per-request client
+export default {
+  async fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
+    const pool = new Pool({ connectionString: env.HYPERDRIVE.connectionString, max: 5 });
+    const adapter = new PrismaPg(pool);
+    const prisma = new PrismaClient({ adapter });
+
+    try {
+      const users = await prisma.user.findMany();
+      return Response.json({ users });
+    } finally {
+      ctx.waitUntil(pool.end());
+    }
+  }
+};
 ```
+
+**Why**: Prisma's connection pool attempts to reuse connections across request contexts, violating Workers' I/O isolation. Source: [GitHub Issue #28193](https://github.com/prisma/prisma/issues/28193)
+
 **Note**: Prisma requires driver adapters (`@prisma/adapter-pg`).
 
 ---
 
 ## Local Development
+
+### ⚠️ SSL/TLS Limitations in Local Development
+
+**Important**: Local Hyperdrive connections do NOT support SSL. This affects databases that require SSL (e.g., Neon, most cloud providers).
+
+**Workaround - Conditional Connection**:
+```typescript
+const url = env.isLocal ? env.DB_URL : env.HYPERDRIVE.connectionString;
+const client = postgres(url, {
+  fetch_types: false,
+  max: 2,
+});
+```
+
+**Alternative**: Use `wrangler dev --remote` (⚠️ connects to production database)
+
+**Timeline**: SSL support planned for 2026 (requires workerd/Workers runtime changes)
+**Source**: [GitHub Issue #10124](https://github.com/cloudflare/workers-sdk/issues/10124), tracked as SQC-645
+
+---
+
+### Local Connection Options
 
 **Option 1: Environment Variable (Recommended)**
 ```bash
@@ -360,6 +672,13 @@ npx wrangler hyperdrive create my-private-db --connection-string="postgres://use
 ❌ Use advisory locks, LISTEN/NOTIFY (PostgreSQL unsupported features)
 ❌ Use multi-statement queries in MySQL (unsupported)
 ❌ Commit database credentials to version control
+❌ Use IP addresses in connection strings instead of hostnames (causes postgres.js to hang)
+❌ Use Neon serverless driver with Hyperdrive (uses WebSockets, bypasses pooling)
+❌ Use Supabase pooled connection string (Supavisor) with Hyperdrive (double-pooling)
+❌ Reuse Prisma client instances across requests in Workers (causes hangs and timeouts)
+❌ Use Nitro 3's `useDatabase` with Drizzle and Hyperdrive (~95% failure rate)
+❌ Expect SET statements to persist across queries (transaction mode resets connections)
+❌ Use postgres.js versions before 3.4.5 (breaks prepared statement caching)
 
 ---
 
@@ -430,6 +749,7 @@ wrangler cert upload mtls-certificate --cert <cert>.pem --key <key>.pem --name <
 6. **Cache-friendly queries** - Prefer SELECT over complex joins
 7. **Index frequently queried columns** - Improves query performance
 8. **Monitor with Hyperdrive analytics** - Track cache hit ratios and latency
+9. **⚠️ SET statement persistence** - SET commands don't persist across queries due to transaction mode. Wrap SET + query in BEGIN/COMMIT if needed (impacts performance)
 
 ---
 
@@ -488,6 +808,7 @@ wrangler hyperdrive update <id> --connection-string="postgres://new-creds..."
 
 ---
 
-**Last Updated**: 2026-01-09
-**Package Versions**: wrangler@4.58.0, pg@8.16.3+ (minimum), postgres@3.4.8, mysql2@3.16.0
+**Last verified**: 2026-01-21 | **Skill version**: 3.0.0 | **Changes**: Added 11 Known Issues Prevention entries (6 TIER 1, 5 TIER 2), expanded Prisma/Local Dev/Performance sections with critical warnings, updated Never Do rules
+
+**Package Versions**: wrangler@4.58.0, pg@8.16.3+ (minimum), postgres@3.4.5+ (minimum for caching), postgres@3.4.8 (recommended), mysql2@3.16.0
 **Production Tested**: Based on official Cloudflare documentation and community examples

@@ -1,17 +1,17 @@
 ---
 name: typescript-mcp
 description: |
-  Build MCP servers with TypeScript on Cloudflare Workers. Covers tools, resources, prompts, tasks, authentication (API keys, OAuth, Zero Trust), and Cloudflare service integrations.
+  Build MCP servers with TypeScript on Cloudflare Workers. Covers tools, resources, prompts, tasks, authentication (API keys, OAuth, Zero Trust), and Cloudflare service integrations. Prevents 20 documented errors.
 
-  Use when exposing APIs to LLMs or troubleshooting export syntax errors, transport leaks, or CORS misconfigurations.
+  Use when exposing APIs to LLMs or troubleshooting export syntax errors, transport leaks, server instance reuse bugs, CORS misconfigurations, or task validation errors.
 user-invocable: true
 allowed-tools: [Read, Write, Edit, Bash, Grep, Glob]
 ---
 
 # TypeScript MCP on Cloudflare Workers
 
-**Last Updated**: 2026-01-09
-**Versions**: @modelcontextprotocol/sdk@1.25.2, hono@4.11.3, zod@4.3.5
+**Last Updated**: 2026-01-21
+**Versions**: @modelcontextprotocol/sdk@1.25.3, hono@4.11.3, zod@4.3.5
 **Spec Version**: 2025-11-25
 
 ---
@@ -22,6 +22,8 @@ allowed-tools: [Read, Write, Edit, Bash, Grep, Glob]
 npm install @modelcontextprotocol/sdk@latest hono zod
 npm install -D @cloudflare/workers-types wrangler typescript
 ```
+
+**Transport Recommendation**: Use `StreamableHTTPServerTransport` for production. SSE transport is deprecated and maintained for backwards compatibility only. Streamable HTTP provides better error recovery, bidirectional communication, and simplified deployment.
 
 **Basic MCP Server**:
 ```typescript
@@ -48,6 +50,11 @@ app.post('/mcp', async (c) => {
     sessionIdGenerator: undefined,
     enableJsonResponse: true
   });
+
+  // CRITICAL: Set error handler to catch transport errors
+  transport.onerror = (error) => {
+    console.error('MCP transport error:', error);
+  };
 
   // CRITICAL: Close transport to prevent memory leaks
   c.res.raw.on('close', () => transport.close());
@@ -200,7 +207,7 @@ server.registerTool('query-db', {
 
 ## Known Issues Prevention
 
-This skill prevents 10+ production issues documented in official MCP SDK and Cloudflare repos:
+This skill prevents 20 production issues documented in official MCP SDK and Cloudflare repos:
 
 ### Issue #1: Export Syntax Issues (CRITICAL)
 **Error**: `"Cannot read properties of undefined (reading 'map')"`
@@ -348,6 +355,237 @@ try {
 }
 ```
 
+### Issue #11: Server Instance Reuse Breaks Concurrent HTTP Sessions (CRITICAL)
+**Error**: `AbortError: This operation was aborted`
+**Source**: [GitHub Issue #1405](https://github.com/modelcontextprotocol/typescript-sdk/issues/1405)
+**Why It Happens**: Calling `Server.connect(transport)` silently overwrites the previous transport without warning, breaking all earlier connections
+**Prevention**:
+```typescript
+// ✅ CORRECT - Create fresh McpServer per HTTP session
+app.post('/mcp', async (c) => {
+  const server = new McpServer({ name: 'my-server', version: '1.0.0' });
+
+  // Register tools per request
+  server.registerTool('echo', { inputSchema: z.object({ text: z.string() }) },
+    async ({ text }) => ({ content: [{ type: 'text', text }] })
+  );
+
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+    enableJsonResponse: true
+  });
+
+  transport.onerror = (error) => console.error('Transport error:', error);
+  c.res.raw.on('close', () => transport.close());
+  await server.connect(transport);
+  await transport.handleRequest(c.req.raw, c.res.raw, await c.req.json());
+  return c.body(null);
+});
+
+// ❌ WRONG - Reusing server instance across sessions
+const sharedServer = new McpServer({ name: 'my-server', version: '1.0.0' });
+app.post('/mcp', async (c) => {
+  await sharedServer.connect(transport); // Breaks previous sessions!
+});
+```
+
+### Issue #12: sessionIdGenerator Type Error with TypeScript Strict Mode
+**Error**: `Type 'undefined' is not assignable to type '() => string'`
+**Source**: [GitHub Issue #1397](https://github.com/modelcontextprotocol/typescript-sdk/issues/1397)
+**Why It Happens**: SDK 1.25.2 types break projects using `exactOptionalPropertyTypes: true` in tsconfig.json
+**Prevention**:
+```typescript
+// With exactOptionalPropertyTypes: true
+
+// ✅ CORRECT - Omit the property instead of setting to undefined
+const transport = new StreamableHTTPServerTransport({
+  enableJsonResponse: true
+  // sessionIdGenerator omitted entirely
+});
+
+// ❌ WRONG - Setting to undefined causes type error in SDK 1.25.2
+const transport = new StreamableHTTPServerTransport({
+  sessionIdGenerator: undefined,  // Type error!
+  enableJsonResponse: true
+});
+
+// Alternative: Provide a generator function
+const transport = new StreamableHTTPServerTransport({
+  sessionIdGenerator: () => crypto.randomUUID(),
+  enableJsonResponse: true
+});
+```
+
+### Issue #13: Global fetch Pollution from Hono (SDK 1.25.0-1.25.2)
+**Error**: Native Node.js fetch behavior breaks after importing SDK
+**Source**: [GitHub Issue #1376](https://github.com/modelcontextprotocol/typescript-sdk/issues/1376)
+**Why It Happens**: Hono's server code globally overwrites `global.fetch`, breaking libraries expecting native behavior
+**Prevention**:
+```typescript
+// FIXED in SDK v1.25.3 - Update to latest version
+npm install @modelcontextprotocol/sdk@1.25.3
+
+// Workaround for older versions (1.25.0-1.25.2):
+const nativeFetch = global.fetch;
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+global.fetch = nativeFetch; // Restore if needed
+```
+
+### Issue #14: Task Error Wrapping Masks Validation Errors
+**Error**: Confusing error message hides actual validation failure
+**Source**: [GitHub Issue #1385](https://github.com/modelcontextprotocol/typescript-sdk/issues/1385)
+**Why It Happens**: When task-augmented tool call fails validation before task creation, SDK wraps error incorrectly
+**Prevention**:
+```typescript
+// Expected error for invalid input:
+// "Invalid arguments: Too small: expected number to be >=500"
+
+// Actual error (confusing):
+// "Invalid task creation result: expected object, received undefined"
+
+// WORKAROUND: Add explicit validation before task logic
+server.experimental.tasks.registerToolTask(
+  'batch_process',
+  {
+    inputSchema: z.object({
+      itemCount: z.number().min(1).max(10),
+      processingTimeMs: z.number().min(500).max(5000).optional()
+    })
+  },
+  {
+    createTask: async (args, extra) => {
+      // SDK should fix this - currently no workaround
+      // Validation errors are masked by task wrapping
+    }
+  }
+);
+```
+
+### Issue #15: Tool Schema with All Optional Fields Causes InvalidParams
+**Error**: `"expected": "object", "received": "undefined"`
+**Source**: [GitHub Issue #400](https://github.com/modelcontextprotocol/typescript-sdk/issues/400)
+**Why It Happens**: Some LLM clients omit `arguments` field when all schema properties are optional
+**Prevention**:
+```typescript
+// ❌ WRONG - All optional fields may cause issues
+server.registerTool('fetch-records', {
+  inputSchema: z.object({
+    limit: z.number().optional()
+  })
+}, handler);
+
+// ✅ CORRECT - Always include at least one required field
+server.registerTool('fetch-records', {
+  inputSchema: z.object({
+    action: z.literal('fetch').default('fetch'),  // Required
+    limit: z.number().optional()
+  })
+}, handler);
+
+// Alternative: Use empty object schema
+server.registerTool('fetch-records', {
+  inputSchema: z.object({}).passthrough()
+}, handler);
+```
+
+### Issue #16: Bulk Tool Registration Triggers EventEmitter Memory Leak Warnings
+**Error**: `MaxListenersExceededWarning: Possible EventEmitter memory leak detected`
+**Source**: [GitHub Issue #842](https://github.com/modelcontextprotocol/typescript-sdk/issues/842)
+**Why It Happens**: Registering 80+ tools in a loop overwhelms stdout buffer with rapid `sendToolListChanged()` notifications
+**Prevention**:
+```typescript
+// Workaround: Increase maxListeners before bulk registration
+process.stdout.setMaxListeners(100);
+
+const tools = [...]; // Array of 80+ tool definitions
+for (const tool of tools) {
+  server.registerTool(tool.name, tool.schema, tool.handler);
+}
+
+// Future SDK may provide batch registration API
+```
+
+### Issue #17: Silent Transport Errors Without onerror Handler
+**Error**: Transport errors vanish without logs or exceptions
+**Source**: [GitHub Issue #1395](https://github.com/modelcontextprotocol/typescript-sdk/issues/1395)
+**Why It Happens**: SDK silently swallows transport errors if `onerror` callback is not set
+**Prevention**:
+```typescript
+// ✅ CORRECT - Always set onerror handler
+const transport = new StreamableHTTPServerTransport({
+  sessionIdGenerator: undefined,
+  enableJsonResponse: true
+});
+
+transport.onerror = (error) => {
+  console.error('Transport error:', error);
+  // Handle error appropriately
+};
+
+await server.connect(transport);
+```
+
+### Issue #18: DoS via Query String Array Limit Bypass
+**Error**: Memory exhaustion from malicious query parameters
+**Source**: [GitHub Issue #1368](https://github.com/modelcontextprotocol/typescript-sdk/issues/1368)
+**Why It Happens**: The `qs` library's `arrayLimit` can be bypassed using bracket notation like `?foo[99999999]=bar`
+**Prevention**:
+```typescript
+// Validate query parameters to prevent DoS
+app.post('/mcp', async (c) => {
+  const queryParams = c.req.query();
+
+  // Reject malicious patterns
+  if (Object.keys(queryParams).some(key => /\[\d{6,}\]/.test(key))) {
+    return c.json({ error: 'Invalid query parameters' }, 400);
+  }
+
+  // ... handle request
+});
+```
+
+### Issue #19: Request Handlers Not Cancelled on Transport Close
+**Error**: Long-running handlers continue executing after client disconnect, wasting resources
+**Source**: [GitHub Issue #611](https://github.com/modelcontextprotocol/typescript-sdk/issues/611)
+**Why It Happens**: SDK doesn't automatically cancel request handlers when transport connection closes
+**Prevention**:
+```typescript
+// Workaround: Use AbortController pattern manually
+server.registerTool(
+  'long-running-task',
+  { inputSchema: z.object({ duration: z.number() }) },
+  async ({ duration }, extra) => {
+    const abortController = new AbortController();
+
+    // Listen for transport close
+    const transport = extra.transport;
+    if (transport) {
+      const originalOnClose = transport.onclose;
+      transport.onclose = () => {
+        abortController.abort();
+        if (originalOnClose) originalOnClose();
+      };
+    }
+
+    try {
+      await longRunningTask(duration, abortController.signal);
+      return { content: [{ type: 'text', text: 'Done' }] };
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        return { content: [{ type: 'text', text: 'Cancelled' }], isError: true };
+      }
+      throw error;
+    }
+  }
+);
+```
+
+### Issue #20: $defs Schema References Failed in SDK 1.22.0-1.22.x
+**Error**: `can't resolve reference #/$defs/...`
+**Source**: [GitHub Issue #1175](https://github.com/modelcontextprotocol/typescript-sdk/issues/1175)
+**Why It Happens**: SDK 1.22.0 regression in `cacheToolOutputSchemas` broke `listTools()` with complex JSON Schema
+**Prevention**: Update to SDK v1.23.0 or later (fixed). If on 1.22.x, upgrade immediately.
+
 ---
 
 ## Deployment
@@ -375,13 +613,19 @@ wrangler deploy
 ## Critical Rules
 
 **Always**:
+- ✅ Create fresh `McpServer` instance per HTTP request (never reuse across sessions)
+- ✅ Set `transport.onerror` handler to catch silent errors
 - ✅ Close transport on response end (`c.res.raw.on('close', () => transport.close())`)
 - ✅ Use direct export (`export default app`, NOT `{ fetch: app.fetch }`)
 - ✅ Implement authentication for production
-- ✅ Update to SDK v1.25.1+ for security fixes and Tasks support
+- ✅ Update to SDK v1.25.3+ for security fixes, Tasks support, and fetch pollution fix
+- ✅ Include at least one required field in tool schemas (avoid all-optional)
+- ✅ Use `StreamableHTTPServerTransport` for production (SSE is deprecated)
 
 **Never**:
+- ❌ Reuse `McpServer` instance across concurrent HTTP sessions
 - ❌ Export with object wrapper
 - ❌ Forget to close StreamableHTTPServerTransport
+- ❌ Omit `transport.onerror` handler
 - ❌ Log environment variables or secrets
-- ❌ Use outdated SDK versions (<1.20.2 has ReDoS vulnerability)
+- ❌ Use outdated SDK versions (<1.23.0 has schema bugs, <1.25.3 has fetch pollution)

@@ -1,9 +1,9 @@
 ---
 name: cloudflare-mcp-server
 description: |
-  Build MCP servers on Cloudflare Workers - the only platform with official remote MCP support. TypeScript-based with OAuth, Durable Objects, and WebSocket hibernation. Prevents 22 documented errors.
+  Build MCP servers on Cloudflare Workers - the only platform with official remote MCP support. TypeScript-based with OAuth, Durable Objects, and WebSocket hibernation. Prevents 24 documented errors.
 
-  Use when: deploying remote MCP servers, implementing OAuth, or troubleshooting URL path mismatches, McpAgent exports, CORS issues.
+  Use when: deploying remote MCP servers, implementing OAuth, or troubleshooting URL path mismatches, McpAgent exports, CORS issues, IoContext timeouts.
 user-invocable: true
 allowed-tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
 ---
@@ -13,8 +13,8 @@ allowed-tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
 Build and deploy **Model Context Protocol (MCP) servers** on Cloudflare Workers with TypeScript.
 
 **Status**: Production Ready ✅
-**Last Updated**: 2026-01-09
-**Latest Versions**: @modelcontextprotocol/sdk@1.25.2, @cloudflare/workers-oauth-provider@0.2.2, agents@0.3.3
+**Last Updated**: 2026-01-21
+**Latest Versions**: @modelcontextprotocol/sdk@1.25.3, @cloudflare/workers-oauth-provider@0.2.2, agents@0.3.6
 
 **Recent Updates (2025)**:
 - **September 2025**: Code Mode (agents write code vs calling tools, auto-generated TypeScript API from schema)
@@ -29,7 +29,7 @@ Build and deploy **Model Context Protocol (MCP) servers** on Cloudflare Workers 
 
 This skill teaches you to build **remote MCP servers** on Cloudflare - the ONLY platform with official remote MCP support.
 
-**Use when**: Avoiding 22+ common MCP + Cloudflare errors (especially URL path mismatches - the #1 failure cause)
+**Use when**: Avoiding 24+ common MCP + Cloudflare errors (especially URL path mismatches - the #1 failure cause)
 
 ---
 
@@ -359,6 +359,54 @@ Single endpoint replaces separate connection/messaging endpoints:
 
 ---
 
+## Security Considerations
+
+### PKCE Bypass Vulnerability (CRITICAL)
+
+**CVE**: [GHSA-qgp8-v765-qxx9](https://github.com/cloudflare/workers-oauth-provider/security/advisories/GHSA-qgp8-v765-qxx9)
+**Severity**: Critical
+**Fixed in**: @cloudflare/workers-oauth-provider@0.0.5
+
+**Problem**: Earlier versions of the OAuth provider library had a critical vulnerability that completely bypassed PKCE protection, potentially allowing attackers to intercept authorization codes.
+
+**Action Required**:
+```bash
+# Check current version
+npm list @cloudflare/workers-oauth-provider
+
+# Update if < 0.0.5
+npm install @cloudflare/workers-oauth-provider@latest
+```
+
+**Minimum Safe Version**: `@cloudflare/workers-oauth-provider@0.0.5` or later
+
+### Token Storage Best Practices
+
+**Always use encrypted storage for OAuth tokens:**
+
+```typescript
+// ✅ GOOD: workers-oauth-provider handles encryption automatically
+export default new OAuthProvider({
+  kv: (env) => env.OAUTH_KV,  // Tokens stored encrypted
+  // ...
+});
+
+// ❌ BAD: Storing tokens in plain text
+await env.KV.put("access_token", token);  // Security risk!
+```
+
+**User-scoped KV keys** prevent data leakage between users:
+
+```typescript
+// ✅ GOOD: Namespace by user ID
+await env.KV.put(`user:${userId}:todos`, data);
+
+// ❌ BAD: Global namespace
+await env.KV.put(`todos`, data);  // Data visible to all users!
+```
+
+---
+
 ## Authentication Patterns
 
 **Choose auth based on use case:**
@@ -423,7 +471,133 @@ const value = await this.state.storage.get<string>("key");
 
 ---
 
+## Architecture: Internal vs External Transports
+
+**Important**: McpAgent uses different transports for client-facing vs internal communication.
+
+**Source**: [GitHub Issue #172](https://github.com/cloudflare/agents/issues/172)
+
+### Transport Architecture
+
+```
+Client --- (SSE or HTTP) --> Worker --- (WebSocket) --> Durable Object
+```
+
+**Client → Worker** (External):
+- SSE transport: `/sse` endpoint
+- HTTP Streamable: `/mcp` endpoint
+- Client chooses transport
+
+**Worker → Durable Object** (Internal):
+- Always WebSocket
+- Required by PartyServer (McpAgent's internal dependency)
+- Automatic upgrade, invisible to client
+
+### What This Means
+
+1. **SSE clients are fully supported** - External interface can be SSE
+2. **WebSocket is mandatory for DO** - Internal Worker-DO communication always uses WebSocket
+3. **This is not a limitation** - It's an implementation detail of McpAgent's architecture
+
+### Example
+
+```typescript
+export default {
+  fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    const { pathname } = new URL(request.url);
+
+    // Client uses SSE
+    if (pathname.startsWith("/sse")) {
+      // ✅ Client → Worker: SSE
+      // ✅ Worker → DO: WebSocket (automatic)
+      return MyMCP.serveSSE("/sse").fetch(request, env, ctx);
+    }
+
+    return new Response("Not Found", { status: 404 });
+  }
+};
+```
+
+**Key Takeaway**: You can serve SSE to clients without worrying about the internal WebSocket requirement.
+
+---
+
 ## Common Patterns
+
+### Tool Return Format (CRITICAL)
+
+**Source**: [Stytch Blog - Building MCP Server with OAuth](https://stytch.com/blog/building-an-mcp-server-oauth-cloudflare-workers/)
+
+**All MCP tools must return this exact format:**
+
+```typescript
+this.server.tool(
+  "my_tool",
+  { /* schema */ },
+  async (params) => {
+    // ✅ CORRECT: Return object with content array
+    return {
+      content: [
+        { type: "text", text: "Your result here" }
+      ]
+    };
+
+    // ❌ WRONG: Raw string
+    return "Your result here";
+
+    // ❌ WRONG: Plain object
+    return { result: "Your result here" };
+  }
+);
+```
+
+**Common mistake**: Returning raw strings or plain objects instead of proper MCP content format. This causes client parsing errors.
+
+### Conditional Tool Registration
+
+**Source**: [Cloudflare Blog - Building AI Agents](https://blog.cloudflare.com/building-ai-agents-with-mcp-authn-authz-and-durable-objects/)
+
+**Dynamically add tools based on authenticated user:**
+
+```typescript
+export class MyMCP extends McpAgent<Env> {
+  async init() {
+    this.server = new McpServer({ name: "My MCP" });
+
+    // Base tools for all users
+    this.server.tool("public_tool", { /* schema */ }, async (params) => {
+      // Available to everyone
+    });
+
+    // Conditional tools based on user
+    const userId = this.props?.userId;
+    if (await this.isAdmin(userId)) {
+      this.server.tool("admin_tool", { /* schema */ }, async (params) => {
+        // Only available to admins
+      });
+    }
+
+    // Premium features
+    if (await this.isPremiumUser(userId)) {
+      this.server.tool("premium_feature", { /* schema */ }, async (params) => {
+        // Only for premium users
+      });
+    }
+  }
+
+  private async isAdmin(userId?: string): Promise<boolean> {
+    if (!userId) return false;
+    const userRole = await this.state.storage.get<string>(`user:${userId}:role`);
+    return userRole === "admin";
+  }
+}
+```
+
+**Use cases**:
+- Feature flags per user
+- Premium vs free tier tools
+- Role-based access control (RBAC)
+- A/B testing new tools
 
 ### Caching with DO Storage
 
@@ -454,7 +628,7 @@ async rateLimit(key: string, maxRequests: number, windowMs: number): Promise<boo
 
 ---
 
-## 22 Known Errors (With Solutions)
+## 24 Known Errors (With Solutions)
 
 ### 1. McpAgent Class Not Exported
 
@@ -955,6 +1129,122 @@ return new Response(body, {
 
 ---
 
+### 23. IoContext Timeout During MCP Initialization
+
+**Error**: `IoContext timed out due to inactivity, waitUntil tasks were cancelled`
+
+**Source**: [GitHub Issue #640](https://github.com/cloudflare/agents/issues/640)
+
+**Cause**: When implementing MCP servers using `McpAgent` with custom Bearer authentication, the IoContext times out during the MCP protocol initialization handshake (before any tools are called).
+
+**Symptoms**:
+- Timeout occurs before any tools are called
+- ~2 minute gap between initial request and agent initialization
+- Internal methods work (setInitializeRequest, getInitializeRequest, updateProps)
+- Both GET and POST to `/mcp` are canceled
+- Error: "IoContext timed out due to inactivity, waitUntil tasks were cancelled"
+
+**Affected Code Pattern**:
+```typescript
+// Custom Bearer auth without OAuthProvider wrapper
+export default {
+  fetch: async (req, env, ctx) => {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    if (url.pathname === "/sse") {
+      return MyMCP.serveSSE("/sse")(req, env, ctx);  // ← Timeout here
+    }
+    return new Response("Not found", { status: 404 });
+  }
+};
+```
+
+**Root Cause Hypothesis**:
+- May require `OAuthProvider` wrapper even for custom Bearer auth
+- Possible missing timeout configuration for Durable Object IoContext
+- May need `CloudflareMCPServer` instead of standard `McpServer`
+
+**Workaround**: Use official templates with OAuthProvider pattern instead of custom Bearer auth:
+
+```typescript
+// Use OAuthProvider wrapper (recommended)
+import { OAuthProvider } from "@cloudflare/workers-oauth-provider";
+
+export default new OAuthProvider({
+  authorizeEndpoint: "/authorize",
+  tokenEndpoint: "/token",
+  // ... OAuth config
+  apiHandlers: { "/sse": MyMCP.serveSSE("/sse") }
+});
+```
+
+**Status**: Investigation ongoing (issue open as of 2026-01-21)
+
+---
+
+### 24. OAuth Remote Connection Failures
+
+**Error**: Connection to remote MCP server fails when using OAuth (works locally but fails when deployed)
+
+**Source**: [GitHub Issue #444](https://github.com/cloudflare/agents/issues/444)
+
+**Cause**: When deploying MCP client from Cloudflare Agents repository to Workers, client fails to connect to MCP servers secured with OAuth.
+
+**Symptoms**:
+- Works perfectly in local development
+- Fails after deployment to Workers
+- OAuth handshake never completes
+- Client can't establish connection
+
+**Troubleshooting Steps**:
+
+1. **Verify OAuth tokens are handled correctly** during remote connection attempts
+   ```typescript
+   // Check token is being passed to remote server
+   console.log("Connecting with token:", token ? "present" : "missing");
+   ```
+
+2. **Check network permissions** to access OAuth provider
+   ```typescript
+   // Ensure Worker can reach OAuth endpoints
+   const response = await fetch("https://oauth-provider.com/token");
+   ```
+
+3. **Verify CORS configuration** on OAuth provider
+   ```typescript
+   // OAuth provider must allow Worker origin
+   headers: {
+     "Access-Control-Allow-Origin": "https://your-worker.workers.dev",
+     "Access-Control-Allow-Methods": "POST, OPTIONS",
+     "Access-Control-Allow-Headers": "Content-Type, Authorization"
+   }
+   ```
+
+4. **Check redirect URIs match deployed URLs**
+   ```json
+   {
+     "url": "https://mcp.workers.dev/sse",
+     "auth": {
+       "authorizationUrl": "https://mcp.workers.dev/authorize",  // Must match deployed domain
+       "tokenUrl": "https://mcp.workers.dev/token"
+     }
+   }
+   ```
+
+**Deployment Checklist**:
+- [ ] All OAuth URLs use deployed domain (not localhost)
+- [ ] CORS headers configured on OAuth provider
+- [ ] Network requests to OAuth provider allowed in Worker
+- [ ] Redirect URIs registered with OAuth provider
+- [ ] Environment variables set in production (`wrangler secret`)
+
+**Related**: Issue #640 (both involve OAuth/auth in remote deployments)
+
+---
+
 ## Testing & Deployment
 
 ```bash
@@ -987,6 +1277,7 @@ npx wrangler tail
 
 ---
 
-**Package Versions**: @modelcontextprotocol/sdk@1.25.2, @cloudflare/workers-oauth-provider@0.2.2, agents@0.3.3
-**Last Verified**: 2026-01-09
-**Errors Prevented**: 22 documented issues (100% prevention rate)
+**Package Versions**: @modelcontextprotocol/sdk@1.25.3, @cloudflare/workers-oauth-provider@0.2.2, agents@0.3.6
+**Last Verified**: 2026-01-21
+**Errors Prevented**: 24 documented issues (100% prevention rate)
+**Skill Version**: 3.1.0 | **Changes**: Added IoContext timeout (#23), OAuth remote failures (#24), Security section (PKCE vulnerability), Architecture clarification (internal WebSocket), Tool return format pattern, Conditional tool registration

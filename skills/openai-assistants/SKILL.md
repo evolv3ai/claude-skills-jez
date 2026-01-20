@@ -1,17 +1,17 @@
 ---
 name: openai-assistants
 description: |
-  Build stateful chatbots with OpenAI Assistants API v2 - Code Interpreter, File Search (10k files), Function Calling. Deprecated (sunset August 2026); use openai-responses for new projects.
+  Build stateful chatbots with OpenAI Assistants API v2 - Code Interpreter, File Search (10k files), Function Calling. Prevents 10 documented errors including vector store upload bugs, temperature parameter conflicts, memory leaks. Deprecated (sunset August 2026); use openai-responses for new projects.
 
-  Use when: maintaining legacy chatbots, implementing RAG with vector stores, or troubleshooting thread errors, vector store delays.
+  Use when: maintaining legacy chatbots, implementing RAG with vector stores, or troubleshooting thread errors, vector store delays, uploadAndPoll issues.
 user-invocable: true
 ---
 
 # OpenAI Assistants API v2
 
 **Status**: Production Ready (⚠️ Deprecated - Sunset August 26, 2026)
-**Package**: openai@6.15.0
-**Last Updated**: 2026-01-09
+**Package**: openai@6.16.0
+**Last Updated**: 2026-01-21
 **v1 Deprecated**: December 18, 2024
 **v2 Sunset**: August 26, 2026 (migrate to Responses API)
 
@@ -33,7 +33,7 @@ user-invocable: true
 ## Quick Start
 
 ```bash
-npm install openai@6.15.0
+npm install openai@6.16.0
 ```
 
 ```typescript
@@ -239,9 +239,31 @@ Error: 400 Can't add messages to thread_xxx while a run run_xxx is active.
 ```
 **Fix**: Cancel active run first: `await openai.beta.threads.runs.cancel(threadId, runId)`
 
-**2. Run Polling Timeout**
-Long-running tasks (Code Interpreter, File Search) may exceed polling windows.
-**Fix**: Set max timeout (e.g., 5 min) and cancel if exceeded
+**2. Run Polling Timeout / Incomplete Status**
+```
+Error: OpenAIError: Final run has not been received
+```
+**Why It Happens**: Long-running tasks may exceed polling windows or finish with `incomplete` status
+**Prevention**: Handle incomplete runs gracefully
+```typescript
+try {
+  const stream = await openai.beta.threads.runs.stream(thread.id, { assistant_id });
+  for await (const event of stream) {
+    if (event.event === 'thread.message.delta') {
+      process.stdout.write(event.data.delta.content?.[0]?.text?.value || '');
+    }
+  }
+} catch (error) {
+  if (error.message?.includes('Final run has not been received')) {
+    // Run ended with 'incomplete' status - thread can continue
+    const run = await openai.beta.threads.runs.retrieve(thread.id, runId);
+    if (run.status === 'incomplete') {
+      // Handle: prompt user to continue, reduce max_completion_tokens, etc.
+    }
+  }
+}
+```
+**Source**: [GitHub Issues #945](https://github.com/openai/openai-node/issues/945), [#1306](https://github.com/openai/openai-node/issues/1306), [#1439](https://github.com/openai/openai-node/issues/1439)
 
 **3. Vector Store Not Ready**
 Using vector store before indexing completes.
@@ -250,6 +272,106 @@ Using vector store before indexing completes.
 **4. File Upload Format Issues**
 Unsupported file formats cause silent failures.
 **Fix**: Validate file extensions before upload (see File Formats section)
+
+**5. Vector Store Upload Documentation Incorrect**
+```
+Error: No 'files' provided to process
+```
+**Why It Happens**: Official documentation shows incorrect usage of `uploadAndPoll`
+**Prevention**: Wrap file streams in `{ files: [...] }` object
+```typescript
+// ✅ Correct
+await openai.beta.vectorStores.fileBatches.uploadAndPoll(vectorStoreId, {
+  files: fileStreams
+});
+
+// ❌ Wrong (shown in official docs)
+await openai.beta.vectorStores.fileBatches.uploadAndPoll(vectorStoreId, fileStreams);
+```
+**Source**: [GitHub Issue #1337](https://github.com/openai/openai-node/issues/1337)
+
+**6. Reasoning Models Reject Temperature Parameter**
+```
+Error: Unsupported parameter: 'temperature' is not supported with this model
+```
+**Why It Happens**: When updating assistant to o3-mini/o1-preview/o1-mini, old temperature settings persist
+**Prevention**: Explicitly set temperature to `null`
+```typescript
+await openai.beta.assistants.update(assistantId, {
+  model: 'o3-mini',
+  reasoning_effort: 'medium',
+  temperature: null,  // ✅ Must explicitly clear
+  top_p: null
+});
+```
+**Source**: [GitHub Issue #1318](https://github.com/openai/openai-node/issues/1318)
+
+**7. uploadAndPoll Returns Vector Store ID Instead of Batch ID**
+```
+Error: Invalid 'batch_id': 'vs_...'. Expected an ID that begins with 'vsfb_'.
+```
+**Why It Happens**: `uploadAndPoll` returns vector store object instead of batch object
+**Prevention**: Use alternative methods to get batch ID
+```typescript
+// Option 1: Use createAndPoll after separate upload
+const batch = await openai.vectorStores.fileBatches.createAndPoll(
+  vectorStoreId,
+  { file_ids: uploadedFileIds }
+);
+
+// Option 2: List batches to find correct ID
+const batches = await openai.vectorStores.fileBatches.list(vectorStoreId);
+const batchId = batches.data[0].id; // starts with 'vsfb_'
+```
+**Source**: [GitHub Issue #1700](https://github.com/openai/openai-node/issues/1700)
+
+**8. Vector Store File Delete Affects All Stores**
+**Warning**: Deleting a file from one vector store removes it from ALL vector stores
+```typescript
+// ❌ This deletes file from VS_A, VS_B, AND VS_C
+await openai.vectorStores.files.delete('VS_A', 'file-xxx');
+```
+**Why It Happens**: SDK or API bug - delete operation has global effect
+**Prevention**: Avoid sharing files across multiple vector stores if selective deletion is needed
+**Source**: [GitHub Issue #1710](https://github.com/openai/openai-node/issues/1710)
+
+**9. Memory Leak in Large File Uploads (Community-sourced)**
+**Source**: [GitHub Issue #1052](https://github.com/openai/openai-node/issues/1052) | **Status**: OPEN
+**Impact**: ~44MB leaked per 22MB file upload in long-running servers
+**Why It Happens**: When uploading large files from streams (S3, etc.) using `vectorStores.fileBatches.uploadAndPoll`, memory may not be released after upload completes
+**Verified**: Maintainer acknowledged, reduced in v4.58.1 but not eliminated
+**Workaround**: Monitor memory usage in long-lived servers; restart periodically or use separate worker processes
+
+**10. Thread Already Has Active Run - Race Condition (Community-sourced)**
+**Enhancement to Issue #1**: When canceling an active run, race conditions may occur if the run completes before cancellation
+```typescript
+async function createRunSafely(threadId: string, assistantId: string) {
+  // Check for active runs first
+  const runs = await openai.beta.threads.runs.list(threadId, { limit: 1 });
+  const activeRun = runs.data.find(r =>
+    ['queued', 'in_progress', 'requires_action'].includes(r.status)
+  );
+
+  if (activeRun) {
+    try {
+      await openai.beta.threads.runs.cancel(threadId, activeRun.id);
+
+      // Wait for cancellation to complete
+      let run = await openai.beta.threads.runs.retrieve(threadId, activeRun.id);
+      while (run.status === 'cancelling') {
+        await new Promise(r => setTimeout(r, 500));
+        run = await openai.beta.threads.runs.retrieve(threadId, activeRun.id);
+      }
+    } catch (error) {
+      // Ignore "already completed" errors - run finished naturally
+      if (!error.message?.includes('completed')) throw error;
+    }
+  }
+
+  return openai.beta.threads.runs.create(threadId, { assistant_id: assistantId });
+}
+```
+**Source**: [OpenAI Community Forum](https://community.openai.com/t/error-running-thread-already-has-an-active-run/782118)
 
 See `references/top-errors.md` for complete catalog.
 
@@ -281,6 +403,7 @@ See `references/migration-from-v1.md`
 
 ---
 
-**Last Updated**: 2026-01-09
-**Package**: openai@6.15.0
+**Last Updated**: 2026-01-21
+**Package**: openai@6.16.0
 **Status**: Production Ready (⚠️ Deprecated - Sunset August 26, 2026)
+**Changes**: Added 6 new known issues (vector store upload bugs, o3-mini temperature, memory leak), enhanced streaming error handling

@@ -1,9 +1,9 @@
 ---
 name: google-gemini-embeddings
 description: |
-  Build RAG systems and semantic search with Gemini embeddings (gemini-embedding-001). 768-3072 dimension vectors, 8 task types, Cloudflare Vectorize integration.
+  Build RAG systems and semantic search with Gemini embeddings (gemini-embedding-001). 768-3072 dimension vectors, 8 task types, Cloudflare Vectorize integration. Prevents 13 documented errors.
 
-  Use when: vector search, RAG systems, semantic search, document clustering. Troubleshoot: dimension mismatch, wrong task type, rate limits (100 RPM), text truncation (2048 tokens).
+  Use when: vector search, RAG systems, semantic search, document clustering. Troubleshoot: dimension mismatch, normalization required, batch ordering bug, memory limits, wrong task type, rate limits (100 RPM).
 user-invocable: true
 ---
 
@@ -35,7 +35,7 @@ This skill provides comprehensive coverage of the `gemini-embedding-001` model f
 Install the Google Generative AI SDK:
 
 ```bash
-npm install @google/genai@^1.30.0
+npm install @google/genai@^1.37.0
 ```
 
 For TypeScript projects:
@@ -217,6 +217,50 @@ const embedding: number[] = response.embedding.values;
 const dimensions: number = embedding.length; // 3072 by default
 ```
 
+### Normalization Requirement
+
+⚠️ **CRITICAL**: When using dimensions other than 3072, you **MUST normalize embeddings** before computing similarity. Only 3072-dimensional embeddings are pre-normalized by the API.
+
+**Why This Matters**: Non-normalized embeddings have varying magnitudes that distort cosine similarity calculations, leading to incorrect search results.
+
+**Normalization Helper Function**:
+
+```typescript
+/**
+ * Normalize embedding vector for accurate similarity calculations.
+ * REQUIRED for dimensions other than 3072.
+ *
+ * @param vector - Embedding values from API response
+ * @returns Normalized vector (unit length)
+ */
+function normalize(vector: number[]): number[] {
+  const magnitude = Math.sqrt(
+    vector.reduce((sum, val) => sum + val * val, 0)
+  );
+  return vector.map(val => val / magnitude);
+}
+
+// Usage with 768 or 1536 dimensions
+const response = await ai.models.embedContent({
+  model: 'gemini-embedding-001',
+  content: text,
+  config: {
+    taskType: 'RETRIEVAL_QUERY',
+    outputDimensionality: 768  // NOT 3072
+  }
+});
+
+// ❌ WRONG - Use raw values directly
+const embedding = response.embedding.values;
+await vectorize.insert([{ id, values: embedding }]);
+
+// ✅ CORRECT - Normalize first
+const normalized = normalize(response.embedding.values);
+await vectorize.insert([{ id, values: normalized }]);
+```
+
+**Source**: [Official Embeddings Documentation](https://ai.google.dev/gemini-api/docs/embeddings)
+
 ---
 
 ## 4. Batch Embeddings
@@ -282,6 +326,26 @@ const data = await response.json();
 // data.embeddings: Array of {values: number[]}
 ```
 
+### Batch API Known Issues
+
+⚠️ **Ordering Bug (December 2025)**: Batch API may not preserve ordering with large batch sizes (>500 texts).
+- **Symptom**: Entry 328 appears at position 628 (silent data corruption)
+- **Impact**: Results cannot be reliably matched back to input texts
+- **Workaround**: Process smaller batches (<100 texts) or add unique IDs to verify ordering
+- **Status**: Acknowledged by Google, internal bug created (P0 priority)
+- **Source**: [GitHub Issue #1207](https://github.com/googleapis/js-genai/issues/1207)
+
+⚠️ **Memory Limit (December 2025)**: Large batches (>10k embeddings) can cause `ERR_STRING_TOO_LONG` crash.
+- **Error**: `Cannot create a string longer than 0x1fffffe8 characters`
+- **Cause**: API response includes excessive whitespace (~536MB limit)
+- **Workaround**: Limit to <5,000 texts per batch
+- **Source**: [GitHub Issue #1205](https://github.com/googleapis/js-genai/issues/1205)
+
+⚠️ **Rate Limit Anomaly (January 2026)**: Batch API may return `429 RESOURCE_EXHAUSTED` even when under quota.
+- **Status**: Under investigation by Google team
+- **Workaround**: Implement exponential backoff and retry logic
+- **Source**: [GitHub Issue #1264](https://github.com/googleapis/js-genai/issues/1264)
+
 ### Chunking for Rate Limits
 
 When processing large datasets, chunk requests to stay within rate limits:
@@ -289,7 +353,7 @@ When processing large datasets, chunk requests to stay within rate limits:
 ```typescript
 async function batchEmbedWithRateLimit(
   texts: string[],
-  batchSize: number = 100, // Free tier: 100 RPM
+  batchSize: number = 50, // REDUCED from 100 due to ordering bug
   delayMs: number = 60000 // 1 minute delay between batches
 ): Promise<number[][]> {
   const allEmbeddings: number[][] = [];
@@ -320,7 +384,7 @@ async function batchEmbedWithRateLimit(
 }
 
 // Usage
-const embeddings = await batchEmbedWithRateLimit(documents, 100);
+const embeddings = await batchEmbedWithRateLimit(documents, 50);
 ```
 
 ### Performance Optimization
@@ -592,6 +656,107 @@ async function embedWithRetry(text: string, maxRetries = 3) {
 
 See `references/top-errors.md` for all 8 documented errors with detailed solutions.
 
+### Known Issues Prevention
+
+This section documents additional issues discovered in production use (beyond basic errors above).
+
+#### Issue #9: Normalization Required for Non-3072 Dimensions
+**Error**: Incorrect similarity scores, no error thrown
+**Source**: [Official Embeddings Documentation](https://ai.google.dev/gemini-api/docs/embeddings)
+**Why It Happens**: Only 3072-dimensional embeddings are pre-normalized by the API. All other dimensions (128-3071) have varying magnitudes that distort cosine similarity.
+**Prevention**: Always normalize embeddings when using dimensions other than 3072.
+
+```typescript
+function normalize(vector: number[]): number[] {
+  const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+  return vector.map(val => val / magnitude);
+}
+
+// When using 768 or 1536 dimensions
+const response = await ai.models.embedContent({
+  model: 'gemini-embedding-001',
+  content: text,
+  config: { outputDimensionality: 768 }
+});
+
+const normalized = normalize(response.embedding.values);
+// Now safe for similarity calculations
+```
+
+#### Issue #10: Batch API Ordering Bug
+**Error**: Silent data corruption - embeddings returned in wrong order
+**Source**: [GitHub Issue #1207](https://github.com/googleapis/js-genai/issues/1207)
+**Why It Happens**: Batch API does not preserve ordering with large batch sizes (>500 texts). Example: entry 328 appears in position 628.
+**Prevention**: Process smaller batches (<100 texts) or add unique identifiers to verify ordering.
+
+```typescript
+// Safer approach with verification
+const taggedTexts = texts.map((text, i) => `[ID:${i}] ${text}`);
+const response = await ai.models.embedContent({
+  model: 'gemini-embedding-001',
+  contents: taggedTexts,
+  config: { taskType: 'RETRIEVAL_DOCUMENT', outputDimensionality: 768 }
+});
+
+// Verify ordering by parsing IDs if needed
+```
+
+#### Issue #11: Batch API Memory Limit
+**Error**: `Cannot create a string longer than 0x1fffffe8 characters`
+**Source**: [GitHub Issue #1205](https://github.com/googleapis/js-genai/issues/1205)
+**Why It Happens**: Batch API response contains excessive whitespace causing response size to exceed Node.js string limit (~536MB) with large payloads (>10k embeddings).
+**Prevention**: Limit batches to <5,000 texts per request.
+
+```typescript
+// Safe batch size
+async function batchEmbedSafe(texts: string[]) {
+  const maxBatchSize = 5000;
+  if (texts.length > maxBatchSize) {
+    throw new Error(`Batch too large: ${texts.length} texts (max: ${maxBatchSize})`);
+  }
+  // Process batch...
+}
+```
+
+#### Issue #12: LangChain Dimension Parameter Ignored (Community-sourced)
+**Error**: Dimension mismatch - getting 3072 dimensions instead of specified 768
+**Source**: [Medium Article](https://medium.com/@henilsuhagiya0/how-to-fix-the-common-gemini-langchain-embedding-dimension-mismatch-768-vs-3072-6eb1c468729b)
+**Verified**: Multiple community reports
+**Why It Happens**: LangChain's `GoogleGenerativeAIEmbeddings` class silently ignores `output_dimensionality` parameter when passed to constructor (Python SDK).
+**Prevention**: Pass dimension parameter to `embed_documents()` method, not constructor. JavaScript users should verify new `@google/genai` SDK doesn't have similar behavior.
+
+```python
+# ❌ WRONG - parameter silently ignored
+embeddings = GoogleGenerativeAIEmbeddings(
+    model="gemini-embedding-001",
+    output_dimensionality=768  # IGNORED!
+)
+
+# ✅ CORRECT - pass to method
+embeddings = GoogleGenerativeAIEmbeddings(model="gemini-embedding-001")
+result = embeddings.embed_documents(["text"], output_dimensionality=768)
+```
+
+#### Issue #13: Single Requests Use Batch Endpoint (Community-sourced)
+**Error**: Hitting rate limits faster than expected with single text embeddings
+**Source**: [GitHub Issue #427 (Python SDK)](https://github.com/googleapis/python-genai/issues/427)
+**Verified**: Official issue in googleapis organization
+**Why It Happens**: The `embed_content()` function internally calls `batchEmbedContents` endpoint even for single texts. This causes higher rate limit consumption (batch endpoint has different limits).
+**Prevention**: Add delays between single embedding requests and implement exponential backoff for 429 errors.
+
+```typescript
+// Add delays to avoid rate limits
+async function embedWithDelay(text: string, delayMs: number = 100) {
+  const response = await ai.models.embedContent({
+    model: 'gemini-embedding-001',
+    content: text,
+    config: { taskType: 'SEMANTIC_SIMILARITY' }
+  });
+  await new Promise(resolve => setTimeout(resolve, delayMs));
+  return response.embedding.values;
+}
+```
+
 ---
 
 ## 8. Best Practices
@@ -746,10 +911,11 @@ const queryEmbedding = await ai.models.embedContent({
 ## Success Metrics
 
 **Token Savings**: ~60% compared to manual implementation
-**Errors Prevented**: 8 documented errors with solutions
+**Errors Prevented**: 13 documented errors with solutions (8 basic + 5 known issues)
 **Production Tested**: ✅ Verified in RAG applications
-**Package Version**: @google/genai@1.35.0
-**Last Updated**: 2026-01-09
+**Package Version**: @google/genai@1.37.0
+**Last Updated**: 2026-01-21
+**Changes**: Added normalization requirement, batch API warnings (ordering bug, memory limits, rate limit anomaly), LangChain compatibility notes
 
 ---
 

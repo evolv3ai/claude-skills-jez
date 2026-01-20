@@ -1,18 +1,18 @@
 ---
 name: openai-responses
 description: |
-  Build agentic AI with OpenAI Responses API - stateful conversations with preserved reasoning, built-in tools (Code Interpreter, File Search, Web Search), and MCP integration.
+  Build agentic AI with OpenAI Responses API - stateful conversations with preserved reasoning, built-in tools (Code Interpreter, File Search, Web Search), and MCP integration. Prevents 11 documented errors.
 
-  Use when: building agents with persistent reasoning, using server-side tools, or migrating from Chat Completions for better multi-turn performance.
+  Use when: building agents with persistent reasoning, using server-side tools, or migrating from Chat Completions/Assistants for better multi-turn performance.
 user-invocable: true
 ---
 
 # OpenAI Responses API
 
 **Status**: Production Ready
-**Last Updated**: 2026-01-09
+**Last Updated**: 2026-01-21
 **API Launch**: March 2025
-**Dependencies**: openai@6.15.0 (Node.js) or fetch API (Cloudflare Workers)
+**Dependencies**: openai@6.16.0 (Node.js) or fetch API (Cloudflare Workers)
 
 ---
 
@@ -38,7 +38,7 @@ OpenAI's unified interface for agentic applications, launched **March 2025**. Pr
 ## Quick Start
 
 ```bash
-npm install openai@6.15.0
+npm install openai@6.16.0
 ```
 
 ```typescript
@@ -129,13 +129,59 @@ const response = await openai.responses.create({
 });
 ```
 
+### Web Search TypeScript Note
+
+**TypeScript Limitation**: The `web_search` tool's `external_web_access` option is missing from SDK types (as of v6.16.0).
+
+**Workaround**:
+```typescript
+const response = await openai.responses.create({
+  model: 'gpt-5',
+  input: 'Search for recent news',
+  tools: [{
+    type: 'web_search',
+    external_web_access: true,
+  } as any],  // ✅ Type assertion to suppress error
+});
+```
+
+**Source**: [GitHub Issue #1716](https://github.com/openai/openai-node/issues/1716)
+
 ---
 
 ## MCP Server Integration
 
 Built-in support for **Model Context Protocol (MCP)** servers to connect external tools (Stripe, databases, custom APIs).
 
-**Basic MCP:**
+### User Approval Requirement
+
+**By default, explicit user approval is required** before any data is shared with a remote MCP server (security feature).
+
+**Handling Approval**:
+```typescript
+const response = await openai.responses.create({
+  model: 'gpt-5',
+  input: 'Get my Stripe balance',
+  tools: [{
+    type: 'mcp',
+    server_label: 'stripe',
+    server_url: 'https://mcp.stripe.com',
+    authorization: process.env.STRIPE_TOKEN,
+  }],
+});
+
+if (response.status === 'requires_approval') {
+  // Show user: "This action requires sharing data with Stripe. Approve?"
+  // After user approves, retry with approval token
+}
+```
+
+**Alternative**: Pre-approve MCP servers in OpenAI dashboard (users configure trusted servers via settings)
+
+**Source**: [Official MCP Guide](https://platform.openai.com/docs/guides/tools-connectors-mcp)
+
+### Basic MCP Usage
+
 ```typescript
 const response = await openai.responses.create({
   model: 'gpt-5',
@@ -174,6 +220,19 @@ response.output.forEach(item => {
 });
 ```
 
+### Important: Reasoning Traces Privacy
+
+**What You Get**: Reasoning summaries (not full internal traces)
+**What OpenAI Keeps**: Full chain-of-thought reasoning (proprietary, for security/privacy)
+
+For GPT-5-Thinking models:
+- OpenAI preserves reasoning **internally** in their backend
+- This preserved reasoning improves multi-turn performance (+5% TAUBench)
+- But developers only receive **summaries**, not the actual chain-of-thought
+- Full reasoning traces are not exposed (OpenAI's IP protection)
+
+**Source**: [Sean Goedecke Analysis](https://www.seangoedecke.com/responses-api/)
+
 ---
 
 ## Background Mode
@@ -196,6 +255,53 @@ if (result.status === 'completed') console.log(result.output_text);
 **Timeout Limits:**
 - Standard: 60 seconds
 - Background: 10 minutes
+
+### Performance Considerations
+
+**Time-to-First-Token (TTFT) Latency:**
+Background mode currently has higher TTFT compared to synchronous responses. OpenAI is working to reduce this gap.
+
+**Recommendation:**
+- For user-facing real-time responses, use sync mode (lower latency)
+- For long-running async tasks, use background mode (latency acceptable)
+
+**Source**: [OpenAI Background Mode Docs](https://platform.openai.com/docs/guides/background)
+
+---
+
+## Data Retention and Privacy
+
+**Default Retention**: 30 days when `store: true` (default)
+**Zero Data Retention (ZDR)**: Organizations with ZDR automatically enforce `store: false`
+**Background Mode**: NOT ZDR compatible (stores data ~10 minutes for polling)
+
+**Timeline**:
+- September 26, 2025: OpenAI court-ordered retention ended
+- Current: 30-day default retention with `store: true`
+
+**Control Storage**:
+```typescript
+// Disable storage (no retention)
+const response = await openai.responses.create({
+  model: 'gpt-5',
+  input: 'Hello!',
+  store: false,  // ✅ No retention
+});
+
+// ZDR organizations: store always treated as false
+const response = await openai.responses.create({
+  model: 'gpt-5',
+  input: 'Hello!',
+  store: true,  // ⚠️ Ignored by OpenAI for ZDR orgs, treated as false
+});
+```
+
+**ZDR Compliance**:
+- Avoid background mode (requires temporary storage)
+- Explicitly set `store: false` for clarity
+- Note: 60s timeout applies in sync mode
+
+**Source**: [OpenAI Data Controls](https://platform.openai.com/docs/guides/your-data)
 
 ---
 
@@ -266,9 +372,63 @@ console.log(response.output_text);
 
 ---
 
-## Error Handling
+## Migration from Assistants API
 
-**8 Common Errors:**
+**CRITICAL: Assistants API Sunset Timeline**
+
+- **August 26, 2025**: Assistants API officially deprecated
+- **2025-2026**: OpenAI providing migration utilities
+- **August 26, 2026**: Assistants API sunset (stops working)
+
+**Migrate before August 26, 2026** to avoid breaking changes.
+
+**Source**: [Assistants API Sunset Announcement](https://community.openai.com/t/assistants-api-beta-deprecation-august-26-2026-sunset/1354666)
+
+**Key Breaking Changes:**
+
+| Assistants API | Responses API |
+|----------------|---------------|
+| Assistants (created via API) | Prompts (created in dashboard) |
+| Threads | Conversations (store items, not just messages) |
+| Runs (server-side lifecycle) | Responses (stateless calls) |
+| Run-Steps | Items (polymorphic outputs) |
+
+**Migration Example:**
+```typescript
+// Before (Assistants API - deprecated)
+const assistant = await openai.beta.assistants.create({
+  model: 'gpt-4',
+  instructions: 'You are helpful.',
+});
+
+const thread = await openai.beta.threads.create();
+
+const run = await openai.beta.threads.runs.create(thread.id, {
+  assistant_id: assistant.id,
+});
+
+// After (Responses API - current)
+const conversation = await openai.conversations.create({
+  metadata: { purpose: 'customer_support' },
+});
+
+const response = await openai.responses.create({
+  model: 'gpt-5',
+  conversation: conversation.id,
+  input: [
+    { role: 'developer', content: 'You are helpful.' },
+    { role: 'user', content: 'Hello!' },
+  ],
+});
+```
+
+**Migration Guide**: [Official Assistants Migration Docs](https://platform.openai.com/docs/guides/migrate-to-responses)
+
+---
+
+## Known Issues Prevention
+
+This skill prevents **11** documented errors:
 
 **1. Session State Not Persisting**
 - Cause: Not using conversation IDs or using different IDs per turn
@@ -302,6 +462,55 @@ console.log(response.output_text);
 - Cause: Accessing wrong output structure
 - Fix: Use `response.output_text` helper or iterate `response.output.forEach(item => ...)` checking `item.type`
 
+**9. Zod v4 Incompatibility with Structured Outputs**
+- **Error**: `Invalid schema for response_format 'name': schema must be a JSON Schema of 'type: "object"', got 'type: "string"'.`
+- **Source**: [GitHub Issue #1597](https://github.com/openai/openai-node/issues/1597)
+- **Why It Happens**: SDK's vendored `zod-to-json-schema` library doesn't support Zod v4 (missing `ZodFirstPartyTypeKind` export)
+- **Prevention**: Pin to Zod v3 (`"zod": "^3.23.8"`) or use custom `zodTextFormat` with `z.toJSONSchema({ target: "draft-7" })`
+
+```typescript
+// Workaround: Pin to Zod v3 (recommended)
+{
+  "dependencies": {
+    "openai": "^6.16.0",
+    "zod": "^3.23.8"  // DO NOT upgrade to v4 yet
+  }
+}
+```
+
+**10. Background Mode Web Search Missing Sources**
+- **Error**: `web_search_call` output items contain query but no sources/results
+- **Source**: [GitHub Issue #1676](https://github.com/openai/openai-node/issues/1676)
+- **Why It Happens**: When using `background: true` + `web_search` tool, OpenAI doesn't return sources in the response
+- **Prevention**: Use synchronous mode (`background: false`) when web search sources are needed
+
+```typescript
+// ✅ Sources available in sync mode
+const response = await openai.responses.create({
+  model: 'gpt-5',
+  input: 'Latest AI news?',
+  background: false,  // Required for sources
+  tools: [{ type: 'web_search' }],
+});
+```
+
+**11. Streaming Mode Missing output_text Helper**
+- **Error**: `finalResponse().output_text` is `undefined` in streaming mode
+- **Source**: [GitHub Issue #1662](https://github.com/openai/openai-node/issues/1662)
+- **Why It Happens**: `stream.finalResponse()` doesn't include `output_text` convenience field (only available in non-streaming responses)
+- **Prevention**: Listen for `output_text.done` event or manually extract from `output` items
+
+```typescript
+// Workaround: Listen for event
+const stream = openai.responses.stream({ model: 'gpt-5', input: 'Hello!' });
+let outputText = '';
+for await (const event of stream) {
+  if (event.type === 'output_text.done') {
+    outputText = event.output_text;  // ✅ Available in event
+  }
+}
+```
+
 ---
 
 ## Critical Patterns
@@ -332,3 +541,7 @@ console.log(response.output_text);
 - Starter App: https://github.com/openai/openai-responses-starter-app
 
 **Skill Resources:** `templates/`, `references/responses-vs-chat-completions.md`, `references/mcp-integration-guide.md`, `references/built-in-tools-guide.md`, `references/migration-guide.md`, `references/top-errors.md`
+
+---
+
+**Last verified**: 2026-01-21 | **Skill version**: 2.1.0 | **Changes**: Added 3 TIER 1 issues (Zod v4, background web search, streaming output_text), 2 TIER 2 findings (MCP approval, reasoning privacy), Data Retention & ZDR section, Assistants API sunset timeline, background mode TTFT note, web search TypeScript limitation. Updated SDK version to 6.16.0.
