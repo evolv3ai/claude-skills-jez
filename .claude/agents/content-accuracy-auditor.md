@@ -68,12 +68,22 @@ Look for docs in this priority order:
 4. **Known documentation sources** (fallback):
    | Technology | Documentation URL |
    |------------|-------------------|
-   | Cloudflare | https://developers.cloudflare.com/ |
+   | Cloudflare Workers | https://developers.cloudflare.com/workers/ |
+   | Cloudflare D1 | https://developers.cloudflare.com/d1/ |
+   | Cloudflare R2 | https://developers.cloudflare.com/r2/ |
+   | Cloudflare KV | https://developers.cloudflare.com/kv/ |
    | Vercel AI SDK | https://sdk.vercel.ai/docs |
    | OpenAI | https://platform.openai.com/docs |
    | Anthropic | https://docs.anthropic.com |
+   | Google Gemini | https://ai.google.dev/gemini-api/docs |
    | Clerk | https://clerk.com/docs |
    | Hono | https://hono.dev/docs |
+   | React | https://react.dev/reference |
+   | Tailwind CSS | https://tailwindcss.com/docs |
+   | shadcn/ui | https://ui.shadcn.com/docs |
+   | Drizzle ORM | https://orm.drizzle.team/docs |
+   | TanStack Query | https://tanstack.com/query/latest/docs |
+   | TanStack Router | https://tanstack.com/router/latest/docs |
 
 ### Step 3: Fetch Official Documentation
 

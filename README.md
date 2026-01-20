@@ -99,7 +99,7 @@ Popular requests get prioritized. No need to build it yourself unless you want t
 Want your own skills ecosystem with your own authorship? **Fork this repo** or use it as a template:
 
 1. Fork → customize skills with your preferences
-2. Use our agents (`skill-auditor`, `version-checker`) to maintain currency
+2. Use our QA agents (`content-accuracy-auditor`, `code-example-validator`, `version-checker`) to maintain currency
 3. Pull upstream updates when useful
 
 This works well if you maintain skills across multiple machines or want to publish your own collection.

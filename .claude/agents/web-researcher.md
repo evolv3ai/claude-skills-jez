@@ -199,7 +199,7 @@ Sites that typically require escalation:
 
 ## Integration with Other Agents
 
-When called by skill-creator, skill-auditor, or doc-validator:
+When called by content-accuracy-auditor, api-method-checker, skill-creator, or doc-validator:
 
 1. Accept the URL(s) to research
 2. Attempt fetch using escalation pyramid

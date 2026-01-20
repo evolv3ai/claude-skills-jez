@@ -61,11 +61,13 @@ claude-skills/
 │   └── README.md
 │
 ├── .claude/agents/               # Custom agents for managing this repo
-│   ├── skill-auditor.md          # Deep audit vs official docs
-│   ├── version-checker.md        # Check/update package versions
-│   ├── skill-creator.md          # Scaffold new skills
-│   ├── bulk-updater.md           # Batch operations
-│   └── doc-validator.md          # Documentation quality
+│   ├── content-accuracy-auditor.md  # Find missing features vs official docs
+│   ├── code-example-validator.md    # Validate code syntax and methods
+│   ├── api-method-checker.md        # Verify APIs exist in packages
+│   ├── version-checker.md           # Check/update package versions
+│   ├── skill-creator.md             # Scaffold new skills
+│   ├── bulk-updater.md              # Batch operations
+│   └── doc-validator.md             # Documentation quality
 │
 ├── docs/                         # Extended documentation
 │   ├── SKILLS_CATALOG.md         # Full skill details
