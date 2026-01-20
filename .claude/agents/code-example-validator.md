@@ -322,6 +322,94 @@ Flag for manual review:
 - Multiple possible fixes
 - Context-dependent corrections
 
+## Confidence Ratings
+
+Rate each finding with confidence level:
+
+| Confidence | Meaning | When to Use |
+|------------|---------|-------------|
+| **HIGH** | Certain this is wrong | Syntax error caught by parser, method definitively not in exports |
+| **MEDIUM** | Likely wrong, needs verification | Pattern matches known error, but context unclear |
+| **LOW** | Possibly wrong, uncertain | Might be correct for specific version/context |
+
+### Rating Guidelines
+
+**HIGH confidence** when:
+- TypeScript compiler reports syntax error
+- `npm view` confirms method/export doesn't exist
+- Pattern exactly matches known error database
+
+**MEDIUM confidence** when:
+- Method name looks similar to known error (topK vs topN)
+- Import uses experimental_ but might still be valid
+- Code works but uses deprecated pattern
+
+**LOW confidence** when:
+- Can't verify without full context
+- Multiple valid interpretations exist
+- Might be intentional for compatibility
+
+### Output Format with Confidence
+
+```markdown
+| Issue | Line | Confidence | Reasoning |
+|-------|------|------------|-----------|
+| `topK` should be `topN` | 234 | HIGH | Verified: topK not in ai@6.0.26 exports |
+| `experimental_` prefix | 156 | MEDIUM | May still be experimental in current version |
+| Missing await | 89 | LOW | Context unclear, might be sync variant |
+```
+
+## Cross-Agent Coordination
+
+When findings need deeper verification, suggest follow-up:
+
+| Finding | Suggest Agent | Reason |
+|---------|---------------|--------|
+| Uncertain method name | **api-method-checker** | Can verify against TypeScript definitions |
+| experimental_ prefix | **api-method-checker** | Can check if API graduated to stable |
+| Missing feature in code | **content-accuracy-auditor** | Can check if feature exists in official docs |
+| Version mismatch suspected | **version-checker** | Can verify current package versions |
+
+### Handoff Format
+
+When suggesting follow-up:
+```markdown
+### Suggested Follow-up
+
+**For api-method-checker**: Verify if `experimental_generateSpeech` has graduated
+to stable `generateSpeech` in ai@6.0.26.
+
+**For content-accuracy-auditor**: Check if the `rerank()` function uses `topK` or
+`topN` in official Vercel AI SDK documentation.
+```
+
+## Stop Conditions
+
+### When to Stop Validating
+
+**Stop and report** when:
+- All code blocks have been checked
+- Found 10+ issues (report batch, ask if should continue)
+- Encountered 3+ consecutive unverifiable blocks
+
+**Escalate to human** when:
+- Package not installable (`npm view` fails)
+- Conflicting information (docs say X, types say Y)
+- Code requires runtime to validate (API calls, env vars)
+
+### Don't Over-Investigate
+
+**Avoid rabbit holes**:
+- Don't trace through entire dependency trees
+- Don't attempt to run code that requires secrets/APIs
+- Don't spend more than 2-3 verification attempts per issue
+
+**When uncertain after reasonable effort**:
+1. Mark confidence as LOW
+2. Note what was tried
+3. Suggest which agent could verify further
+4. Move on to next issue
+
 ## Integration
 
 This agent validates CODE SYNTAX. Related agents:

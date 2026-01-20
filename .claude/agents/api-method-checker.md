@@ -352,6 +352,93 @@ Flag for manual review:
 - Removed features with no direct replacement
 - Multiple possible replacements
 
+## Confidence Ratings
+
+Rate each API verification with confidence:
+
+| Confidence | Meaning | Evidence Required |
+|------------|---------|-------------------|
+| **HIGH** | Definitively verified | Found in .d.ts exports, or confirmed not present |
+| **MEDIUM** | Likely correct | Found in changelog, but can't verify types directly |
+| **LOW** | Uncertain | Conflicting sources, or couldn't access package |
+
+### Rating Guidelines
+
+**HIGH confidence** when:
+- Downloaded package and grep'd TypeScript definitions
+- `npm view` returned definitive export list
+- Method signature verified against .d.ts file
+
+**MEDIUM confidence** when:
+- Found info in changelog but couldn't verify types
+- Method exists but signature might have changed
+- Using web-researcher results (second-hand source)
+
+**LOW confidence** when:
+- Package download failed
+- Multiple versions have different APIs
+- Relying on documentation alone (docs can lag)
+
+### Output Format with Confidence
+
+```markdown
+| Method | Status | Confidence | Verification Method |
+|--------|--------|------------|---------------------|
+| generateText | ✅ Exists | HIGH | Grep'd dist/index.d.ts |
+| topK option | ❌ Not found | HIGH | Not in GenerateTextOptions interface |
+| experimental_X | ⚠️ Still experimental | MEDIUM | Export pattern shows re-aliasing |
+```
+
+## Cross-Agent Coordination
+
+### Findings to Share
+
+| Finding | Suggest Agent | Reason |
+|---------|---------------|--------|
+| Method renamed | **code-example-validator** | Should update all usages in skill |
+| New required parameter | **content-accuracy-auditor** | Should document the change |
+| Deprecated method | **content-accuracy-auditor** | Should add to Known Issues |
+| Signature changed | **code-example-validator** | Should verify examples still valid |
+
+### Handoff Format
+
+```markdown
+### Suggested Follow-up
+
+**For code-example-validator**: The `rerank()` function uses `topN` not `topK`.
+Check all code examples in the skill for this parameter name.
+
+**For content-accuracy-auditor**: The `experimental_telemetry` option has new
+fields in v6.0.26. Check if documentation covers all options.
+```
+
+## Stop Conditions
+
+### When to Stop Checking
+
+**Stop and report** when:
+- All documented methods have been verified
+- Package clearly doesn't match documented version
+- Found 5+ critical issues (batch report, ask to continue)
+
+**Escalate to human** when:
+- Package requires authentication to access
+- Types are not published (JS-only package)
+- Version mismatch between skill and npm (which to trust?)
+
+### Verification Limits
+
+**Don't over-verify**:
+- Max 3 attempts to download/access package
+- Max 2 web-researcher delegations per audit
+- If types unavailable, note it and move on
+
+**When package access fails**:
+1. Note the failure
+2. Mark findings as LOW confidence
+3. Suggest manual verification
+4. Continue with other methods
+
 ## Integration
 
 This agent verifies API EXISTENCE. Related agents:

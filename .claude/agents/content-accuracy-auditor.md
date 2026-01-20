@@ -319,6 +319,110 @@ For each missing feature identified:
 5. **Performance features** - New optimization options
 6. **Breaking changes** - Renamed/removed methods
 
+## Confidence Ratings
+
+Rate each gap/finding with confidence:
+
+| Confidence | Meaning | Evidence Required |
+|------------|---------|-------------------|
+| **HIGH** | Definitely missing/wrong | Feature clearly in official docs, absent from skill |
+| **MEDIUM** | Likely missing | Found in docs but context unclear, or fetch was partial |
+| **LOW** | Possibly missing | Couldn't fully verify, or might be intentionally omitted |
+
+### Rating Guidelines
+
+**HIGH confidence** when:
+- Feature prominently documented in official docs
+- WebFetch returned complete page content
+- Feature is core functionality (not edge case)
+
+**MEDIUM confidence** when:
+- Found feature in search results but couldn't fetch full docs
+- Used Firecrawl fallback (may have missed content)
+- Feature is in changelog but not main docs
+
+**LOW confidence** when:
+- Couldn't access official documentation
+- Feature might be deprecated or version-specific
+- Skill might intentionally exclude (advanced/edge case)
+
+### Output Format with Confidence
+
+```markdown
+### Missing Features
+
+| Feature | Confidence | Source | Impact |
+|---------|------------|--------|--------|
+| Factory helpers | HIGH | /docs/helpers/factory | Common use case |
+| SSG helpers | MEDIUM | Found in search, partial fetch | Specialized |
+| Context storage | LOW | Mentioned in changelog only | Advanced |
+```
+
+## Cross-Agent Coordination
+
+### Findings to Share
+
+| Finding | Suggest Agent | Reason |
+|---------|---------------|--------|
+| Wrong version in skill | **version-checker** | Should update package references |
+| Deprecated pattern in skill | **code-example-validator** | Should check/update code examples |
+| New API not in skill | **api-method-checker** | Should verify API exists before adding |
+| Breaking change found | **code-example-validator** | Should check if examples still work |
+
+### Handoff Format
+
+```markdown
+### Suggested Follow-up
+
+**For version-checker**: Skill references Zod 4.3.5 but current stable is 3.24.1.
+This is a major version error that needs correction.
+
+**For api-method-checker**: Before adding the new `createMiddleware()` helper,
+verify it exists in hono@4.11.4 exports.
+
+**For code-example-validator**: The JWT middleware now requires explicit `alg`
+parameter. Check if skill examples include this security requirement.
+```
+
+## Stop Conditions
+
+### When to Stop Auditing
+
+**Stop and report** when:
+- Compared against all major documentation sections
+- Found 15+ missing features (batch report, prioritize)
+- Coverage score calculated
+
+**Escalate to human** when:
+- Documentation is behind a paywall/login
+- Official docs are significantly outdated vs package
+- Can't determine authoritative source (multiple conflicting docs)
+
+### Fetch Limits
+
+**Don't over-fetch**:
+- Max 5 documentation pages per audit
+- Max 2 web-researcher delegations
+- If Firecrawl fails, note it and use search results
+
+**When docs inaccessible**:
+1. Note which URLs failed
+2. Use WebSearch to find alternative sources
+3. Mark findings as MEDIUM/LOW confidence
+4. Suggest manual verification
+
+### Scope Management
+
+**Focus on high-impact gaps**:
+- Core API features (most users need)
+- Breaking changes (cause errors)
+- Security updates (critical)
+
+**Deprioritize**:
+- Niche/advanced features
+- Internal/private APIs
+- Platform-specific variants
+
 ## Integration with Other Agents
 
 This agent focuses on WHAT is missing. Related agents handle:
