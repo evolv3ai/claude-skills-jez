@@ -135,11 +135,16 @@ This skill automatically activates when you mention:
 ## What This Skill Does
 
 - ✅ Complete Agent SDK API reference (query, tools, MCP, subagents)
+- ✅ V2 Session APIs (preview) for simpler multi-turn conversations
+- ✅ Sandbox Settings for secure bash execution
+- ✅ File Checkpointing for rollback capability
 - ✅ Tool integration patterns (built-in tools + custom MCP servers)
-- ✅ Subagent orchestration (specialized agents working together)
+- ✅ Subagent orchestration with skills and maxTurns support (v0.2.10+)
 - ✅ Session management (start, resume, fork sessions)
 - ✅ Permission control (fine-grained safety controls)
 - ✅ Filesystem settings (user, project, local configurations)
+- ✅ Query object methods (setModel, supportedCommands, etc.)
+- ✅ Complete hooks system (all 12 hook events)
 - ✅ Streaming message handling (all message types)
 - ✅ Error handling and recovery patterns
 - ✅ 11 production-ready TypeScript templates
@@ -427,13 +432,14 @@ See: `templates/session-management.ts`
 
 ## Package Versions
 
-**Last Verified**: 2025-10-25
+**Last Verified**: 2026-01-20
 
 ```json
 {
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.1.0",
-    "zod": "^3.23.0"
+    "@anthropic-ai/claude-agent-sdk": "^0.2.12",
+    "zod": "^3.24.0 || ^4.0.0",
+    "zod-to-json-schema": "^3.24.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
@@ -446,11 +452,12 @@ See: `templates/session-management.ts`
 
 ## Official Documentation
 
-- **Agent SDK Overview**: https://docs.claude.com/en/api/agent-sdk/overview
-- **TypeScript API**: https://docs.claude.com/en/api/agent-sdk/typescript
-- **Python API**: https://docs.claude.com/en/api/agent-sdk/python
+- **Agent SDK Overview**: https://platform.claude.com/docs/en/api/agent-sdk/overview
+- **TypeScript API**: https://platform.claude.com/docs/en/api/agent-sdk/typescript
+- **TypeScript V2 Preview**: https://platform.claude.com/docs/en/agent-sdk/typescript-v2-preview
+- **Structured Outputs**: https://platform.claude.com/docs/en/agent-sdk/structured-outputs
 - **GitHub**: https://github.com/anthropics/claude-agent-sdk-typescript
-- **Context7**: /anthropics/claude-agent-sdk-typescript
+- **CHANGELOG**: https://github.com/anthropics/claude-agent-sdk-typescript/blob/main/CHANGELOG.md
 
 ---
 
