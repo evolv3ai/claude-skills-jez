@@ -1,7 +1,7 @@
 ---
 name: clerk-auth
 description: |
-  Clerk auth with API Keys beta (Dec 2025), Next.js 16 proxy.ts, API version 2025-11-10 breaking changes, clerkMiddleware() options, webhooks, and component reference. Use when: API keys for users/orgs, Next.js 16 middleware filename, troubleshooting JWKS/CSRF/JWT errors, webhook verification, or testing with 424242 OTP.
+  Clerk auth with API Keys beta (Dec 2025), Next.js 16 proxy.ts (March 2025 CVE context), API version 2025-11-10 breaking changes, clerkMiddleware() options, webhooks, production considerations (GCP outages), and component reference. Prevents 15 documented errors. Use when: API keys for users/orgs, Next.js 16 middleware filename, troubleshooting JWKS/CSRF/JWT/token-type-mismatch errors, webhook verification, user type inconsistencies, or testing with 424242 OTP.
 user-invocable: true
 ---
 
@@ -69,7 +69,11 @@ clerkMiddleware((auth, req) => {
 
 ### 2. Next.js 16: proxy.ts Middleware Filename (Dec 2025)
 
-**⚠️ BREAKING**: Next.js 16 changed middleware filename:
+**⚠️ BREAKING**: Next.js 16 changed middleware filename due to critical security vulnerability (CVE disclosed March 2025).
+
+**Background**: The March 2025 vulnerability (affecting Next.js 11.1.4-15.2.2) allowed attackers to completely bypass middleware-based authorization by adding a single HTTP header: `x-middleware-subrequest: true`. This affected all auth libraries (NextAuth, Clerk, custom solutions).
+
+**Why the Rename**: The `middleware.ts` → `proxy.ts` change isn't just cosmetic - it's Next.js signaling that middleware-first security patterns are dangerous. Future auth implementations should not rely solely on middleware for authorization.
 
 ```
 Next.js 15 and earlier: middleware.ts
@@ -90,6 +94,8 @@ export const config = {
   ],
 }
 ```
+
+**Minimum Version**: @clerk/nextjs@6.35.0+ required for Next.js 16 (fixes Turbopack build errors and cache invalidation on sign-out).
 
 ### 3. Force Password Reset (Dec 19, 2025)
 
@@ -275,6 +281,10 @@ export default clerkMiddleware(async (auth, req) => {
 | `signUpUrl` | `string` | Custom sign-up URL |
 
 ### Organization Sync (URL-based Org Activation)
+
+**⚠️ Next.js Only**: This feature currently only works with `clerkMiddleware()` in Next.js. It does NOT work with `authenticateRequest()` in other runtimes (Cloudflare Workers, Express, etc.) due to `Sec-Fetch-Dest` header checks.
+
+**Source**: [GitHub Issue #7178](https://github.com/clerk/javascript/issues/7178)
 
 ```typescript
 clerkMiddleware({
@@ -501,7 +511,7 @@ test('sign up', async ({ page }) => {
 
 ## Known Issues Prevention
 
-This skill prevents **11 documented issues**:
+This skill prevents **15 documented issues**:
 
 ### Issue #1: Missing Clerk Secret Key
 **Error**: "Missing Clerk Secret Key or API Key"
@@ -573,6 +583,80 @@ Add to `package.json`:
 
 **Note**: This is different from Issue #6 (session token size). Issue #6 is about cookies (1.2KB), this is about URL parameters in dev mode (8KB → 32KB).
 
+### Issue #12: User Type Mismatch (useUser vs currentUser)
+**Error**: TypeScript errors when sharing user utilities across client/server
+**Source**: [GitHub Issue #2176](https://github.com/clerk/javascript/issues/2176)
+**Why It Happens**: `useUser()` returns `UserResource` (client-side) with different properties than `currentUser()` returns `User` (server-side). Client has `fullName`, `primaryEmailAddress` object; server has `primaryEmailAddressId` and `privateMetadata` instead.
+**Prevention**: Use shared properties only, or create separate utility functions for client vs server contexts.
+
+```typescript
+// ✅ CORRECT: Use properties that exist in both
+const primaryEmailAddress = user.emailAddresses.find(
+  ({ id }) => id === user.primaryEmailAddressId
+)
+
+// ✅ CORRECT: Separate types
+type ClientUser = ReturnType<typeof useUser>['user']
+type ServerUser = Awaited<ReturnType<typeof currentUser>>
+```
+
+### Issue #13: Multiple acceptsToken Types Causes token-type-mismatch
+**Error**: "token-type-mismatch" when using `authenticateRequest()` with multiple token types
+**Source**: [GitHub Issue #7520](https://github.com/clerk/javascript/issues/7520)
+**Why It Happens**: When using `authenticateRequest()` with multiple `acceptsToken` values (e.g., `['session_token', 'api_key']`), Clerk incorrectly throws token-type-mismatch error.
+**Prevention**: Upgrade to @clerk/backend@2.29.2+ (fix available in snapshot, releasing soon).
+
+```typescript
+// This now works in @clerk/backend@2.29.2+
+const result = await authenticateRequest(request, {
+  acceptsToken: ['session_token', 'api_key'],  // Fixed!
+})
+```
+
+### Issue #14: deriveUrlFromHeaders Server Crash on Malformed URLs
+**Error**: Server crashes with URL parsing error
+**Source**: [GitHub Issue #7275](https://github.com/clerk/javascript/issues/7275)
+**Why It Happens**: Internal `deriveUrlFromHeaders()` function performs unsafe URL parsing and crashes the entire server when receiving malformed URLs in headers (e.g., `x-forwarded-host: 'example.com[invalid]'`). This is a denial-of-service vulnerability.
+**Prevention**: Upgrade to @clerk/backend@2.29.0+ (fixed).
+
+### Issue #15: treatPendingAsSignedOut Option for Pending Sessions
+**Error**: None - optional parameter for edge case handling
+**Source**: [Changelog @clerk/nextjs@6.32.0](https://github.com/clerk/javascript/blob/main/packages/nextjs/CHANGELOG.md#6320)
+**Why It Exists**: Sessions can have a `pending` status during certain flows (e.g., credential stuffing defense secondary auth). By default, pending sessions are treated as signed-out (user is null).
+**Usage**: Set `treatPendingAsSignedOut: false` to treat pending as signed-in (available in @clerk/nextjs@6.32.0+).
+
+```typescript
+// Default: pending = signed out
+const user = await currentUser()  // null if status is 'pending'
+
+// Treat pending as signed in
+const user = await currentUser({ treatPendingAsSignedOut: false })  // defined if pending
+```
+
+---
+
+## Production Considerations
+
+### Service Availability & Reliability
+
+**Context**: Clerk experienced 3 major service disruptions in May-June 2025 attributed to Google Cloud Platform (GCP) outages. The June 26, 2025 outage lasted 45 minutes (6:16-7:01 UTC) and affected all Clerk customers.
+
+**Source**: [Clerk Postmortem: June 26, 2025](https://clerk.com/blog/postmortem-jun-26-2025-service-outage)
+
+**Mitigation Strategies**:
+- Monitor [Clerk Status](https://status.clerk.com) for real-time updates
+- Implement graceful degradation when Clerk API is unavailable
+- Cache auth tokens locally where possible
+- For existing sessions, use `jwtKey` option for networkless verification:
+
+```typescript
+clerkMiddleware({
+  jwtKey: process.env.CLERK_JWT_KEY,  // Allows offline token verification
+})
+```
+
+**Note**: During total outage, no new sessions can be created (auth requires Clerk API). However, existing sessions can continue working if you verify JWTs locally with `jwtKey`. Clerk committed to exploring multi-cloud redundancy to reduce single-vendor dependency risk.
+
 ---
 
 ## Official Documentation
@@ -605,13 +689,13 @@ Add to `package.json`:
 ---
 
 **Token Efficiency**:
-- **Without skill**: ~6,000 tokens (setup tutorials, JWT templates, testing setup, webhooks)
-- **With skill**: ~2,800 tokens (breaking changes + critical patterns + error prevention)
-- **Savings**: ~53% (~3,200 tokens)
+- **Without skill**: ~6,500 tokens (setup tutorials, JWT templates, testing setup, webhooks, production considerations)
+- **With skill**: ~3,200 tokens (breaking changes + critical patterns + error prevention + production guidance)
+- **Savings**: ~51% (~3,300 tokens)
 
-**Errors prevented**: 11 documented issues with exact solutions
-**Key value**: API Keys beta, Next.js 16 proxy.ts, clerkMiddleware() options, webhooks, component reference, API 2025-11-10 breaking changes, JWT size limits
+**Errors prevented**: 15 documented issues with exact solutions
+**Key value**: API Keys beta, Next.js 16 proxy.ts (with March 2025 CVE context), clerkMiddleware() options, webhooks, component reference, API 2025-11-10 breaking changes, JWT size limits, user type mismatches, production considerations (GCP outages, jwtKey offline verification)
 
 ---
 
-**Last verified**: 2026-01-03 | **Skill version**: 3.0.0 | **Changes**: Added API Keys beta (Dec 2025), Next.js 16 proxy.ts filename, clerkMiddleware() configuration options, webhooks verification patterns, UI components + React hooks reference tables, organization sync patterns.
+**Last verified**: 2026-01-20 | **Skill version**: 3.1.0 | **Changes**: Added 4 new Known Issues (#12-15: user type mismatch, acceptsToken type mismatch, deriveUrlFromHeaders crash, treatPendingAsSignedOut option), expanded proxy.ts section with March 2025 CVE security context, added Production Considerations section (GCP outages + mitigation), added organizationSyncOptions Next.js-only limitation note, updated minimum version requirements for Next.js 16 (6.35.0+).

@@ -3,16 +3,16 @@ name: hono-routing
 description: |
   Build type-safe APIs with Hono for Cloudflare Workers, Deno, Bun, Node.js. Routing, middleware, validation (Zod/Valibot), RPC, streaming (SSE), WebSocket, security (CSRF, secureHeaders).
 
-  Use when: building Hono APIs, streaming SSE, WebSocket, validation, RPC. Troubleshoot: validation hooks, RPC types, middleware chains.
+  Use when: building Hono APIs, streaming SSE, WebSocket, validation, RPC. Troubleshoot: validation hooks, RPC types, middleware chains, JWT verify algorithm required (v4.11.4+), body consumed errors.
 user-invocable: true
 ---
 
 # Hono Routing & Middleware
 
 **Status**: Production Ready ✅
-**Last Updated**: 2026-01-06
+**Last Updated**: 2026-01-20
 **Dependencies**: None (framework-agnostic)
-**Latest Versions**: hono@4.11.3, zod@4.3.5, valibot@1.2.0, @hono/zod-validator@0.7.6, @hono/valibot-validator@0.6.1
+**Latest Versions**: hono@4.11.4, zod@4.3.5, valibot@1.2.0, @hono/zod-validator@0.7.6, @hono/valibot-validator@0.6.1
 
 ---
 
@@ -21,7 +21,7 @@ user-invocable: true
 ### 1. Install Hono
 
 ```bash
-npm install hono@4.11.3
+npm install hono@4.11.4
 ```
 
 **Why Hono:**
@@ -107,6 +107,29 @@ app.get('/files/*', (c) => {
 - `c.req.param('name')` returns single parameter
 - `c.req.param()` returns all parameters as object
 - Parameters are always strings (cast to number if needed)
+
+#### Route Parameter Regex Constraints
+
+Use regex patterns in routes to restrict parameter matching at the routing level:
+
+```typescript
+// Only matches numeric IDs
+app.get('/users/:id{[0-9]+}', (c) => {
+  const id = c.req.param('id') // Guaranteed to be digits
+  return c.json({ userId: id })
+})
+
+// Only matches UUIDs
+app.get('/posts/:id{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}}', (c) => {
+  const id = c.req.param('id') // Guaranteed to be UUID format
+  return c.json({ postId: id })
+})
+```
+
+**Benefits:**
+- Early validation at routing level
+- Prevents invalid requests from reaching handlers
+- Self-documenting route constraints
 
 #### Query Parameters
 
@@ -204,6 +227,36 @@ app.use(
     cacheControl: 'max-age=3600',
   })
 )
+```
+
+**Custom Cache Middleware Pattern:**
+
+When implementing custom cache middleware for Node.js (or other non-Cloudflare runtimes), you must clone responses before storing them in cache:
+
+```typescript
+const cache = new Map<string, Response>()
+
+const customCache = async (c, next) => {
+  const key = c.req.url
+
+  // Check cache
+  const cached = cache.get(key)
+  if (cached) {
+    return cached.clone() // Clone when returning from cache
+  }
+
+  // Execute handler
+  await next()
+
+  // Store in cache (must clone!)
+  cache.set(key, c.res.clone()) // ✅ Clone before storing
+}
+
+app.use('*', customCache)
+```
+
+**Why Cloning is Required:**
+Response bodies are readable streams that can only be consumed once. Cloning creates a new response with a fresh stream.
 ```
 
 **Built-in Middleware Reference**: See `references/middleware-catalog.md`
@@ -508,6 +561,29 @@ app.post('/auth', zValidator('header', headerSchema), (c) => {
 - Use `z.transform()` to convert strings to numbers/dates
 - Validation errors return 400 automatically
 
+**⚠️ CRITICAL: Validation Must Be Handler-Specific**
+
+For validated types to be inferred correctly, validation middleware **must be added in the handler**, not via `app.use()`:
+
+```typescript
+// ❌ WRONG - Type inference breaks
+app.use('/users', zValidator('json', userSchema))
+
+app.post('/users', (c) => {
+  const data = c.req.valid('json') // TS Error: Type 'never'
+  return c.json({ data })
+})
+
+// ✅ CORRECT - Validation in handler
+app.post('/users', zValidator('json', userSchema), (c) => {
+  const data = c.req.valid('json') // Type-safe!
+  return c.json({ data })
+})
+```
+
+**Why It Happens:**
+Hono's `Input` type mapping merges validation results using generics. When validators are applied via `app.use()`, the type system cannot track which routes have which validation schemas, causing the `Input` generic to collapse to `never`.
+
 #### Custom Validation Hooks
 
 ```typescript
@@ -553,6 +629,13 @@ app.post(
     return c.json({ success: true, data })
   }
 )
+```
+
+**Note on Zod Optional Enums:**
+Prior to `@hono/zod-validator@0.7.6`, optional enums incorrectly resolved to strings instead of the enum type. This was fixed in v0.7.6. Ensure you're using the latest version:
+
+```bash
+npm install @hono/zod-validator@0.7.6
 ```
 
 #### Validation with Valibot
@@ -702,6 +785,29 @@ const data = await res.json() // { success: boolean, data: { name: string, age: 
 - ✅ No manual type definitions
 - ✅ Compile-time error checking
 - ✅ Auto-complete in IDE
+
+**⚠️ RPC Type Inference Limitation:**
+The RPC client only infers types for `json` and `text` responses. If an endpoint returns multiple response types (e.g., JSON and binary), **none** of the responses will be type-inferred:
+
+```typescript
+// ❌ Type inference fails - mixes JSON and binary
+app.post('/upload', async (c) => {
+  const body = await c.req.body() // Binary response
+  if (error) {
+    return c.json({ error: 'Bad request' }, 400) // JSON response
+  }
+  return c.json({ success: true })
+})
+
+// ✅ Separate endpoints by response type
+app.post('/upload', async (c) => {
+  return c.json({ success: true }) // Only JSON - types work
+})
+
+app.get('/download/:id', async (c) => {
+  return c.body(binaryData) // Only binary - separate endpoint
+})
+```
 
 #### RPC with Multiple Routes
 
@@ -894,12 +1000,12 @@ app.notFound((c) => {
 
 ## Known Issues Prevention
 
-This skill prevents **8** documented issues:
+This skill prevents **10** documented issues:
 
 ### Issue #1: RPC Type Inference Slow
-**Error**: IDE becomes slow with many routes
-**Source**: [hono/docs/guides/rpc](https://hono.dev/docs/guides/rpc)
-**Why It Happens**: Complex type instantiation from `typeof app` with many routes
+**Error**: IDE becomes slow with many routes (8-minute CI builds, non-existent IntelliSense)
+**Source**: [hono/docs/guides/rpc](https://hono.dev/docs/guides/rpc) | [GitHub Issue #3869](https://github.com/honojs/hono/issues/3869)
+**Why It Happens**: Complex type instantiation from `typeof app` with many routes. Exacerbated by Zod methods like `omit`, `extend`, `pick`.
 **Prevention**: Export specific route groups instead of entire app
 
 ```typescript
@@ -911,10 +1017,40 @@ const userRoutes = app.get(...).post(...)
 export type UserRoutes = typeof userRoutes
 ```
 
+**Advanced Workaround for Large Apps** (100+ routes):
+
+1. **Split into monorepo libs**:
+```typescript
+// routers-auth/index.ts
+export const authRouter = new Hono()
+  .get('/login', ...)
+  .post('/login', ...)
+
+// routers-orders/index.ts
+export const orderRouter = new Hono()
+  .get('/orders', ...)
+  .post('/orders', ...)
+
+// routers-main/index.ts
+const app = new Hono()
+  .route('/auth', authRouter)
+  .route('/orders', orderRouter)
+
+export type AppType = typeof app
+```
+
+2. **Use separate build configs**:
+   - **Production**: Full `tsc` with `.d.ts` generation (for RPC client)
+   - **Development**: Skip `tsc` on main router, only type-check sub-routers (faster live-reload)
+
+3. **Avoid Zod methods that hurt performance**:
+   - `z.omit()`, `z.extend()`, `z.pick()` - These increase language server workload by 10x
+   - Use interfaces instead of intersections when possible
+
 ### Issue #2: Middleware Response Not Typed in RPC
-**Error**: Middleware responses not inferred by RPC client
-**Source**: [honojs/hono#2719](https://github.com/honojs/hono/issues/2719)
-**Why It Happens**: RPC mode doesn't infer middleware responses by default
+**Error**: Middleware responses (including `notFound()` and `onError()`) not inferred by RPC client
+**Source**: [honojs/hono#2719](https://github.com/honojs/hono/issues/2719) | [GitHub Issue #4600](https://github.com/honojs/hono/issues/4600)
+**Why It Happens**: RPC mode doesn't infer middleware responses by default. Responses from `notFound()` or `onError()` handlers are not included in type map.
 **Prevention**: Export specific route types that include middleware
 
 ```typescript
@@ -924,6 +1060,42 @@ const route = app.get(
   (c) => c.json({ data: 'value' })
 )
 export type AppType = typeof route
+```
+
+**Specific Issue: notFound/onError Not Typed:**
+
+```typescript
+// Server
+const app = new Hono()
+  .notFound((c) => c.json({ error: 'Not Found' }, 404))
+  .get('/users/:id', async (c) => {
+    const user = await getUser(c.req.param('id'))
+    if (!user) {
+      return c.notFound() // Type not exported to RPC client
+    }
+    return c.json({ user })
+  })
+
+// Client
+const client = hc<typeof app>('http://localhost:8787')
+const res = await client.users[':id'].$get({ param: { id: '123' } })
+
+if (res.status === 404) {
+  const error = await res.json() // Type is 'any', not { error: string }
+}
+```
+
+**Partial Workaround** (v4.11.0+):
+Use module augmentation to customize `NotFoundResponse` type:
+
+```typescript
+import { Hono, TypedResponse } from 'hono'
+
+declare module 'hono' {
+  interface NotFoundResponse
+    extends Response,
+      TypedResponse<{ error: string }, 404, 'json'> {}
+}
 ```
 
 ### Issue #3: Validation Hook Confusion
@@ -1018,6 +1190,60 @@ app.get('/', (c) => {
 // Output: 1, 2, Handler, 3, 4
 ```
 
+### Issue #9: JWT verify() Requires Algorithm Parameter (v4.11.4+)
+
+**Error**: `TypeError: Cannot read properties of undefined`
+**Source**: [GitHub Issue #4625](https://github.com/honojs/hono/issues/4625) | [Security Advisory GHSA-f67f-6cw9-8mq4](https://github.com/honojs/hono/security/advisories/GHSA-f67f-6cw9-8mq4)
+**Why It Happens**: Security fix in v4.11.4 requires explicit algorithm specification to prevent JWT header manipulation
+**Prevention**: Always specify the algorithm parameter
+
+```typescript
+import { verify } from 'hono/jwt'
+
+// ❌ Wrong (pre-v4.11.4 syntax)
+const payload = await verify(token, secret)
+
+// ✅ Correct (v4.11.4+)
+const payload = await verify(token, secret, 'HS256') // Algorithm required
+```
+
+**Note**: This was a breaking change released in a patch version due to security severity. Update all JWT verification code when upgrading to v4.11.4+.
+
+### Issue #10: Request Body Consumed by Middleware
+
+**Error**: `TypeError: Body is unusable`
+**Source**: [GitHub Issue #4259](https://github.com/honojs/hono/issues/4259)
+**Why It Happens**: Using `c.req.raw.clone()` bypasses Hono's cache and consumes the body stream
+**Prevention**: Always use `c.req.text()` or `c.req.json()` instead of accessing raw request
+
+```typescript
+// ❌ Wrong - Breaks downstream validators
+app.use('*', async (c, next) => {
+  const body = await c.req.raw.clone().text() // Consumes body!
+  console.log('Request body:', body)
+  await next()
+})
+
+app.post('/', zValidator('json', schema), async (c) => {
+  const data = c.req.valid('json') // Error: Body is unusable
+  return c.json({ data })
+})
+
+// ✅ Correct - Uses cached content
+app.use('*', async (c, next) => {
+  const body = await c.req.text() // Cache-friendly
+  console.log('Request body:', body)
+  await next()
+})
+
+app.post('/', zValidator('json', schema), async (c) => {
+  const data = c.req.valid('json') // Works!
+  return c.json({ data })
+})
+```
+
+**Why**: Request bodies in Web APIs can only be read once (they're streams). Hono's validator internally uses `await c.req.json()` which caches the content. If you use `c.req.raw.clone().json()`, it bypasses the cache and consumes the body, causing subsequent reads to fail.
+
 ---
 
 ## Configuration Files Reference
@@ -1035,7 +1261,7 @@ app.get('/', (c) => {
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "hono": "^4.11.3"
+    "hono": "^4.11.4"
   },
   "devDependencies": {
     "typescript": "^5.9.0",
@@ -1050,7 +1276,7 @@ app.get('/', (c) => {
 ```json
 {
   "dependencies": {
-    "hono": "^4.11.3",
+    "hono": "^4.11.4",
     "zod": "^4.3.5",
     "@hono/zod-validator": "^0.7.6"
   }
@@ -1062,7 +1288,7 @@ app.get('/', (c) => {
 ```json
 {
   "dependencies": {
-    "hono": "^4.11.3",
+    "hono": "^4.11.4",
     "valibot": "^1.2.0",
     "@hono/valibot-validator": "^0.6.1"
   }
@@ -1074,7 +1300,7 @@ app.get('/', (c) => {
 ```json
 {
   "dependencies": {
-    "hono": "^4.11.3",
+    "hono": "^4.11.4",
     "zod": "^4.3.5",
     "valibot": "^1.2.0",
     "@hono/zod-validator": "^0.7.6",
@@ -1151,12 +1377,12 @@ For deeper understanding, see:
 
 ---
 
-## Dependencies (Latest Verified 2025-11-26)
+## Dependencies (Latest Verified 2026-01-20)
 
 ```json
 {
   "dependencies": {
-    "hono": "^4.11.3"
+    "hono": "^4.11.4"
   },
   "optionalDependencies": {
     "zod": "^4.3.5",

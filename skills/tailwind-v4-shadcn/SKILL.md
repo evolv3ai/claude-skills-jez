@@ -1,16 +1,16 @@
 ---
 name: tailwind-v4-shadcn
 description: |
-  Set up Tailwind v4 with shadcn/ui using @theme inline pattern and CSS variable architecture. Four-step pattern: CSS variables, Tailwind mapping, base styles, automatic dark mode.
+  Set up Tailwind v4 with shadcn/ui using @theme inline pattern and CSS variable architecture. Four-step pattern: CSS variables, Tailwind mapping, base styles, automatic dark mode. Prevents 8 documented errors.
 
-  Use when initializing React projects with Tailwind v4, or fixing colors not working, tw-animate-css errors, v3 migration.
+  Use when initializing React projects with Tailwind v4, or fixing colors not working, tw-animate-css errors, @theme inline dark mode conflicts, @apply breaking, v3 migration issues.
 user-invocable: true
 ---
 
 # Tailwind v4 + shadcn/ui Production Stack
 
 **Production-tested**: WordPress Auditor (https://wordpress-auditor.webfonts.workers.dev)
-**Last Updated**: 2026-01-03
+**Last Updated**: 2026-01-20
 **Versions**: tailwindcss@4.1.18, @tailwindcss/vite@4.1.18
 **Status**: Production Ready ✅
 
@@ -156,18 +156,20 @@ See `reference/dark-mode.md` for ModeToggle component.
 
 ### ❌ Never Do:
 
-1. Put `:root`/`.dark` inside `@layer base`
+1. Put `:root`/`.dark` inside `@layer base` (causes cascade issues)
 2. Use `.dark { @theme { } }` pattern (v4 doesn't support nested @theme)
 3. Double-wrap colors: `hsl(var(--background))`
 4. Use `tailwind.config.ts` for theme (v4 ignores it)
-5. Use `@apply` directive (deprecated in v4)
+5. Use `@apply` directive (deprecated in v4, see error #7)
 6. Use `dark:` variants for semantic colors (auto-handled)
+7. Use `@apply` with `@layer base` or `@layer components` classes (v4 breaking change - use `@utility` instead) | [Source](https://github.com/tailwindlabs/tailwindcss/discussions/17082)
+8. Wrap ANY styles in `@layer base` without understanding CSS layer ordering (see error #8) | [Source](https://github.com/tailwindlabs/tailwindcss/discussions/16002)
 
 ---
 
 ## Common Errors & Solutions
 
-This skill prevents **5 common errors**.
+This skill prevents **8 documented errors**.
 
 ### 1. ❌ tw-animate-css Import Error
 
@@ -256,6 +258,129 @@ v4 configuration happens in `src/index.css` using `@theme` directive.
 
 ---
 
+### 6. ❌ @theme inline Breaks Dark Mode in Multi-Theme Setups
+
+**Error**: Dark mode doesn't switch when using `@theme inline` with custom variants (e.g., `data-mode="dark"`)
+**Source**: [GitHub Discussion #18560](https://github.com/tailwindlabs/tailwindcss/discussions/18560)
+
+**Cause**: `@theme inline` bakes variable VALUES into utilities at build time. When dark mode changes the underlying CSS variables, utilities don't update because they reference hardcoded values, not variables.
+
+**Why It Happens**:
+- `@theme inline` inlines VALUES at build time: `bg-primary` → `background-color: oklch(...)`
+- Dark mode overrides change the CSS variables, but utilities already have baked-in values
+- The CSS specificity chain breaks
+
+**Solution**: Use `@theme` (without inline) for multi-theme scenarios:
+
+```css
+/* ✅ CORRECT - Use @theme without inline */
+@custom-variant dark (&:where([data-mode=dark], [data-mode=dark] *));
+
+@theme {
+  --color-text-primary: var(--color-slate-900);
+  --color-bg-primary: var(--color-white);
+}
+
+@layer theme {
+  [data-mode="dark"] {
+    --color-text-primary: var(--color-white);
+    --color-bg-primary: var(--color-slate-900);
+  }
+}
+```
+
+**When to use inline**:
+- Single theme + dark mode toggle (like shadcn/ui default) ✅
+- Referencing other CSS variables that don't change ✅
+
+**When NOT to use inline**:
+- Multi-theme systems (data-theme="blue" | "green" | etc.) ❌
+- Dynamic theme switching beyond light/dark ❌
+
+**Maintainer Guidance** (Adam Wathan):
+> "It's more idiomatic in v4 for the actual generated CSS to reference your theme variables. I would personally only use inline when things don't work without it."
+
+---
+
+### 7. ❌ @apply with @layer base/components (v4 Breaking Change)
+
+**Error**: `Cannot apply unknown utility class: custom-button`
+**Source**: [GitHub Discussion #17082](https://github.com/tailwindlabs/tailwindcss/discussions/17082)
+
+**Cause**: In v3, classes defined in `@layer base` and `@layer components` could be used with `@apply`. In v4, this is a breaking architectural change.
+
+**Why It Happens**: v4 doesn't "hijack" the native CSS `@layer` at-rule anymore. Only classes defined with `@utility` are available to `@apply`.
+
+**Migration**:
+```css
+/* ❌ v3 pattern (worked) */
+@layer components {
+  .custom-button {
+    @apply px-4 py-2 bg-blue-500;
+  }
+}
+
+/* ✅ v4 pattern (required) */
+@utility custom-button {
+  @apply px-4 py-2 bg-blue-500;
+}
+
+/* OR use native CSS */
+@layer base {
+  .custom-button {
+    padding: 1rem 0.5rem;
+    background-color: theme(colors.blue.500);
+  }
+}
+```
+
+**Note**: This skill already discourages `@apply` usage. This error is primarily for users migrating from v3.
+
+---
+
+### 8. ❌ @layer base Styles Not Applying
+
+**Error**: Styles defined in `@layer base` seem to be ignored
+**Source**: [GitHub Discussion #16002](https://github.com/tailwindlabs/tailwindcss/discussions/16002) | [Discussion #18123](https://github.com/tailwindlabs/tailwindcss/discussions/18123)
+
+**Cause**: v4 uses native CSS layers. Base styles CAN be overridden by utility layers due to CSS cascade if layers aren't explicitly ordered.
+
+**Why It Happens**:
+- v3: Tailwind intercepted `@layer base/components/utilities` and processed them specially
+- v4: Uses native CSS layers - if you don't import layers in the right order, precedence breaks
+- Styles ARE being applied, but utilities override them
+
+**Solution Option 1**: Define layers explicitly:
+```css
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/base.css" layer(base);
+@import "tailwindcss/components.css" layer(components);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@layer base {
+  body {
+    background-color: var(--background);
+  }
+}
+```
+
+**Solution Option 2** (Recommended): Don't use `@layer base` - define styles at root level:
+```css
+@import "tailwindcss";
+
+:root {
+  --background: hsl(0 0% 100%);
+}
+
+body {
+  background-color: var(--background); /* No @layer needed */
+}
+```
+
+**Applies to**: ALL base styles, not just color variables. Avoid wrapping ANY styles in `@layer base` unless you understand CSS layer ordering.
+
+---
+
 ## Quick Reference
 
 | Symptom | Cause | Fix |
@@ -265,6 +390,68 @@ v4 configuration happens in `src/index.css` using `@theme` directive.
 | Dark mode not switching | Missing ThemeProvider | Wrap app in `<ThemeProvider>` |
 | Build fails | `tailwind.config.ts` exists | Delete file |
 | Animation errors | Using `tailwindcss-animate` | Install `tw-animate-css` |
+
+---
+
+## What's New in Tailwind v4
+
+### OKLCH Color Space (December 2024)
+
+Tailwind v4.0 replaced the entire default color palette with OKLCH, a perceptually uniform color space.
+**Source**: [Tailwind v4.0 Release](https://tailwindcss.com/blog/tailwindcss-v4) | [OKLCH Migration Guide](https://andy-cinquin.com/blog/migration-oklch-tailwind-css-4-0)
+
+**Why OKLCH**:
+- **Perceptual consistency**: HSL's "50% lightness" is visually inconsistent across hues (yellow appears much brighter than blue at same lightness)
+- **Better gradients**: Smooth transitions without muddy middle colors
+- **Wider gamut**: Supports colors beyond sRGB on modern displays
+- **More vibrant colors**: Eye-catching, saturated colors previously limited by sRGB
+
+**Browser Support** (January 2026):
+- Chrome 111+, Firefox 113+, Safari 15.4+, Edge 111+
+- Global coverage: 93.1%
+
+**Automatic Fallbacks**: Tailwind generates sRGB fallbacks for older browsers:
+```css
+.bg-blue-500 {
+  background-color: #3b82f6; /* sRGB fallback */
+  background-color: oklch(0.6 0.24 264); /* Modern browsers */
+}
+```
+
+**Custom Colors**: When defining custom colors, OKLCH is now preferred:
+```css
+@theme {
+  /* Modern approach (preferred) */
+  --color-brand: oklch(0.7 0.15 250);
+
+  /* Legacy approach (still works) */
+  --color-brand: hsl(240 80% 60%);
+}
+```
+
+**Migration**: No breaking changes - Tailwind generates fallbacks automatically. For new projects, use OKLCH-aware tooling for custom colors.
+
+### Built-in Features (No Plugin Needed)
+
+**Container Queries** (built-in as of v4.0):
+```tsx
+<div className="@container">
+  <div className="@md:text-lg @lg:grid-cols-2">
+    Content responds to container width, not viewport
+  </div>
+</div>
+```
+
+**Line Clamp** (built-in as of v3.3):
+```tsx
+<p className="line-clamp-3">Truncate to 3 lines with ellipsis...</p>
+<p className="line-clamp-[8]">Arbitrary values supported</p>
+<p className="line-clamp-(--teaser-lines)">CSS variable support</p>
+```
+
+**Removed Plugins**:
+- `@tailwindcss/container-queries` - Built-in now
+- `@tailwindcss/line-clamp` - Built-in since v3.3
 
 ---
 
@@ -350,6 +537,104 @@ See `reference/migration-guide.md` for complete guide.
 - Replace `tailwindcss-animate` with `tw-animate-css`
 - Update plugins: `require()` → `@plugin`
 
+### Additional Migration Gotchas
+
+#### Automated Migration Tool May Fail
+
+**Warning**: The `@tailwindcss/upgrade` utility often fails to migrate configurations.
+**Source**: [Community Reports](https://medium.com/better-dev-nextjs-react/tailwind-v4-migration-from-javascript-config-to-css-first-in-2025-ff3f59b215ca) | [GitHub Discussion #16642](https://github.com/tailwindlabs/tailwindcss/discussions/16642)
+
+**Common failures**:
+- Typography plugin configurations
+- Complex theme extensions
+- Custom plugin setups
+
+**Recommendation**: Don't rely on automated migration. Follow manual steps in the migration guide instead.
+
+#### Default Element Styles Removed
+
+Tailwind v4 takes a more minimal approach to Preflight, removing default styles for headings, lists, and buttons.
+**Source**: [GitHub Discussion #16517](https://github.com/tailwindlabs/tailwindcss/discussions/16517) | [Medium: Migration Problems](https://medium.com/better-dev-nextjs-react/tailwind-v4-migration-from-javascript-config-to-css-first-in-2025-ff3f59b215ca)
+
+**Impact**:
+- All headings (`<h1>` through `<h6>`) render at same size
+- Lists lose default padding
+- Visual regressions in existing projects
+
+**Solutions**:
+
+**Option 1: Use @tailwindcss/typography for content pages**:
+```bash
+pnpm add -D @tailwindcss/typography
+```
+```css
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+```
+```tsx
+<article className="prose dark:prose-invert">
+  {/* All elements styled automatically */}
+</article>
+```
+
+**Option 2: Add custom base styles**:
+```css
+@layer base {
+  h1 { @apply text-4xl font-bold mb-4; }
+  h2 { @apply text-3xl font-bold mb-3; }
+  h3 { @apply text-2xl font-bold mb-2; }
+  ul { @apply list-disc pl-6 mb-4; }
+  ol { @apply list-decimal pl-6 mb-4; }
+}
+```
+
+#### PostCSS Setup Complexity
+
+**Recommendation**: Use `@tailwindcss/vite` plugin for Vite projects instead of PostCSS.
+**Source**: [Medium: Migration Problems](https://medium.com/better-dev-nextjs-react/tailwind-v4-migration-from-javascript-config-to-css-first-in-2025-ff3f59b215ca) | [GitHub Discussion #15764](https://github.com/tailwindlabs/tailwindcss/discussions/15764)
+
+**Why Vite Plugin is Better**:
+```typescript
+// ✅ Vite Plugin - One line, no PostCSS config
+import tailwindcss from '@tailwindcss/vite'
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+})
+
+// ❌ PostCSS - Multiple steps, plugin compatibility issues
+// 1. Install @tailwindcss/postcss
+// 2. Configure postcss.config.js
+// 3. Manage plugin order
+// 4. Debug plugin conflicts
+```
+
+**PostCSS Problems Reported**:
+- Error: "It looks like you're trying to use tailwindcss directly as a PostCSS plugin"
+- Multiple PostCSS plugins required: `postcss-import`, `postcss-advanced-variables`, `tailwindcss/nesting`
+- v4 PostCSS plugin is separate package: `@tailwindcss/postcss`
+
+**Official Guidance**: The Vite plugin is recommended for Vite projects. PostCSS is for legacy setups or non-Vite environments.
+
+#### Visual Changes
+
+**Ring Width Default**: Changed from 3px to 1px
+**Source**: [Medium: Migration Guide](https://medium.com/better-dev-nextjs-react/tailwind-v4-migration-from-javascript-config-to-css-first-in-2025-ff3f59b215ca)
+
+- `ring` class is now thinner
+- Use `ring-3` to match v3 appearance
+
+```tsx
+// v3: 3px ring
+<button className="ring">Button</button>
+
+// v4: 1px ring (thinner)
+<button className="ring">Button</button>
+
+// Match v3 appearance
+<button className="ring-3">Button</button>
+```
+
 ---
 
 ## Reference Documentation
@@ -369,7 +654,12 @@ See `reference/migration-guide.md` for complete guide.
 
 ---
 
-**Last Updated**: 2026-01-03
-**Skill Version**: 2.0.1
+**Last Updated**: 2026-01-20
+**Skill Version**: 3.0.0
 **Tailwind v4**: 4.1.18 (Latest)
 **Production**: WordPress Auditor (https://wordpress-auditor.webfonts.workers.dev)
+
+**Changelog**:
+- v3.0.0 (2026-01-20): Major research update - added 3 TIER 1 errors (#6-8), expanded migration guide with community findings (TIER 2), added OKLCH color space section, PostCSS complexity warnings, and migration tool limitations
+- v2.0.1 (2026-01-03): Production verification
+- v2.0.0: Initial release with 5 documented errors

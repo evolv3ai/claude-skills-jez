@@ -1,16 +1,16 @@
 ---
 name: cloudflare-kv
 description: |
-  Store key-value data globally with Cloudflare KV's edge network. Use when: caching API responses, storing configuration, managing user preferences, handling TTL expiration, or troubleshooting KV_ERROR, 429 rate limits, eventual consistency, or cacheTtl errors.
+  Store key-value data globally with Cloudflare KV's edge network. Use when: caching API responses, storing configuration, managing user preferences, handling TTL expiration, or troubleshooting KV_ERROR, 429 rate limits, eventual consistency, cacheTtl errors, wrangler types issues, or remote binding configuration.
 user-invocable: true
 ---
 
 # Cloudflare Workers KV
 
 **Status**: Production Ready ✅
-**Last Updated**: 2026-01-09
+**Last Updated**: 2026-01-20
 **Dependencies**: cloudflare-worker-base (for Worker setup)
-**Latest Versions**: wrangler@4.58.0, @cloudflare/workers-types@4.20260109.0
+**Latest Versions**: wrangler@4.59.2, @cloudflare/workers-types@4.20260109.0
 
 **Recent Updates (2025)**:
 - **August 2025**: Architecture redesign (40x performance gain, <5ms p99 latency, hybrid storage with R2)
@@ -159,19 +159,47 @@ const users = await env.MY_KV.list({ prefix: 'user:' });
 users.keys.forEach(({ name, metadata }) => console.log(name, metadata.status));
 ```
 
-### Key Coalescing
+### Understanding Hot vs Cold Keys
+
+KV performance varies based on key temperature:
+
+| Type | Response Time | When It Happens |
+|------|---------------|-----------------|
+| **Hot keys** | 6-8ms | Read 2+ times/minute per datacenter |
+| **Cold keys** | 100-300ms | Infrequently accessed, fetched from central storage |
+
+**Post-August 2025 Improvements**:
+- P90 for all KV Worker invocations: <12ms (was 22ms before)
+- Hot reads up to 3x faster
+- All operations faster by up to 20ms
+
+**Optimization**: Use key coalescing to make cold keys benefit from hot key caching:
 
 ```typescript
-// ❌ Bad: Many cold keys
+// ❌ Bad: Many cold keys (300ms each)
 await kv.put('user:123:name', 'John');
 await kv.put('user:123:email', 'john@example.com');
+await kv.put('user:123:plan', 'pro');
 
-// ✅ Good: Single hot key
-await kv.put('user:123', JSON.stringify({ name: 'John', email: 'john@example.com' }));
+// Each read of a cold key: ~100-300ms
+const name = await kv.get('user:123:name');    // Cold
+const email = await kv.get('user:123:email');  // Cold
+const plan = await kv.get('user:123:plan');    // Cold
+
+// ✅ Good: Single hot key (6-8ms)
+await kv.put('user:123', JSON.stringify({
+  name: 'John',
+  email: 'john@example.com',
+  plan: 'pro'
+}));
+
+// Single read, cached as hot key: ~6-8ms
+const user = JSON.parse(await kv.get('user:123'));
 ```
 
-**Benefit**: Cold keys benefit from hot key caching, fewer operations
-**Trade-off**: Requires read-modify-write for updates
+**CacheTtl helps cold keys**: For infrequently-read data, `cacheTtl` reduces cold read latency.
+
+**Trade-off**: Coalescing requires read-modify-write for updates
 
 ### Pagination Helper
 
@@ -219,7 +247,7 @@ async function putWithRetry(kv: KVNamespace, key: string, value: string, opts?: 
 KV is **eventually consistent** across Cloudflare's global network (Aug 2025 redesign: hybrid storage, <5ms p99 latency):
 
 **How It Works:**
-1. Writes immediately visible in same location
+1. Writes immediately visible in same location (read-your-own-write consistency within same POP)
 2. Other locations see update within ~60 seconds (or cacheTtl value)
 3. Cached reads may return stale data during propagation
 
@@ -227,7 +255,7 @@ KV is **eventually consistent** across Cloudflare's global network (Aug 2025 red
 ```typescript
 // Tokyo: Write
 await env.MY_KV.put('counter', '1');
-const value = await env.MY_KV.get('counter'); // "1" ✅
+const value = await env.MY_KV.get('counter'); // "1" ✅ (same POP, RYOW)
 
 // London (within 60s): May be stale ⚠️
 const value2 = await env.MY_KV.get('counter'); // Might be old value
@@ -235,10 +263,27 @@ const value2 = await env.MY_KV.get('counter'); // Might be old value
 // After 60+ seconds: Consistent ✅
 ```
 
+**Read-Your-Own-Write (RYOW) Guarantee**: Since August 2025 redesign, requests routed through the **same Cloudflare point of presence** see their own writes immediately. Global consistency across different POPs still takes up to 60 seconds.
+
+**Timestamp Mitigation Pattern** (for critical consistency needs):
+```typescript
+// Use timestamp in key structure to avoid consistency issues
+const timestamp = Date.now();
+await kv.put(`user:123:${timestamp}`, userData);
+
+// Find latest using list with prefix
+const result = await kv.list({ prefix: 'user:123:' });
+const latestKey = result.keys.sort((a, b) =>
+  parseInt(b.name.split(':')[2]) - parseInt(a.name.split(':')[2])
+).at(0);
+```
+
 **Use KV for**: Read-heavy workloads (100:1 ratio), config, feature flags, caching, user preferences
 **Don't use KV for**: Financial transactions, strong consistency, >1/second writes per key, critical data
 
 **Need strong consistency?** Use [Durable Objects](https://developers.cloudflare.com/durable-objects/)
+
+**Source**: [Redesigning Workers KV](https://blog.cloudflare.com/rearchitecting-workers-kv-for-redundancy/)
 
 ---
 
@@ -248,16 +293,56 @@ const value2 = await env.MY_KV.get('counter'); // Might be old value
 # Create namespace
 npx wrangler kv namespace create MY_NAMESPACE [--preview]
 
-# Manage keys
+# Manage keys (add --remote flag to access production data)
 npx wrangler kv key put --binding=MY_KV "key" "value" [--ttl=3600] [--metadata='{}']
-npx wrangler kv key get --binding=MY_KV "key"
-npx wrangler kv key list --binding=MY_KV [--prefix="user:"]
+npx wrangler kv key get --binding=MY_KV "key" [--remote]
+npx wrangler kv key list --binding=MY_KV [--prefix="user:"] [--remote]
 npx wrangler kv key delete --binding=MY_KV "key"
 
 # Bulk operations (up to 10,000 keys)
 npx wrangler kv bulk put --binding=MY_KV data.json
 npx wrangler kv bulk delete --binding=MY_KV keys.json
 ```
+
+**IMPORTANT**: CLI commands default to **local storage**. Add `--remote` flag to access production/remote data.
+
+---
+
+## Development vs Production
+
+### Remote Bindings for Local Development (Wrangler 4.37+)
+
+Connect local Workers to production KV namespaces during development:
+
+**wrangler.jsonc:**
+```jsonc
+{
+  "kv_namespaces": [{
+    "binding": "MY_KV",
+    "id": "production-uuid",
+    "remote": true  // Connect to live KV
+  }]
+}
+```
+
+**How It Works:**
+- Local Worker code executes locally (fast iteration)
+- KV operations route to production namespace through proxy
+- No manual data seeding required
+
+**Benefits:**
+- Test against real production data without deploying
+- Fast local code execution with production data access
+- Faster feedback loop (no deploy-test cycle)
+
+**⚠️ Warning**: Writes affect production data. Consider using a staging namespace with `remote: true` instead of production.
+
+**Version Support:**
+- Wrangler 4.37.0+
+- @cloudflare/vite-plugin 1.13.0+
+- @cloudflare/vitest-pool-workers 0.9.0+
+
+**Source**: [Remote bindings architecture](https://blog.cloudflare.com/connecting-to-production-the-architecture-of-remote-bindings/)
 
 ---
 
@@ -387,7 +472,7 @@ const values = await kv.get(keys);  // Bulk read
 ```
 
 ### Issue 4: List returns empty but cursor exists
-**Cause**: Deleted/expired keys create "tombstones"
+**Cause**: Deleted/expired keys create "tombstones" that must be iterated through
 **Solution**: Always check `list_complete`, not `keys.length`
 
 ```typescript
@@ -399,6 +484,78 @@ do {
   cursor = result.list_complete ? undefined : result.cursor;
 } while (cursor);
 ```
+
+**CRITICAL**: When using `prefix`, you **must include it in all paginated calls**:
+
+```typescript
+// ❌ WRONG - Loses prefix on subsequent pages
+let result = await kv.list({ prefix: 'user:' });
+result = await kv.list({ cursor: result.cursor });  // Missing prefix!
+
+// ✅ CORRECT - Include prefix on every call
+let cursor: string | undefined;
+do {
+  const result = await kv.list({ prefix: 'user:', cursor });
+  processKeys(result.keys);
+  cursor = result.list_complete ? undefined : result.cursor;
+} while (cursor);
+```
+
+**Source**: [List keys documentation](https://developers.cloudflare.com/kv/api/list-keys/)
+
+### Issue 5: `wrangler types` Does Not Generate Types for Environment-Nested KV Bindings
+
+**Cause**: KV namespaces defined within environment configurations (e.g., `[env.feature.kv_namespaces]`) are not included in generated TypeScript types
+**Impact**: Loss of TypeScript autocomplete and type checking for KV bindings
+**Source**: [GitHub Issue #9709](https://github.com/cloudflare/workers-sdk/issues/9709)
+
+**Example Configuration:**
+```toml
+# wrangler.toml
+[env.feature]
+name = "my-worker-feature"
+[[env.feature.kv_namespaces]]
+binding = "MY_STORAGE_FEATURE"
+id = "xxxxxxxxxxxx"
+```
+
+Running `npx wrangler types` creates type definitions for environment variables but not for the KV namespace bindings.
+
+**Workaround:**
+```bash
+# Generate types for specific environment
+npx wrangler types -e feature
+```
+
+Or define KV namespaces at top level instead of nested in environments:
+```toml
+# Top-level (types generated correctly)
+[[kv_namespaces]]
+binding = "MY_STORAGE"
+id = "xxxxxxxxxxxx"
+```
+
+**Note**: Runtime bindings still work correctly; this only affects type generation.
+
+### Issue 6: `wrangler kv key list` Returns Empty Array for Remote Data
+
+**Cause**: CLI commands default to **local storage**, not remote/production KV
+**Impact**: Users expect to see production data but get empty array from local storage
+**Source**: [GitHub Issue #10395](https://github.com/cloudflare/workers-sdk/issues/10395)
+
+**Solution**: Use `--remote` flag to access production/remote data
+
+```bash
+# ❌ Shows local storage (likely empty)
+npx wrangler kv key list --binding=MY_KV
+
+# ✅ Shows remote/production data
+npx wrangler kv key list --binding=MY_KV --remote
+```
+
+**Why This Happens**: By design, `wrangler dev` uses local KV storage to avoid interfering with production data. CLI commands follow the same default for consistency.
+
+**Applies to**: All `wrangler kv key` commands (get, list, delete, put)
 
 ---
 
@@ -426,5 +583,6 @@ do {
 
 ---
 
-**Last Updated**: 2026-01-09
-**Package Versions**: wrangler@4.58.0, @cloudflare/workers-types@4.20260109.0
+**Last Updated**: 2026-01-20
+**Package Versions**: wrangler@4.59.2, @cloudflare/workers-types@4.20260109.0
+**Changes**: Added 6 research findings - hot/cold key performance patterns, remote bindings (Wrangler 4.37+), wrangler types environment issue, CLI --remote flag requirement, RYOW consistency details, prefix persistence in pagination

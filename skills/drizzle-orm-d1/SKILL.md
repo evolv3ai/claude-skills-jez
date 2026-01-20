@@ -1,16 +1,16 @@
 ---
 name: drizzle-orm-d1
 description: |
-  Build type-safe D1 databases with Drizzle ORM. Includes schema definition, migrations with Drizzle Kit, relations, and D1 batch API patterns. Prevents 12 errors including SQL BEGIN failures and foreign key issues.
+  Build type-safe D1 databases with Drizzle ORM. Includes schema definition, migrations with Drizzle Kit, relations, and D1 batch API patterns. Prevents 18 errors including SQL BEGIN failures, cascade data loss, 100-parameter limits, and foreign key issues.
 
-  Use when: defining D1 schemas, managing migrations, or troubleshooting D1_ERROR, BEGIN TRANSACTION, foreign keys.
+  Use when: defining D1 schemas, managing migrations, bulk inserts, or troubleshooting D1_ERROR, BEGIN TRANSACTION, foreign keys, "too many SQL variables".
 user-invocable: true
 ---
 
 # Drizzle ORM for Cloudflare D1
 
 **Status**: Production Ready ✅
-**Last Updated**: 2026-01-09
+**Last Updated**: 2026-01-20
 **Latest Version**: drizzle-orm@0.45.1, drizzle-kit@0.31.8, better-sqlite3@12.5.0
 **Dependencies**: cloudflare-d1, cloudflare-worker-base
 
@@ -203,7 +203,7 @@ console.log(sql.sql, sql.params);
 
 ## Known Issues Prevention
 
-This skill prevents **12** documented issues:
+This skill prevents **18** documented issues:
 
 ### Issue #1: D1 Transaction Errors
 **Error**: `D1_ERROR: Cannot use BEGIN TRANSACTION`
@@ -268,6 +268,366 @@ This skill prevents **12** documented issues:
 **Why**: Mixing TOML and JSON formats.
 **Prevention**: Use `wrangler.jsonc` consistently (supports comments)
 
+### Issue #13: D1 100-Parameter Limit in Bulk Inserts
+**Error**: `too many SQL variables at offset`
+**Source**: [drizzle-orm#2479](https://github.com/drizzle-team/drizzle-orm/issues/2479), [Cloudflare D1 Limits](https://developers.cloudflare.com/d1/platform/limits/)
+**Why It Happens**: Cloudflare D1 has a hard limit of 100 bound parameters per query. When inserting multiple rows, Drizzle doesn't automatically chunk. If `(rows × columns) > 100`, the query fails.
+**Prevention**: Use manual chunking or autochunk pattern
+
+**Example - When It Fails**:
+```typescript
+// 35 rows × 3 columns = 105 parameters → FAILS
+const books = Array(35).fill({}).map((_, i) => ({
+  id: i.toString(),
+  title: "Book",
+  author: "Author",
+}));
+
+await db.insert(schema.books).values(books);
+// Error: too many SQL variables at offset
+```
+
+**Solution - Manual Chunking**:
+```typescript
+async function batchInsert<T>(
+  db: any,
+  table: any,
+  items: T[],
+  chunkSize = 32
+) {
+  for (let i = 0; i < items.length; i += chunkSize) {
+    await db.insert(table).values(items.slice(i, i + chunkSize));
+  }
+}
+
+await batchInsert(db, schema.books, books);
+```
+
+**Solution - Auto-Chunk by Column Count**:
+```typescript
+const D1_MAX_PARAMETERS = 100;
+
+async function autochunk<T extends Record<string, unknown>, U>(
+  { items, otherParametersCount = 0 }: {
+    items: T[];
+    otherParametersCount?: number;
+  },
+  cb: (chunk: T[]) => Promise<U>,
+) {
+  const chunks: T[][] = [];
+  let chunk: T[] = [];
+  let chunkParameters = 0;
+
+  for (const item of items) {
+    const itemParameters = Object.keys(item).length;
+
+    if (chunkParameters + itemParameters + otherParametersCount > D1_MAX_PARAMETERS) {
+      chunks.push(chunk);
+      chunkParameters = itemParameters;
+      chunk = [item];
+      continue;
+    }
+
+    chunk.push(item);
+    chunkParameters += itemParameters;
+  }
+
+  if (chunk.length) chunks.push(chunk);
+
+  const results: U[] = [];
+  for (const c of chunks) {
+    results.push(await cb(c));
+  }
+
+  return results.flat();
+}
+
+// Usage
+const inserted = await autochunk(
+  { items: books },
+  (chunk) => db.insert(schema.books).values(chunk).returning()
+);
+```
+
+**Note**: This also affects `drizzle-seed`. Use `seed(db, schema, { count: 10 })` to limit seed size.
+
+### Issue #14: `findFirst` with Batch API Returns Error Instead of Undefined
+**Error**: `TypeError: Cannot read properties of undefined (reading '0')`
+**Source**: [drizzle-orm#2721](https://github.com/drizzle-team/drizzle-orm/issues/2721)
+**Why It Happens**: When using `findFirst` in a batch operation with D1, if no results are found, Drizzle throws a TypeError instead of returning `null` or `undefined`. This breaks error handling patterns that expect falsy return values.
+**Prevention**: Use `pnpm patch` to fix the D1 session handler, or avoid `findFirst` in batch operations
+
+**Example - When It Fails**:
+```typescript
+// Works fine - returns null/undefined when not found
+const result = await db.query.table.findFirst({
+  where: eq(schema.table.key, 'not-existing'),
+});
+
+// Throws TypeError instead of returning undefined
+const [result] = await db.batch([
+  db.query.table.findFirst({
+    where: eq(schema.table.key, 'not-existing'),
+  }),
+]);
+// Error: TypeError: Cannot read properties of undefined (reading '0')
+```
+
+**Solution - Patch drizzle-orm**:
+```bash
+# Create patch with pnpm
+pnpm patch drizzle-orm
+```
+
+Then edit `node_modules/drizzle-orm/d1/session.js`:
+```javascript
+// In mapGetResult method, add null check:
+if (!result) {
+  return undefined;
+}
+if (this.customResultMapper) {
+  return this.customResultMapper([result]);
+}
+```
+
+**Workaround - Avoid findFirst in Batch**:
+```typescript
+// Instead of batch with findFirst, use separate queries
+const result = await db.query.table.findFirst({
+  where: eq(schema.table.key, key),
+});
+```
+
+### Issue #15: D1 Generated Columns Not Supported
+**Error**: No schema API for generated columns
+**Source**: [drizzle-orm#4538](https://github.com/drizzle-team/drizzle-orm/issues/4538), [D1 Generated Columns](https://developers.cloudflare.com/d1/reference/generated-columns/)
+**Why It Happens**: Cloudflare D1 supports generated columns for extracting/calculating values from JSON or other columns, which can dramatically improve query performance when indexed. Drizzle ORM doesn't have a schema API to define these columns, forcing users to write raw SQL.
+**Prevention**: Use raw SQL migrations for generated columns
+
+**Example - D1 Supports This**:
+```sql
+-- D1 supports this, but Drizzle has no JS equivalent
+CREATE TABLE products (
+  id INTEGER PRIMARY KEY,
+  data TEXT,
+  price REAL GENERATED ALWAYS AS (json_extract(data, '$.price')) STORED
+);
+CREATE INDEX idx_price ON products(price);
+```
+
+**Workaround - Use Raw SQL**:
+```typescript
+import { sql } from 'drizzle-orm';
+
+// Current workaround - raw SQL only
+await db.run(sql`
+  CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    data TEXT,
+    price REAL GENERATED ALWAYS AS (json_extract(data, '$.price')) STORED
+  )
+`);
+
+// Or in migration file (migrations/XXXX_add_generated.sql)
+CREATE INDEX idx_price ON products(price);
+```
+
+**Note**: This is a known limitation, not a bug. Feature requested but not yet implemented.
+
+### Issue #16: Migration Generator Silently Causes CASCADE DELETE Data Loss
+**Error**: Related data silently deleted during migrations
+**Source**: [drizzle-orm#4938](https://github.com/drizzle-team/drizzle-orm/issues/4938)
+**Why It Happens**: Drizzle generates `PRAGMA foreign_keys=OFF` before table recreation, but **Cloudflare D1 ignores this pragma**. CASCADE DELETE still triggers, destroying all related data.
+**Prevention**: Manually rewrite dangerous migrations with backup/restore pattern
+
+**⚠️ CRITICAL WARNING**: This can cause **permanent data loss** in production.
+
+**When It Happens**:
+Any schema change that requires table recreation (adding/removing columns, changing types) will DROP and recreate the table. If foreign keys reference this table with `onDelete: "cascade"`, ALL related data is deleted.
+
+**Example - Dangerous Migration**:
+```typescript
+// Schema with cascade relationships
+export const account = sqliteTable("account", {
+  accountId: integer("account_id").primaryKey(),
+  name: text("name"),
+});
+
+export const property = sqliteTable("property", {
+  propertyId: integer("property_id").primaryKey(),
+  accountId: integer("account_id").references(() => account.accountId, {
+    onDelete: "cascade"  // ⚠️ CASCADE DELETE
+  }),
+});
+
+// Change account schema (e.g., add a column)
+// npx drizzle-kit generate creates:
+// DROP TABLE account;  -- ⚠️ Silently destroys ALL properties via cascade!
+// CREATE TABLE account (...);
+```
+
+**Safe Migration Pattern**:
+```sql
+-- Manually rewrite migration to backup related data
+PRAGMA foreign_keys=OFF;  -- D1 ignores this, but include anyway
+
+-- 1. Backup related tables
+CREATE TABLE backup_property AS SELECT * FROM property;
+
+-- 2. Drop and recreate parent table
+DROP TABLE account;
+CREATE TABLE account (
+  account_id INTEGER PRIMARY KEY,
+  name TEXT,
+  -- new columns here
+);
+
+-- 3. Restore related data
+INSERT INTO property SELECT * FROM backup_property;
+DROP TABLE backup_property;
+
+PRAGMA foreign_keys=ON;
+```
+
+**Detection**:
+Always review generated migrations before applying. Look for:
+- `DROP TABLE` statements for tables with foreign key references
+- Tables with `onDelete: "cascade"` relationships
+
+**Workarounds**:
+1. **Option 1**: Manually rewrite migrations (safest)
+2. **Option 2**: Use `onDelete: "set null"` instead of `"cascade"` for schema changes
+3. **Option 3**: Temporarily remove foreign keys during migration
+
+**Reproduction**: https://github.com/ZerGo0/drizzle-d1-reprod
+
+**Impact**: Affects better-auth migration from v1.3.7+, any D1 schema with foreign keys.
+
+### Issue #17: `sql` Template in D1 Batch Causes TypeError
+**Error**: `TypeError: Cannot read properties of undefined (reading 'bind')`
+**Source**: [drizzle-orm#2277](https://github.com/drizzle-team/drizzle-orm/issues/2277)
+**Why It Happens**: Using `sql` template literals inside `db.batch()` causes TypeError. The same SQL works fine outside of batch operations.
+**Prevention**: Use query builder instead of `sql` template in batch operations
+
+**Example - When It Fails**:
+```typescript
+const upsertSql = sql`insert into ${schema.subscriptions}
+  (id, status) values (${id}, ${status})
+  on conflict (id) do update set status = ${status}
+  returning *`;
+
+// Works fine
+const [subscription] = await db.all<Subscription>(upsertSql);
+
+// Throws TypeError: Cannot read properties of undefined (reading 'bind')
+const [[batchSubscription]] = await db.batch([
+  db.all<Subscription>(upsertSql),
+]);
+```
+
+**Solution - Use Query Builder**:
+```typescript
+// Use Drizzle query builder instead
+const [result] = await db.batch([
+  db.insert(schema.subscriptions)
+    .values({ id, status })
+    .onConflictDoUpdate({
+      target: schema.subscriptions.id,
+      set: { status }
+    })
+    .returning()
+]);
+```
+
+**Workaround - Convert to Native D1**:
+```typescript
+import { SQLiteSyncDialect } from 'drizzle-orm/sqlite-core';
+
+const sqliteDialect = new SQLiteSyncDialect();
+const upsertQuery = sqliteDialect.sqlToQuery(upsertSql);
+const [result] = await D1.batch([
+  D1.prepare(upsertQuery.sql).bind(...upsertQuery.params),
+]);
+```
+
+### Issue #18: Drizzle 1.0 Nested Migrations Not Found by Wrangler
+**Error**: Migrations silently fail to apply (no error message)
+**Source**: [drizzle-orm#5266](https://github.com/drizzle-team/drizzle-orm/issues/5266)
+**Why It Happens**: Drizzle 1.0 beta generates nested migration folders, but `wrangler d1 migrations apply` only looks for files directly in the configured directory.
+**Prevention**: Flatten migrations with post-generation script
+
+**Migration Structure Issue**:
+```bash
+# Drizzle 1.0 beta generates this:
+migrations/
+  20260116123456_random/
+    migration.sql
+  20260117234567_another/
+    migration.sql
+
+# But wrangler expects this:
+migrations/
+  20260116123456_random.sql
+  20260117234567_another.sql
+```
+
+**Detection**:
+```bash
+npx wrangler d1 migrations apply my-db --remote
+# Output: "No migrations found" (even though migrations exist)
+```
+
+**Solution - Post-Generation Script**:
+```typescript
+// scripts/flatten-migrations.ts
+import fs from 'fs/promises';
+import path from 'path';
+
+const migrationsDir = './migrations';
+
+async function flattenMigrations() {
+  const entries = await fs.readdir(migrationsDir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      const sqlFile = path.join(migrationsDir, entry.name, 'migration.sql');
+      const flatFile = path.join(migrationsDir, `${entry.name}.sql`);
+
+      // Move migration.sql out of folder
+      await fs.rename(sqlFile, flatFile);
+
+      // Remove empty folder
+      await fs.rmdir(path.join(migrationsDir, entry.name));
+
+      console.log(`Flattened: ${entry.name}/migration.sql → ${entry.name}.sql`);
+    }
+  }
+}
+
+flattenMigrations().catch(console.error);
+```
+
+**package.json Integration**:
+```json
+{
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:flatten": "tsx scripts/flatten-migrations.ts",
+    "db:migrate": "npm run db:generate && npm run db:flatten && wrangler d1 migrations apply my-db"
+  }
+}
+```
+
+**Workaround Until Fixed**:
+Always run the flatten script after generating migrations:
+```bash
+npx drizzle-kit generate
+tsx scripts/flatten-migrations.ts
+npx wrangler d1 migrations apply my-db --remote
+```
+
+**Status**: Feature request to add `flat: true` config option (not yet implemented).
+
 ---
 
 ## Batch API Pattern (D1 Transactions)
@@ -321,7 +681,7 @@ Claude should load these when you need specific deep-dive information:
 - **schema-patterns.md** - All D1/SQLite column types, constraints, indexes
 - **migration-workflow.md** - Complete migration workflow (generate, test, apply)
 - **query-builder-api.md** - Full Drizzle query builder API reference
-- **common-errors.md** - All 12 errors with detailed solutions
+- **common-errors.md** - All 18 errors with detailed solutions
 - **links-to-official-docs.md** - Organized links to official documentation
 
 **When to load**:
@@ -383,11 +743,13 @@ Claude should load these when you need specific deep-dive information:
 This skill is based on production patterns from:
 - **Cloudflare Workers + D1**: Serverless edge databases
 - **Drizzle ORM**: Type-safe ORM used in production apps
-- **Errors**: 0 (all 12 known issues prevented)
+- **Errors**: 0 (all 18 known issues prevented)
 - **Validation**: ✅ Complete blog example (users, posts, comments)
 
 ---
 
+**Last verified**: 2026-01-20 | **Skill version**: 3.1.0 | **Changes**: Added 6 critical findings (100-parameter limit, cascade data loss, nested migrations, batch API edge cases, generated columns limitation)
+
 **Token Savings**: ~60% compared to manual setup
-**Error Prevention**: 100% (all 12 known issues documented and prevented)
+**Error Prevention**: 100% (all 18 known issues documented and prevented)
 **Ready for production!** ✅

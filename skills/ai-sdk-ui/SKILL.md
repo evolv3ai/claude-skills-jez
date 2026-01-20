@@ -1,9 +1,9 @@
 ---
 name: ai-sdk-ui
 description: |
-  Build React chat interfaces with Vercel AI SDK v6. Covers useChat/useCompletion/useObject hooks, message parts structure, tool approval workflows, and 12 UI error solutions.
+  Build React chat interfaces with Vercel AI SDK v6. Covers useChat/useCompletion/useObject hooks, message parts structure, tool approval workflows, and 18 UI error solutions. Prevents documented issues with React Strict Mode, concurrent requests, stale closures, and tool approval edge cases.
 
-  Use when: implementing AI chat UIs, migrating v5→v6, troubleshooting "useChat failed to parse stream", "stale body values", or React update depth errors.
+  Use when: implementing AI chat UIs, migrating v5→v6, troubleshooting "useChat failed to parse stream", "stale body values", "React maximum update depth", "Cannot read properties of undefined (reading 'state')", or tool approval workflow errors.
 user-invocable: true
 ---
 
@@ -11,16 +11,16 @@ user-invocable: true
 
 Frontend React hooks for AI-powered user interfaces with Vercel AI SDK v6.
 
-**Version**: AI SDK v6.0.23 (Stable)
+**Version**: AI SDK v6.0.42 (Stable)
 **Framework**: React 18+/19, Next.js 14+/15+
-**Last Updated**: 2026-01-09
+**Last Updated**: 2026-01-20
 
 ---
 
 ## AI SDK v6 Stable (January 2026)
 
 **Status:** Stable Release
-**Latest:** ai@6.0.23, @ai-sdk/react@3.0.23, @ai-sdk/openai@3.0.7
+**Latest:** ai@6.0.42, @ai-sdk/react@3.0.44, @ai-sdk/openai@3.0.7
 **Migration:** Minimal breaking changes from v5 → v6
 
 ### New UI Features in v6
@@ -335,7 +335,7 @@ useEffect(() => {
 }, [messages]); // Only depend on messages
 ```
 
-See `references/top-ui-errors.md` for 7 more common errors.
+See `references/top-ui-errors.md` for 13 more common errors (18 total documented).
 
 ---
 
@@ -377,6 +377,63 @@ useEffect(() => {
 ```
 
 See `references/streaming-patterns.md` for comprehensive best practices.
+
+---
+
+## React Strict Mode Considerations
+
+React Strict Mode intentionally double-invokes effects to catch bugs. When using `useChat` or `useCompletion` in effects (auto-resume, initial messages), guard against double execution to prevent duplicate API calls and token waste.
+
+**Problem:**
+```tsx
+'use client';
+import { useChat } from '@ai-sdk/react';
+import { useEffect } from 'react';
+
+export default function Chat() {
+  const { messages, sendMessage, resumeStream } = useChat({
+    api: '/api/chat',
+    resume: true,
+  });
+
+  useEffect(() => {
+    // ❌ Triggers twice in strict mode → two concurrent streams
+    sendMessage({ content: 'Hello' });
+    // or
+    resumeStream();
+  }, []);
+}
+```
+
+**Solution:**
+```tsx
+// ✅ Use ref to track execution
+import { useRef } from 'react';
+
+const hasSentRef = useRef(false);
+
+useEffect(() => {
+  if (hasSentRef.current) return;
+  hasSentRef.current = true;
+
+  sendMessage({ content: 'Hello' });
+}, []);
+
+// For resumeStream specifically:
+const hasResumedRef = useRef(false);
+
+useEffect(() => {
+  if (!autoResume || hasResumedRef.current || status === 'streaming') return;
+  hasResumedRef.current = true;
+  resumeStream();
+}, [autoResume, resumeStream, status]);
+```
+
+**Why It Happens:** React Strict Mode double-invokes effects to surface side effects. The SDK doesn't guard against concurrent requests, so both invocations create separate streams that fight for state updates.
+
+**Impact:** Duplicate messages, doubled token usage, race conditions causing TypeError: "Cannot read properties of undefined (reading 'state')".
+
+**Source:** [GitHub Issue #7891](https://github.com/vercel/ai/issues/7891), [Issue #6166](https://github.com/vercel/ai/issues/6166)
 
 ---
 
@@ -490,11 +547,11 @@ See `references/` for:
 
 - **use-chat-migration.md** - Complete v4→v5 migration guide
 - **streaming-patterns.md** - UI streaming best practices
-- **top-ui-errors.md** - 12 common UI errors with solutions
+- **top-ui-errors.md** - 18 common UI errors with solutions
 - **nextjs-integration.md** - Next.js setup patterns
 - **links-to-official-docs.md** - Organized links to official docs
 
 ---
 
 **Production Tested**: WordPress Auditor (https://wordpress-auditor.webfonts.workers.dev)
-**Last Updated**: 2026-01-06
+**Last verified**: 2026-01-20 | **Skill version**: 3.1.0 | **Changes**: Updated to AI SDK v6.0.42 (+19 patches). Added React Strict Mode section. Expanded Issue #7 (stale body) with 3 workarounds. Added 6 new issues: TypeError with resume+onFinish (#13), concurrent sendMessage state corruption (#14), tool approval callback edge case (#15), ZodError on early stop (#16), convertToModelMessages tool approval bug (#17), undefined id infinite loop (#18). Error count: 12→18.

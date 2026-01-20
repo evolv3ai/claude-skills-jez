@@ -1,9 +1,9 @@
 ---
 name: ai-sdk-core
 description: |
-  Build backend AI with Vercel AI SDK v6 stable. Covers Output API (replaces generateObject/streamObject), speech synthesis, transcription, embeddings, MCP tools. Includes v4→v5 migration and 12 error solutions.
+  Build backend AI with Vercel AI SDK v6 stable. Covers Output API (replaces generateObject/streamObject), speech synthesis, transcription, embeddings, MCP tools with security guidance. Includes v4→v5 migration and 15 error solutions with workarounds.
 
-  Use when: implementing AI SDK v5/v6, migrating versions, troubleshooting AI_APICallError, Workers startup issues, or Output API validation errors.
+  Use when: implementing AI SDK v5/v6, migrating versions, troubleshooting AI_APICallError, Workers startup issues, Output API errors, Gemini caching issues, Anthropic tool errors, MCP tools, or stream resumption failures.
 user-invocable: true
 ---
 
@@ -103,17 +103,44 @@ Unified interface for building agents with `ToolLoopAgent` class:
 - Replaces manual tool calling orchestration
 
 **2. Tool Execution Approval (Human-in-the-Loop)**
+
+Use selective approval for better UX. Not every tool call needs approval.
+
 ```typescript
 tools: {
   payment: tool({
-    needsApproval: true,  // Always ask
-    // OR dynamic:
+    // Dynamic approval based on input
     needsApproval: async ({ amount }) => amount > 1000,
     inputSchema: z.object({ amount: z.number() }),
     execute: async ({ amount }) => { /* process payment */ },
   }),
+
+  readFile: tool({
+    needsApproval: false, // Safe operations don't need approval
+    inputSchema: z.object({ path: z.string() }),
+    execute: async ({ path }) => fs.readFile(path),
+  }),
+
+  deleteFile: tool({
+    needsApproval: true, // Destructive operations always need approval
+    inputSchema: z.object({ path: z.string() }),
+    execute: async ({ path }) => fs.unlink(path),
+  }),
 }
 ```
+
+**Best Practices**:
+- Use dynamic approval for operations where risk depends on parameters (e.g., payment amount)
+- Always require approval for destructive operations (delete, modify, purchase)
+- Don't require approval for safe read operations
+- Add system instruction: "When a tool execution is not approved, do not retry it"
+- Implement timeout for approval requests to prevent stuck states
+- Store user preferences for repeat actions
+
+**Sources**:
+- [Next.js Human-in-the-Loop Guide](https://ai-sdk.dev/cookbook/next/human-in-the-loop)
+- [Cloudflare Agents Human-in-the-Loop](https://developers.cloudflare.com/agents/guides/human-in-the-loop/)
+- [Permit.io Best Practices](https://www.permit.io/blog/human-in-the-loop-for-ai-agents-best-practices-frameworks-use-cases-and-demo)
 
 **3. Reranking for RAG**
 ```typescript
@@ -128,6 +155,9 @@ const result = await rerank({
 ```
 
 **4. MCP Tools (Model Context Protocol)**
+
+⚠️ **SECURITY WARNING**: MCP tools have significant production risks. See security section below.
+
 ```typescript
 import { experimental_createMCPClient } from 'ai';
 
@@ -143,6 +173,46 @@ const result = await generateText({
   prompt: 'List files in the current directory',
 });
 ```
+
+**Known Issue**: MCP tools may not execute in streaming mode ([Vercel Community Discussion](https://community.vercel.com/t/question-how-to-properly-pass-mcp-tools-to-backend-using-ai-sdk-uis-usechat/29714)). Use `generateText()` instead of `streamText()` for MCP tools.
+
+**MCP Security Considerations**
+
+⚠️ **CRITICAL**: Dynamic MCP tools in production have security risks:
+
+**Risks**:
+- Tool definitions become part of your agent's prompt
+- Can change unexpectedly without warning
+- Compromised MCP server can inject malicious prompts
+- New tools can escalate user privileges (e.g., adding delete to read-only server)
+
+**Solution - Use Static Tool Generation**:
+
+```typescript
+// ❌ RISKY: Dynamic tools change without your control
+const mcpClient = await experimental_createMCPClient({ /* ... */ });
+const tools = await mcpClient.tools(); // Can change anytime!
+
+// ✅ SAFE: Generate static, versioned tool definitions
+// Step 1: Install mcp-to-ai-sdk
+npm install -g mcp-to-ai-sdk
+
+// Step 2: Generate static tools (one-time, version controlled)
+npx mcp-to-ai-sdk generate stdio 'npx -y @modelcontextprotocol/server-filesystem'
+
+// Step 3: Import static tools
+import { tools } from './generated-mcp-tools';
+
+const result = await generateText({
+  model: openai('gpt-5'),
+  tools, // Static, reviewed, versioned
+  prompt: 'Use tools',
+});
+```
+
+**Best Practice**: Generate static tools, review them, commit to version control, and only update intentionally.
+
+**Source**: [Vercel Blog: MCP Security](https://vercel.com/blog/generate-static-ai-sdk-tools-from-mcp-servers-with-mcp-to-ai-sdk)
 
 **5. Language Model Middleware**
 ```typescript
@@ -586,7 +656,7 @@ https://ai-sdk.dev/docs/migration-guides/migration-guide-5-0
 
 ---
 
-## Top 12 Errors & Solutions
+## Top 15 Errors & Solutions
 
 ### 1. AI_APICallError
 
@@ -1030,7 +1100,185 @@ try {
 
 ---
 
-**More Errors:** https://ai-sdk.dev/docs/reference/ai-sdk-errors (28 total)
+### 13. Gemini Implicit Caching Fails with Tools
+
+**Error**: No error, but higher API costs due to disabled caching
+**Cause**: Google Gemini 3 Flash's cost-saving implicit caching doesn't work when any tools are defined, even if never used.
+**Source**: [GitHub Issue #11513](https://github.com/vercel/ai/issues/11513)
+
+**Why It Happens**: Gemini API disables caching when tools are present in the request, regardless of whether they're invoked.
+
+**Prevention**:
+```typescript
+// Conditionally add tools only when needed
+const needsTools = await analyzePrompt(userInput);
+
+const result = await generateText({
+  model: google('gemini-3-flash'),
+  tools: needsTools ? { weather: weatherTool } : undefined,
+  prompt: userInput,
+});
+```
+
+**Impact**: High - Can significantly increase API costs for repeated context
+
+---
+
+### 14. Anthropic Tool Error Results Cause JSON Parse Crash
+
+**Error**: `SyntaxError: "[object Object]" is not valid JSON`
+**Cause**: Anthropic provider built-in tools (web_fetch, etc.) return error objects that SDK tries to JSON.parse
+**Source**: [GitHub Issue #11856](https://github.com/vercel/ai/issues/11856)
+
+**Why It Happens**: When Anthropic built-in tools fail (e.g., url_not_allowed), they return error objects. AI SDK incorrectly tries to parse these as JSON strings.
+
+**Prevention**:
+```typescript
+try {
+  const result = await generateText({
+    model: anthropic('claude-sonnet-4-5-20250929'),
+    tools: { web_fetch: { type: 'anthropic_defined', name: 'web_fetch' } },
+    prompt: userPrompt,
+  });
+} catch (error) {
+  if (error.message.includes('is not valid JSON')) {
+    // Tool returned error result, handle gracefully
+    console.error('Tool execution failed - likely blocked URL or permission issue');
+    // Retry without tool or use custom tool
+  }
+  throw error;
+}
+```
+
+**Impact**: High - Production crashes when using Anthropic built-in tools
+
+---
+
+### 15. Tool-Result in Assistant Message (Anthropic)
+
+**Error**: Anthropic API error - `tool-result` in assistant message not allowed
+**Cause**: Server-executed tools incorrectly place `tool-result` parts in assistant messages
+**Source**: [GitHub Issue #11855](https://github.com/vercel/ai/issues/11855)
+
+**Why It Happens**: When using server-executed tools (tools where `execute` runs on server, not sent to model), the AI SDK incorrectly includes `tool-result` parts in the assistant message. Anthropic expects tool-result only in user messages.
+
+**Prevention**:
+```typescript
+// Workaround: Filter messages before sending
+const filteredMessages = messages.map(msg => {
+  if (msg.role === 'assistant') {
+    return {
+      ...msg,
+      content: msg.content.filter(part => part.type !== 'tool-result'),
+    };
+  }
+  return msg;
+});
+
+const result = await generateText({
+  model: anthropic('claude-sonnet-4-5-20250929'),
+  tools: { database: databaseTool },
+  messages: filteredMessages,
+  prompt: 'Get user data',
+});
+```
+
+**Impact**: High - Breaks server-executed tool pattern with Anthropic provider
+
+**Status**: Known issue, PR #11854 submitted
+
+---
+
+**More Errors:** https://ai-sdk.dev/docs/reference/ai-sdk-errors (31 total)
+
+---
+
+## Known Issues & Limitations
+
+### useChat Stale Closures with Memoized Options
+
+**Issue**: When using `useChat` with memoized options (common for performance), the `onData` and `onFinish` callbacks have stale closures and don't see updated state variables.
+
+**Source**: [GitHub Issue #11686](https://github.com/vercel/ai/issues/11686)
+
+**Reproduction**:
+```typescript
+const [count, setCount] = useState(0);
+
+const chatOptions = useMemo(() => ({
+  onFinish: (message) => {
+    console.log('Count:', count); // ALWAYS 0, never updates!
+  },
+}), []); // Empty deps = stale closure
+
+const { messages, append } = useChat(chatOptions);
+```
+
+**Workaround 1 - Don't Memoize Callbacks**:
+```typescript
+const { messages, append } = useChat({
+  onFinish: (message) => {
+    console.log('Count:', count); // Now sees current count
+  },
+});
+```
+
+**Workaround 2 - Use useRef**:
+```typescript
+const countRef = useRef(count);
+useEffect(() => { countRef.current = count; }, [count]);
+
+const chatOptions = useMemo(() => ({
+  onFinish: (message) => {
+    console.log('Count:', countRef.current); // Always current
+  },
+}), []);
+```
+
+**Full Repro**: https://github.com/alechoey/ai-sdk-stale-ondata-repro
+
+---
+
+### Stream Resumption Fails on Tab Switch
+
+**Issue**: When users switch browser tabs or background the app during an AI stream, the stream does not resume when they return. The connection is lost and does not automatically reconnect.
+
+**Source**: [GitHub Issue #11865](https://github.com/vercel/ai/issues/11865)
+
+**Impact**: High - Major UX issue for long-running streams
+
+**Workaround 1 - Implement onError Handler**:
+```typescript
+const { messages, append, reload } = useChat({
+  api: '/api/chat',
+  onError: (error) => {
+    if (error.message.includes('stream') || error.message.includes('aborted')) {
+      // Attempt to reload last message
+      reload();
+    }
+  },
+});
+```
+
+**Workaround 2 - Detect Visibility Change**:
+```typescript
+useEffect(() => {
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      // Check if stream was interrupted
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage?.role === 'assistant' && !lastMessage.content) {
+        reload();
+      }
+    }
+  };
+
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+}, [messages, reload]);
+```
+
+**Status**: Known limitation, no auto-reconnection built-in
 
 ---
 
@@ -1063,6 +1311,7 @@ try {
 
 **AI SDK:**
 - Stable: ai@6.0.26 (Jan 2026)
+- ⚠️ **Skip v6.0.40** - Breaking streaming change (reverted in v6.0.41)
 - Legacy v5: ai@5.0.117 (ai-v5 tag)
 - Zod 3.x/4.x both supported
 
@@ -1101,6 +1350,7 @@ npm view ai dist-tags
 
 ---
 
-**Last Updated:** 2026-01-06
-**Skill Version:** 2.0.1
-**AI SDK:** 6.0.26 stable
+**Last Updated:** 2026-01-20
+**Skill Version:** 2.1.0
+**Changes:** Added 3 new errors (Gemini caching, Anthropic tool errors, tool-result placement), MCP security guidance, tool approval best practices, React hooks edge cases, stream resumption workarounds
+**AI SDK:** 6.0.26 stable (avoid v6.0.40)

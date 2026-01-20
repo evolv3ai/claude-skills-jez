@@ -1,18 +1,19 @@
 ---
 name: cloudflare-worker-base
 description: |
-  Set up Cloudflare Workers with Hono routing, Vite plugin, and Static Assets. Prevents 8 errors including export syntax, routing conflicts, HMR crashes, and free tier 429s.
+  Set up Cloudflare Workers with Hono routing, Vite plugin, and Static Assets. Prevents 10 errors including export syntax, routing conflicts, Vite 8 nodejs_compat, base option regression, and cache corruption.
 
-  Use when: creating Workers projects, configuring Hono/Vite, or troubleshooting export syntax, API route conflicts, or HMR issues.
+  Use when: creating Workers projects, configuring Hono/Vite, or troubleshooting export syntax, API route conflicts, HMR issues, or Vite 8+ compatibility.
 user-invocable: true
 ---
 
 # Cloudflare Worker Base Stack
 
 **Production-tested**: cloudflare-worker-base-test (https://cloudflare-worker-base-test.webfonts.workers.dev)
-**Last Updated**: 2026-01-03
+**Last Updated**: 2026-01-20
 **Status**: Production Ready ✅
 **Latest Versions**: hono@4.11.3, @cloudflare/vite-plugin@1.17.1, vite@7.3.1, wrangler@4.54.0
+**Skill Version**: 3.1.0
 
 **Recent Updates (2025-2026)**:
 - **Wrangler 4.55+**: Auto-config for frameworks (`wrangler deploy --x-autoconfig`)
@@ -76,7 +77,7 @@ wrangler deploy          # Production
 
 ## Known Issues Prevention
 
-This skill prevents **8 documented issues**:
+This skill prevents **10 documented issues**:
 
 ### Issue #1: Export Syntax Error
 **Error**: "Cannot read properties of undefined (reading 'map')"
@@ -132,6 +133,48 @@ export default {
 - Use negative patterns (`!/pattern`) to exclude paths from Worker invocation
 - Minimize `run_worker_first` patterns to only essential API routes
 
+### Issue #9: Vite 8 Breaks nodejs_compat with require()
+**Error**: `Calling require for "buffer" in an environment that doesn't expose the require function`
+**Source**: [workers-sdk #11948](https://github.com/cloudflare/workers-sdk/issues/11948)
+**Affected Versions**: Vite 8.x with @cloudflare/vite-plugin 1.21.0+
+**Why It Happens**: Vite 8 uses Rolldown bundler which doesn't convert `require()` to `import` for external modules. Workers don't expose `require()` function, causing Node built-in module imports to fail at runtime.
+**Prevention**:
+```typescript
+// vite.config.ts - Add esmExternalRequirePlugin
+import { defineConfig } from 'vite'
+import { cloudflare } from '@cloudflare/vite-plugin'
+import { esmExternalRequirePlugin } from 'vite'
+import { builtinModules } from 'node:module'
+
+export default defineConfig({
+  plugins: [
+    cloudflare(),
+    esmExternalRequirePlugin({
+      external: [/^node:/, ...builtinModules],
+    }),
+  ],
+})
+```
+**Status**: Workaround available. Vite team working on fix ([vitejs/vite#21452](https://github.com/vitejs/vite/pull/21452)).
+
+### Issue #10: Vite base Option Breaks SPA Routing (1.13.8+)
+**Error**: `curl http://localhost:5173/prefix` returns 404 instead of index.html
+**Source**: [workers-sdk #11857](https://github.com/cloudflare/workers-sdk/issues/11857)
+**Affected Versions**: @cloudflare/vite-plugin 1.13.8+
+**Why It Happens**: Plugin now passes full URL with base path to Asset Worker (matching prod behavior). Platform support for `assets.base` not yet available.
+**Prevention** (dev-mode workaround):
+```typescript
+// worker.ts - Strip base path in development
+if (import.meta.env.DEV) {
+  url.pathname = url.pathname.replace(import.meta.env.BASE_URL, '');
+  if (url.pathname === '/') {
+    return this.env.ASSETS.fetch(request);
+  }
+  request = new Request(url, request);
+}
+```
+**Status**: Intentional change to align dev with prod. Platform feature `assets.base` planned for Q1 2026 ([workers-sdk #9885](https://github.com/cloudflare/workers-sdk/issues/9885)).
+
 
 
 ## Route Priority with run_worker_first
@@ -153,13 +196,36 @@ export default {
 
 **Default Behavior**: Wrangler automatically provisions R2 buckets, D1 databases, and KV namespaces when deploying. This eliminates manual resource creation steps.
 
-**How It Works**:
+**Critical: Always Specify Resource Names**
+
+⚠️ **Edge Case** ([workers-sdk #11870](https://github.com/cloudflare/workers-sdk/issues/11870)): If you provide only `binding` without `database_name`/`bucket_name`, Wrangler uses the binding name as the resource name. This causes confusing behavior with `wrangler dev` and subcommands, which prefer `database_id` → `database_name` → `binding`.
+
 ```jsonc
-// wrangler.jsonc - Just define bindings, resources auto-create on deploy
+// ❌ DON'T: Binding-only creates database named "DB"
 {
-  "d1_databases": [{ "binding": "DB", "database_name": "my-app-db" }],
-  "r2_buckets": [{ "binding": "STORAGE", "bucket_name": "my-app-files" }],
-  "kv_namespaces": [{ "binding": "CACHE", "title": "my-app-cache" }]
+  "d1_databases": [{ "binding": "DB" }]
+}
+
+// ✅ DO: Explicit names prevent confusion
+{
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-app-db"  // Always specify!
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "STORAGE",
+      "bucket_name": "my-app-files"  // Always specify!
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "title": "my-app-cache"  // Always specify!
+    }
+  ]
 }
 ```
 
@@ -225,6 +291,64 @@ const { valid, userId } = await env.AUTH.verifyToken(authHeader)
 - **Self-bindings**: In `wrangler dev`, shows as `[connected]` for same-Worker calls
 
 
+## Troubleshooting
+
+### Random "Response Already Sent" Errors in Development
+
+**Symptom**: Sporadic `ResponseSentError: The response has already been sent to the browser and cannot be altered` during `wrangler dev`
+**Source**: [workers-sdk #11932](https://github.com/cloudflare/workers-sdk/issues/11932)
+**Cause**: Cache corruption in `.wrangler` directory or stale Vite cache
+
+**Solution**:
+```bash
+# Clear all caches
+rm -rf .wrangler dist node_modules/.vite
+
+# Rebuild
+npm run build
+
+# Recreate local D1 databases if needed
+wrangler d1 execute DB --local --file schema.sql
+```
+
+**Applies to**: Wrangler 4.x full Workers mode (not Cloudflare Pages)
+
+
+## Community Tips
+
+> **Note**: These tips come from community discussions. Verify against your version.
+
+### Avoid vite-tsconfig-paths v6 with React SSR
+
+**Source**: [workers-sdk #11825](https://github.com/cloudflare/workers-sdk/issues/11825) (Community-sourced)
+
+If using React SSR with `@cloudflare/vite-plugin`, pin to `vite-tsconfig-paths@5.1.4`:
+
+```bash
+npm install vite-tsconfig-paths@5.1.4
+```
+
+**Why**: Version 6.x doesn't follow path aliases during dependency scan, causing duplicate React instances and "Invalid hook call" errors.
+
+**Applies to**: Projects using TypeScript path aliases with React SSR
+
+### Use crypto.randomUUID() Instead of uuid Package
+
+**Source**: [workers-sdk #11957](https://github.com/cloudflare/workers-sdk/issues/11957)
+
+The `uuid@11` package (ESM) can cause runtime crashes with "fileURLToPath undefined" in Workers. Use the native Web Crypto API instead:
+
+```typescript
+// ✅ Native Workers API (recommended)
+const uuid = crypto.randomUUID();
+
+// ❌ Avoid uuid package in Workers
+import { v4 as uuidv4 } from 'uuid';  // May crash
+```
+
+**Applies to**: All Workers projects needing UUIDs
+
+
 ## Commands
 
 ### `/deploy` - One-Command Deploy Pipeline
@@ -284,5 +408,9 @@ const { valid, userId } = await env.AUTH.verifyToken(authHeader)
 
 ## Production Validation
 
-**Live Example**: https://cloudflare-worker-base-test.webfonts.workers.dev (build time: 45 min, 0 errors, all 8 issues prevented)
+**Live Example**: https://cloudflare-worker-base-test.webfonts.workers.dev (build time: 45 min, 0 errors, all 10 issues prevented)
+
+---
+
+**Last verified**: 2026-01-20 | **Skill version**: 3.1.0 | **Changes**: Added Vite 8 nodejs_compat workaround (Issue #9), Vite base option regression (Issue #10), auto-provisioning edge case warning, troubleshooting section for cache corruption, and community tips for vite-tsconfig-paths v6 and uuid package alternatives. Research conducted by skill-researcher agent covering post-May 2025 Workers SDK updates.
 

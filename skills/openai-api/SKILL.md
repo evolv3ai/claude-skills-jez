@@ -1,17 +1,17 @@
 ---
 name: openai-api
 description: |
-  Build with OpenAI stateless APIs - Chat Completions (GPT-5.2, o3), Realtime voice, Batch API (50% savings), Embeddings, DALL-E 3, Whisper, and TTS.
+  Build with OpenAI stateless APIs - Chat Completions (GPT-5.2, o3), Realtime voice, Batch API (50% savings), Embeddings, DALL-E 3, Whisper, and TTS. Prevents 16 documented errors.
 
-  Use when: implementing GPT-5 chat, streaming, function calling, embeddings for RAG, or troubleshooting rate limits (429), API errors.
+  Use when: implementing GPT-5 chat, streaming, function calling, embeddings for RAG, or troubleshooting rate limits (429), API errors, TypeScript issues, model name errors.
 user-invocable: true
 ---
 
 # OpenAI API - Complete Guide
 
 **Version**: Production Ready ✅
-**Package**: openai@6.15.0
-**Last Updated**: 2026-01-09
+**Package**: openai@6.16.0
+**Last Updated**: 2026-01-20
 
 ---
 
@@ -46,8 +46,10 @@ user-invocable: true
 11. [Moderation API](#moderation-api)
 12. [Error Handling](#error-handling)
 13. [Rate Limits](#rate-limits)
-14. [Production Best Practices](#production-best-practices)
-15. [Relationship to openai-responses](#relationship-to-openai-responses)
+14. [Common Mistakes & Gotchas](#common-mistakes--gotchas)
+15. [TypeScript Gotchas](#typescript-gotchas)
+16. [Production Best Practices](#production-best-practices)
+17. [Relationship to openai-responses](#relationship-to-openai-responses)
 
 ---
 
@@ -56,7 +58,7 @@ user-invocable: true
 ### Installation
 
 ```bash
-npm install openai@6.15.0
+npm install openai@6.16.0
 ```
 
 ### Environment Setup
@@ -235,7 +237,7 @@ const completion = await openai.chat.completions.create({
 
 Controls thinking depth (GPT-5/5.1/5.2):
 - **"none"**: No reasoning (fastest) - GPT-5.1/5.2 default
-- **"minimal"**: Quick responses
+- **"minimal"**: Quick responses *(Note: May not be available - [Issue #1690](https://github.com/openai/openai-node/issues/1690))*
 - **"low"**: Basic reasoning
 - **"medium"**: Balanced - GPT-5 default
 - **"high"**: Deep reasoning
@@ -739,6 +741,8 @@ const moderation = await openai.moderations.create({
 
 Low-latency voice and audio interactions via WebSocket/WebRTC. GA August 28, 2025.
 
+**Update (Feb 2025)**: Concurrent session limit removed - unlimited simultaneous connections now supported.
+
 ### WebSocket Connection
 
 ```typescript
@@ -798,7 +802,9 @@ ws.send(JSON.stringify({
 
 ## Batch API (50% Cost Savings)
 
-Process large volumes with 24-hour turnaround at 50% lower cost.
+Process large volumes with 24-hour maximum turnaround at 50% lower cost.
+
+**Note**: While the completion window is 24 hours maximum, jobs often complete much faster (reports show completion in under 1 hour for tasks estimated at 10+ hours).
 
 ### Create Batch
 
@@ -889,6 +895,123 @@ response.headers.get('x-ratelimit-reset-requests');
 
 ---
 
+## Common Mistakes & Gotchas
+
+### Mistake #1: Using Wrong Model Name "gpt-5.1-mini"
+
+**Error**: `400 The requested model 'gpt-5.1-mini' does not exist`
+**Source**: [GitHub Issue #1706](https://github.com/openai/openai-node/issues/1706)
+
+**Wrong**:
+```typescript
+model: 'gpt-5.1-mini' // Does not exist
+```
+
+**Correct**:
+```typescript
+model: 'gpt-5-mini' // Correct (no .1 suffix)
+```
+
+Available GPT-5 series models:
+- `gpt-5`, `gpt-5-mini`, `gpt-5-nano`
+- `gpt-5.1`, `gpt-5.2`
+- Note: No `gpt-5.1-mini` or `gpt-5.2-mini` - mini variant doesn't have .1/.2 versions
+
+### Mistake #2: Embeddings Dimension Mismatch
+
+**Error**: `ValueError: shapes (0,256) and (1536,) not aligned`
+
+Ensure vector database dimensions match embeddings API `dimensions` parameter:
+
+```typescript
+// ❌ Wrong - missing dimensions, returns 1536 default
+const embedding = await openai.embeddings.create({
+  model: 'text-embedding-3-small',
+  input: 'text',
+});
+
+// ✅ Correct - specify dimensions to match database
+const embedding = await openai.embeddings.create({
+  model: 'text-embedding-3-small',
+  input: 'text',
+  dimensions: 256, // Match your vector database config
+});
+```
+
+### Mistake #3: Forgetting reasoning_effort When Upgrading to GPT-5.1/5.2
+
+**Issue**: GPT-5.1 and GPT-5.2 default to `reasoning_effort: 'none'` (breaking change from GPT-5)
+
+```typescript
+// GPT-5 (defaults to 'medium')
+model: 'gpt-5' // Automatic reasoning
+
+// GPT-5.1 (defaults to 'none')
+model: 'gpt-5.1' // NO reasoning unless specified!
+reasoning_effort: 'medium' // Must add explicitly
+```
+
+---
+
+## TypeScript Gotchas
+
+### Gotcha #1: usage Field May Be Null
+
+**Issue**: [GitHub Issue #1402](https://github.com/openai/openai-node/issues/1402)
+
+With `strictNullChecks: true`, the `usage` field may cause type errors:
+
+```typescript
+// ❌ TypeScript error with strictNullChecks
+const tokens = completion.usage.total_tokens;
+
+// ✅ Use optional chaining or null check
+const tokens = completion.usage?.total_tokens ?? 0;
+
+// Or explicit check
+if (completion.usage) {
+  const tokens = completion.usage.total_tokens;
+}
+```
+
+### Gotcha #2: text_tokens and image_tokens Not Typed
+
+**Issue**: [GitHub Issue #1718](https://github.com/openai/openai-node/issues/1718)
+
+Multimodal requests include `text_tokens` and `image_tokens` fields not in TypeScript types:
+
+```typescript
+// These fields exist but aren't typed
+const usage = completion.usage as any;
+console.log(usage.text_tokens);
+console.log(usage.image_tokens);
+```
+
+### Gotcha #3: Zod Unions Broken in v4.1.13+
+
+**Issue**: [GitHub Issue #1709](https://github.com/openai/openai-node/issues/1709)
+
+Using `zodResponseFormat()` with Zod 4.1.13+ breaks union type conversion:
+
+```typescript
+// ❌ Broken with Zod 4.1.13+
+const schema = z.object({
+  status: z.union([z.literal('success'), z.literal('error')]),
+});
+
+// ✅ Workaround: Use enum instead
+const schema = z.object({
+  status: z.enum(['success', 'error']),
+});
+```
+
+**Alternatives**:
+1. Downgrade to Zod 4.1.12
+2. Use enum instead of union
+3. Manually construct JSON schema
+
+---
+
 ## Production Best Practices
 
 **Security**: Never expose API keys client-side, use server-side proxy, store keys in environment variables.
@@ -955,7 +1078,7 @@ response.headers.get('x-ratelimit-reset-requests');
 ## Dependencies
 
 ```bash
-npm install openai@6.15.0
+npm install openai@6.16.0
 ```
 
 **Environment**: `OPENAI_API_KEY=sk-...`
@@ -1009,5 +1132,6 @@ See `/planning/research-logs/openai-api.md` for complete research notes.
 ---
 
 **Token Savings**: ~60% (12,500 tokens saved vs manual implementation)
-**Errors Prevented**: 10+ documented common issues
+**Errors Prevented**: 16 documented common issues (6 new from Jan 2026 research)
 **Production Tested**: Ready for immediate use
+**Last Verified**: 2026-01-20 | **Skill Version**: 2.1.0 | **Changes**: Added TypeScript gotchas, common mistakes, and TIER 1-2 findings from community research

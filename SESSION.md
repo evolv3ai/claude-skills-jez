@@ -1,65 +1,74 @@
 # Current Session
 
 **Project**: Claude Skills Repository
-**Focus**: `office` Skill - TypeScript Document Generation
-**Started**: 2026-01-12
-**Last Updated**: 2026-01-12
+**Focus**: Community Knowledge Research - Edge Cases & Gotchas
+**Started**: 2026-01-20
+**Last Updated**: 2026-01-20
 **Last Checkpoint**: [none yet]
 
 **Planning Docs**:
-- `docs/IMPLEMENTATION_PHASES-office.md`
-- `planning/PROJECT_BRIEF-office-skill.md`
+- `planning/SKILL_RESEARCH_SESSION.md` - Research queue (87 skills)
+- `planning/RESEARCH_FINDINGS_claude-agent-sdk.md` - Example output
 
 ---
 
-## office Skill: Phase 1 - Skill Scaffolding ✅
+## New QA Agents Created
 
-**Type**: Setup | **Completed**: 2026-01-12
-**Summary**: Created full skill with comprehensive patterns (accelerated Phases 1-4)
+### skill-researcher (2026-01-20)
+Discovers edge cases, gotchas, and community knowledge from:
+- GitHub issues/discussions (primary)
+- Stack Overflow (high-upvote answers)
+- Developer blogs (verified authors)
 
-**Completed**:
-- [x] Directory structure (rules/, templates/, references/, scripts/)
-- [x] SKILL.md with full DOCX, XLSX, PDF patterns
-- [x] README.md with comprehensive keywords
-- [x] rules/office.md with correction patterns
-- [x] Verified YAML frontmatter (414 chars, valid)
+Uses **trust tier system** (TIER 1-4) to classify findings.
 
-## Phase 2-4: Document Patterns ✅ (Merged into Phase 1)
+### skill-findings-applier (2026-01-20)
+Applies structured research findings to skills:
+- Adds TIER 1-2 findings to Known Issues
+- Expands existing issues with new info
+- Updates metadata (error count, version)
 
-SKILL.md already contains complete patterns for:
-- DOCX: Headings, paragraphs, tables, images, export
-- XLSX: Arrays, JSON, formulas, multiple sheets, export
-- PDF: Text, fonts, images, shapes, forms, merge
-
-## Phase 5: Templates & References 🔄
-
-**Type**: Implementation | **Started**: 2026-01-12
-**Spec**: `docs/IMPLEMENTATION_PHASES-office.md#phase-5`
-
-**Progress**:
-- [ ] Create `templates/docx-basic.ts`
-- [ ] Create `templates/xlsx-basic.ts`
-- [ ] Create `templates/pdf-basic.ts`
-- [ ] Create `templates/workers-pdf.ts`
-- [ ] Create `references/docx-api.md`
-- [ ] Create `references/xlsx-api.md`
-- [ ] Create `references/pdf-lib-api.md`
-- [ ] Create `scripts/verify-deps.sh`
-
-**Next Action**: Create template files starting with `templates/docx-basic.ts`
-
-**Key Files**:
-- `skills/office/templates/`
-- `skills/office/references/`
-
-**Known Issues**: None
-
-## Phase 6: Polish & Marketplace ⏸️
-**Spec**: `docs/IMPLEMENTATION_PHASES-office.md#phase-6`
+**Workflow**: `skill-researcher` → `RESEARCH_FINDINGS_*.md` → `skill-findings-applier` → Updated skill
 
 ---
 
-## Previous Session: January 2026 Audit
+## Research Progress
+
+### Completed (9 skills)
+| Skill | Date | Findings | Applied |
+|-------|------|----------|---------|
+| claude-agent-sdk | 2026-01-20 | 8 (5 T1, 2 T2, 1 T3) | ✅ v3.0→3.1 |
+| cloudflare-worker-base | 2026-01-20 | 12 (8 T1, 2 T2, 2 T3) | ✅ v3.0→3.1 |
+| cloudflare-d1 | 2026-01-20 | 15 (8 T1, 4 T2, 3 T3) | ✅ v2.x→3.0 |
+| ai-sdk-core | 2026-01-20 | 18 (12 T1, 3 T2, 3 T3) | ✅ v2.0→2.1 |
+| openai-api | 2026-01-20 | 14 (8 T1, 4 T2, 2 T3) | ✅ v2.0→2.1 |
+| cloudflare-r2 | 2026-01-20 | 14 (8 T1, 3 T2, 3 T3) | ✅ v1.0→2.0 |
+| cloudflare-kv | 2026-01-20 | 11 (7 T1, 2 T2, 2 T3) | ✅ 4→6 errors |
+| ai-sdk-ui | 2026-01-20 | 17 (12 T1, 3 T2, 2 T3) | ✅ v2.x→3.1 |
+| tailwind-v4-shadcn | 2026-01-20 | 15 (6 T1, 6 T2, 2 T3) | ✅ v2.0→3.0 |
+| claude-api | 2026-01-20 | 15 (8 T1, 4 T2, 2 T3) | ✅ v2.1→2.2 |
+| clerk-auth | 2026-01-20 | 11 (7 T1, 2 T2, 2 T3) | ✅ v3.0→3.1 |
+| hono-routing | 2026-01-20 | 12 (7 T1, 3 T2, 2 T3) | ✅ v3.0→3.1 |
+| tanstack-query | 2026-01-20 | 12 (8 T1, 2 T2, 2 T3) | ✅ 8→16 errors |
+| tanstack-router | 2026-01-20 | 18 (12 T1, 3 T2, 2 T3) | ✅ 8→20 errors |
+| react-hook-form-zod | 2026-01-20 | 16 (11 T1, 3 T2, 2 T3) | ✅ 12→20 errors |
+| drizzle-orm-d1 | 2026-01-20 | 9 (6 T1, 2 T2, 1 T3) | ✅ 12→18 errors |
+
+### HIGH Priority - COMPLETE ✅
+
+See `planning/SKILL_RESEARCH_SESSION.md` for full queue.
+
+---
+
+## Commits This Session
+
+| Hash | Description |
+|------|-------------|
+| (pending) | feat(claude-agent-sdk): v3.1.0 with community findings |
+
+---
+
+## Previous Session: office Skill (2026-01-12)
 
 **Status**: ✅ COMPLETE
 

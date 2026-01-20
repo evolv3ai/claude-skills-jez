@@ -1,9 +1,9 @@
 ---
 name: claude-agent-sdk
 description: |
-  Build autonomous AI agents with Claude Agent SDK. Structured outputs guarantee JSON schema validation, with plugins system and hooks for event-driven workflows. Prevents 12 documented errors.
+  Build autonomous AI agents with Claude Agent SDK. Structured outputs guarantee JSON schema validation, with plugins system and hooks for event-driven workflows. Prevents 14 documented errors.
 
-  Use when: building coding agents, SRE systems, security auditors, or troubleshooting CLI not found, structured output validation, session forking errors.
+  Use when: building coding agents, SRE systems, security auditors, or troubleshooting CLI not found, structured output validation, session forking errors, MCP config issues, subagent cleanup.
 user-invocable: true
 ---
 
@@ -358,6 +358,41 @@ agents: {
   }
 }
 ```
+
+### ⚠️ Subagent Cleanup Warning
+
+**Known Issue**: Subagents don't stop when parent agent stops ([Issue #132](https://github.com/anthropics/claude-agent-sdk-typescript/issues/132))
+
+When a parent agent is stopped (via cancellation or error), spawned subagents continue running as orphaned processes. This can lead to:
+- Resource leaks
+- Continued tool execution after parent stopped
+- RAM out-of-memory in recursive scenarios ([Claude Code Issue #4850](https://github.com/anthropics/claude-code/issues/4850))
+
+**Workaround**: Implement cleanup in Stop hooks:
+
+```typescript
+const response = query({
+  prompt: "Deploy to production",
+  options: {
+    agents: {
+      "deployer": {
+        description: "Handle deployments",
+        prompt: "Deploy the application",
+        tools: ["Bash"]
+      }
+    },
+    hooks: {
+      Stop: async (input) => {
+        // Manual cleanup of spawned processes
+        console.log("Parent stopped - cleaning up subagents");
+        // Implement process tracking and termination
+      }
+    }
+  }
+});
+```
+
+**Enhancement Tracking**: [Issue #142](https://github.com/anthropics/claude-agent-sdk-typescript/issues/142) proposes auto-termination
 
 ---
 
@@ -733,7 +768,7 @@ for await (const message of response) {
 
 ## Known Issues Prevention
 
-This skill prevents **12** documented issues:
+This skill prevents **14** documented issues:
 
 ### Issue #1: CLI Not Found Error
 **Error**: `"Claude Code CLI not installed"`
@@ -753,11 +788,47 @@ This skill prevents **12** documented issues:
 **Why It Happens**: Tool not allowed by permissions
 **Prevention**: Use `allowedTools` or custom `canUseTool` callback
 
-### Issue #4: Context Length Exceeded
+### Issue #4: Context Length Exceeded (Session-Breaking)
 **Error**: `"Prompt too long"`
-**Source**: Input exceeds model context window
+**Source**: Input exceeds model context window ([Issue #138](https://github.com/anthropics/claude-agent-sdk-typescript/issues/138))
 **Why It Happens**: Large codebase, long conversations
-**Prevention**: SDK auto-compacts, but reduce context if needed
+
+**⚠️ Critical Behavior**: Once a session hits context limit:
+1. All subsequent requests to that session return "Prompt too long"
+2. `/compact` command fails with same error
+3. **Session is permanently broken and must be abandoned**
+
+**Prevention Strategies**:
+
+```typescript
+// 1. Proactive session forking (create checkpoints before hitting limit)
+const checkpoint = query({
+  prompt: "Checkpoint current state",
+  options: {
+    resume: sessionId,
+    forkSession: true  // Create branch before hitting limit
+  }
+});
+
+// 2. Monitor time and rotate sessions proactively
+const MAX_SESSION_TIME = 80 * 60 * 1000;  // 80 minutes (before 90-min crash)
+let sessionStartTime = Date.now();
+
+function shouldRotateSession() {
+  return Date.now() - sessionStartTime > MAX_SESSION_TIME;
+}
+
+// 3. Start new sessions before hitting context limits
+if (shouldRotateSession()) {
+  const summary = await getSummary(currentSession);
+  const newSession = query({
+    prompt: `Continue with context: ${summary}`
+  });
+  sessionStartTime = Date.now();
+}
+```
+
+**Note**: SDK auto-compacts, but if limit is reached, session becomes unrecoverable
 
 ### Issue #5: Tool Execution Timeout
 **Error**: Tool doesn't respond
@@ -807,6 +878,57 @@ This skill prevents **12** documented issues:
 **Why It Happens**: Path outside `workingDirectory` or no permissions
 **Prevention**: Set correct `workingDirectory`, check file permissions
 
+### Issue #13: MCP Server Config Missing `type` Field
+**Error**: `"Claude Code process exited with code 1"` (cryptic, no context)
+**Source**: [GitHub Issue #131](https://github.com/anthropics/claude-agent-sdk-typescript/issues/131)
+**Why It Happens**: URL-based MCP servers require explicit `type: "http"` or `type: "sse"` field
+**Prevention**: Always specify transport type for URL-based MCP servers
+
+```typescript
+// ❌ Wrong - missing type field (causes cryptic exit code 1)
+mcpServers: {
+  "my-server": {
+    url: "https://api.example.com/mcp"
+  }
+}
+
+// ✅ Correct - type field required for URL-based servers
+mcpServers: {
+  "my-server": {
+    url: "https://api.example.com/mcp",
+    type: "http"  // or "sse" for Server-Sent Events
+  }
+}
+```
+
+**Diagnostic Clue**: If you see "process exited with code 1" with no other context, check your MCP server configuration for missing `type` fields.
+
+### Issue #14: MCP Tool Result with Unicode Line Separators
+**Error**: JSON parse error, agent hangs
+**Source**: [GitHub Issue #137](https://github.com/anthropics/claude-agent-sdk-typescript/issues/137)
+**Why It Happens**: Unicode U+2028 (line separator) and U+2029 (paragraph separator) are valid in JSON but break JavaScript parsing
+**Prevention**: Escape these characters in MCP tool results
+
+```typescript
+// MCP tool handler - sanitize external data
+tool("fetch_content", "Fetch text content", {}, async (args) => {
+  const content = await fetchExternalData();
+
+  // ✅ Sanitize Unicode line/paragraph separators
+  const sanitized = content
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+
+  return {
+    content: [{ type: "text", text: sanitized }]
+  };
+});
+```
+
+**When This Matters**: External data sources (APIs, web scraping, user input) that may contain these characters
+
+**Related**: [MCP Python SDK Issue #1356](https://github.com/modelcontextprotocol/python-sdk/issues/1356)
+
 ---
 
 ## Official Documentation
@@ -824,9 +946,9 @@ This skill prevents **12** documented issues:
 - **With skill**: ~4,500 tokens (comprehensive v0.2.12 coverage + error prevention + advanced patterns)
 - **Savings**: ~70% (~10,500 tokens)
 
-**Errors prevented**: 12 documented issues with exact solutions
-**Key value**: V2 Session APIs, Sandbox Settings, File Checkpointing, Query methods, AskUserQuestion tool, structured outputs (v0.1.45+), session forking, canUseTool patterns, complete hooks system (12 events), Zod v4 support
+**Errors prevented**: 14 documented issues with exact solutions (including 2 community-sourced gotchas)
+**Key value**: V2 Session APIs, Sandbox Settings, File Checkpointing, Query methods, AskUserQuestion tool, structured outputs (v0.1.45+), session forking, canUseTool patterns, complete hooks system (12 events), Zod v4 support, subagent cleanup patterns
 
 ---
 
-**Last verified**: 2026-01-20 | **Skill version**: 3.0.0 | **Changes**: Updated SDK to 0.2.12, added V2 Session APIs, Sandbox Settings, File Checkpointing, Query methods, AskUserQuestion tool, tools preset config, betas option, systemPrompt preset, complete hooks system (12 events), Zod v4 support
+**Last verified**: 2026-01-20 | **Skill version**: 3.1.0 | **Changes**: Added Issue #13 (MCP type field), Issue #14 (Unicode U+2028/U+2029), expanded Issue #4 (session-breaking), added subagent cleanup warning with Stop hook pattern

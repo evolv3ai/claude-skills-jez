@@ -1,8 +1,8 @@
-# AI SDK UI - Top 12 Errors & Solutions
+# AI SDK UI - Top 18 Errors & Solutions
 
 Common AI SDK UI errors with actionable solutions.
 
-**Last Updated**: 2025-10-22
+**Last Updated**: 2026-01-20
 
 ---
 
@@ -141,25 +141,46 @@ const reader = response.body.getReader();  // Don't do this!
 
 ## 7. Stale Body Values with useChat
 
-**Cause**: `body` captured at first render only.
+**Error**: API receives outdated values for dynamic context (user ID, session data, feature flags)
 
-**Solution**:
+**Source**: [GitHub Issue #7819](https://github.com/vercel/ai/issues/7819)
+
+**Cause**: `body` and transport options captured at first render only. The `useChat` hook stores options in a `useRef` that only updates if the `id` prop changes. The `shouldRecreateChat` check doesn't detect deep option changes.
+
+**Solution 1 (Recommended by maintainer)**: Pass data in `sendMessage`
 ```tsx
-// ❌ BAD: body captured once
-const { userId } = useUser();
-const { messages } = useChat({
-  body: { userId },  // Stale! Won't update if userId changes
-});
-
-// ✅ GOOD: Use data in sendMessage
 const { userId } = useUser();
 const { messages, sendMessage } = useChat();
 
 sendMessage({
   content: input,
-  data: { userId },  // Fresh value on each send
+  data: { userId },  // ✅ Fresh value on each send
 });
 ```
+
+**Solution 2**: Use `useRef` for dynamic transport
+```tsx
+const bodyRef = useRef(body);
+bodyRef.current = body; // Update on each render
+
+useChat({
+  transport: new DefaultChatTransport({
+    body: () => bodyRef.current, // ✅ Always fresh
+  }),
+});
+```
+
+**Solution 3**: Change `useChat` id to force recreation (not recommended)
+```tsx
+useChat({
+  id: `${sessionId}-${taskId}-${userId}`, // Forces recreation on changes
+  body: { taskId, userId },
+});
+```
+
+**Maintainer Note**: "We are aware that this is a problem. We just couldn't prioritize it yet, sorry. At least there is a workaround, albeit gross 😁" - @gr2m
+
+**Related Issues**: [#11686](https://github.com/vercel/ai/issues/11686) (stale closures in onData/onFinish), [#8956](https://github.com/vercel/ai/issues/8956) (transport doesn't update)
 
 ---
 
@@ -293,6 +314,201 @@ message.toolCalls  // Doesn't exist in v5
 
 ---
 
+## 13. TypeError with resume: true and onFinish
+
+**Error**: `TypeError: Cannot read properties of undefined (reading 'state')`
+
+**Source**: [GitHub Issue #8477](https://github.com/vercel/ai/issues/8477)
+
+**Cause**: When using `resume: true` with an `onFinish` callback, navigating away mid-stream and then resuming causes `this.activeResponse` to become undefined. This happens because concurrent `makeRequest` calls overwrite the reference.
+
+**Reproduction**:
+```tsx
+const { messages, sendMessage } = useChat({
+  api: '/api/chat',
+  resume: true,
+  onFinish: (message) => {
+    console.log('Finished:', message);
+  },
+});
+
+// 1. Start streaming
+// 2. Navigate to new page
+// 3. Resume stream → TypeError
+```
+
+**Workaround**: Use patch-package to capture `activeResponse` locally in the finally block:
+```typescript
+// In ai package (dist/index.mjs)
+let activeResponse;
+try {
+  activeResponse = {
+    state: createStreamingUIMessageState({ /* ... */ })
+  };
+  // ... rest of makeRequest
+} finally {
+  if (activeResponse) { // ✅ Check before accessing
+    this.onFinish?.call(this, {
+      message: activeResponse.state.message,
+      // ...
+    });
+  }
+}
+```
+
+**Status**: A PR was opened (#8689) but closed without explanation. Community using patch-package workaround.
+
+---
+
+## 14. Concurrent sendMessage Calls Cause State Corruption
+
+**Error**: `TypeError: Cannot read properties of undefined (reading 'state')`
+
+**Source**: [GitHub Issue #11024](https://github.com/vercel/ai/issues/11024)
+
+**Cause**: Calling `sendMessage()` before the previous request finishes streaming overwrites `this.activeResponse`, causing state corruption. The SDK doesn't guard against concurrent requests.
+
+**Reproduction**:
+```tsx
+const { sendMessage, isLoading } = useChat();
+
+// Rapid double-click or programmatic double-send
+sendMessage({ content: 'First' });
+sendMessage({ content: 'Second' }); // ❌ Overwrites activeResponse
+```
+
+**Solution**: Guard against concurrent sends
+```tsx
+const [isSending, setIsSending] = useState(false);
+
+const handleSend = async (content: string) => {
+  if (isSending) return; // ✅ Block concurrent calls
+  setIsSending(true);
+  try {
+    await sendMessage({ content });
+  } finally {
+    setIsSending(false);
+  }
+};
+```
+
+**Maintainer Response**: "Simply restrict sending request until in flight requests finish streaming response"
+
+---
+
+## 15. Tool Approval with onFinish Callback Breaks Workflow
+
+**Error**: TypeError when calling `sendMessage()` or `regenerate()` inside callbacks
+
+**Source**: [GitHub Issue #10169](https://github.com/vercel/ai/issues/10169)
+
+**Cause**: When using `needsApproval` tools with `onFinish` or `onError` callbacks, calling `sendMessage()` or `regenerate()` inside the callback triggers the TypeError from Issue #13. The callback runs synchronously within stream finalization, and re-entering `makeRequest` corrupts `activeResponse`.
+
+**Reproduction**:
+```tsx
+const { sendMessage, regenerate } = useChat({
+  onFinish: () => {
+    void sendMessage({ content: 'Continue...' }); // ❌ Breaks
+  },
+  onError: () => {
+    void regenerate(); // ❌ Breaks
+  },
+});
+```
+
+**Solution**: Defer the call to next tick
+```tsx
+const { sendMessage } = useChat({
+  onFinish: () => {
+    queueMicrotask(() => {
+      void sendMessage({ content: 'Continue...' }); // ✅ Works
+    });
+  },
+});
+```
+
+---
+
+## 16. ZodError "Message must contain at least one part" When Stopping Stream Early
+
+**Error**: `ZodError: Message must contain at least one part`
+
+**Source**: [GitHub Issue #11444](https://github.com/vercel/ai/issues/11444)
+
+**Cause**: When using `createAgentUIStreamResponse` with `validateUIMessage`, calling `stop()` before the AI generates any response parts creates an empty assistant message. The validation function requires at least one part.
+
+**Reproduction**:
+```tsx
+const { messages, stop } = useChat({
+  api: '/api/chat', // Uses createAgentUIStreamResponse + validateUIMessage
+});
+
+// User stops immediately after sending
+stop(); // ❌ ZodError if no parts generated yet
+```
+
+**Solution**: Filter out empty messages before validation
+```typescript
+// In API route
+const filteredMessages = messages.filter(m => m.parts && m.parts.length > 0);
+const validMessages = validateUIMessages(filteredMessages);
+```
+
+**Maintainer Response**: Suggested filtering empty messages before sending to `validateUIMessages`.
+
+---
+
+## 17. convertToModelMessages Fails with Tool Approval Parts
+
+**Error**: `Error: no tool invocation found for tool call [id]`
+
+**Source**: [GitHub Issue #9968](https://github.com/vercel/ai/issues/9968)
+
+**Cause**: When using `convertToModelMessages` with messages containing tool approval parts (`tool-approval-request`, `tool-approval-response`), the function doesn't properly handle the three-part approval flow structure.
+
+**Reproduction**:
+```tsx
+const tools = { myTool };
+const convertedMessages = convertToModelMessages(messages, { tools });
+
+// ❌ Error: no tool invocation found for tool call toolu_123
+// Message structure:
+// - tool-call part
+// - tool-approval-request part
+// - tool-approval-response part (approved: true)
+// - (expects tool-result but conversion fails before that)
+```
+
+**Status**: Issue is still open. Maintainer suggested passing tools in second arg but multiple users confirm it doesn't fix the issue.
+
+**Additional Symptom**: UI shows duplicate assistant messages with same message ID when this error occurs.
+
+---
+
+## 18. Passing undefined id to useChat Causes Infinite Rerenders
+
+**Error**: Component enters infinite rerender loop
+
+**Source**: [GitHub Issue #8087](https://github.com/vercel/ai/issues/8087) (Community-sourced)
+
+**Cause**: Passing `id: undefined` to `useChat` causes infinite rerenders. This can happen accidentally when using conditional logic to compute the id.
+
+**Reproduction**:
+```tsx
+const chatId = someCondition ? 'chat-123' : undefined;
+useChat({ id: chatId }); // ❌ Infinite loop if undefined
+```
+
+**Solution**: Always provide a stable id
+```tsx
+const chatId = someCondition ? 'chat-123' : 'default';
+useChat({ id: chatId }); // ✅
+```
+
+**Verification**: Single report, matches expected behavior of useRef with undefined key.
+
+---
+
 ## For More Errors
 
 See complete error reference (28 total types):
@@ -300,4 +516,4 @@ https://ai-sdk.dev/docs/reference/ai-sdk-errors
 
 ---
 
-**Last Updated**: 2025-10-22
+**Last Updated**: 2026-01-20

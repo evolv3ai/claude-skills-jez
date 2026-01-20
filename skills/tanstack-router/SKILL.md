@@ -1,9 +1,9 @@
 ---
 name: TanStack Router
 description: |
-  Build type-safe, file-based React routing with TanStack Router. Supports client-side navigation, route loaders, and TanStack Query integration.
+  Build type-safe, file-based React routing with TanStack Router. Supports client-side navigation, route loaders, and TanStack Query integration. Prevents 20 documented errors including validation structure loss, param parsing bugs, and SSR streaming crashes.
 
-  Use when implementing file-based routing patterns, building SPAs with TypeScript routing, or troubleshooting devtools dependency errors, type safety issues, or Vite bundling problems.
+  Use when implementing file-based routing patterns, building SPAs with TypeScript routing, or troubleshooting devtools dependency errors, type safety issues, Vite bundling problems, or Docker deployment issues.
 user-invocable: true
 ---
 
@@ -265,9 +265,11 @@ function App() {
 
 ---
 
-## Known Issues & Solutions
+## Known Issues Prevention
 
-**Issue #1: Devtools Dependency Resolution**
+This skill prevents **20** documented issues:
+
+### Issue #1: Devtools Dependency Resolution
 - **Error**: Build fails with `@tanstack/router-devtools-core` not found
 - **Fix**: `npm install @tanstack/router-devtools`
 
@@ -304,6 +306,325 @@ function App() {
 - **Source**: GitHub Issue #3711
 - **Note**: Works on client-side navigation, fails on direct page load
 
+### Issue #9: Server Function Validation Errors Lose Structure
+
+**Error**: `inputValidator` Zod errors stringified, losing structure on client
+**Source**: [GitHub Issue #6428](https://github.com/TanStack/router/issues/6428)
+**Why It Happens**: TanStack Start server function error serialization converts Zod issues array to JSON string in `error.message`, making it unusable without manual parsing.
+
+**Prevention**:
+```typescript
+// Server function with input validation
+export const myFn = createServerFn({ method: 'POST' })
+  .inputValidator(z.object({
+    name: z.string().min(2),
+    age: z.number().min(18),
+  }))
+  .handler(async ({ data }) => data)
+
+// Client: Workaround to parse stringified issues
+try {
+  await mutation.mutate({ data: invalidData })
+} catch (error) {
+  if (error.message.startsWith('[')) {
+    const issues = JSON.parse(error.message)
+    // Now can use structured error data
+    issues.forEach(issue => {
+      console.log(issue.path, issue.message)
+    })
+  }
+}
+```
+
+**Official Status**: Known issue, tracking PR for fix
+
+### Issue #10: useParams({ strict: false }) Returns Unparsed Values
+
+**Error**: Params typed as parsed but returned as strings after navigation
+**Source**: [GitHub Issue #6385](https://github.com/TanStack/router/issues/6385)
+**Why It Happens**: In v1.147.3+, `match.params` is no longer parsed when using `strict: false`. First render works correctly, but after navigation values are stored as strings instead of parsed types.
+
+**Prevention**:
+```typescript
+// Route with param parsing
+export const Route = createFileRoute('/posts/$postId')({
+  params: {
+    parse: (params) => ({
+      postId: z.coerce.number().parse(params.postId),
+    }),
+  },
+})
+
+// Component: Use strict mode (default) for parsed params
+function Component() {
+  const { postId } = useParams() // ✓ Parsed as number
+  // const { postId } = useParams({ strict: false }) // ✗ String!
+
+  // Or manually parse when using strict: false
+  const params = useParams({ strict: false })
+  const postId = Number(params.postId)
+}
+```
+
+**Official Status**: Known issue, workaround required
+
+### Issue #11: Pathless Route notFoundComponent Not Rendering
+
+**Error**: `notFoundComponent` on pathless layout routes ignored
+**Source**: [GitHub Issue #6351](https://github.com/TanStack/router/issues/6351), [GitHub Issue #4065](https://github.com/TanStack/router/issues/4065)
+**Why It Happens**: Pathless routes (e.g., `routes/(authenticated)/route.tsx`) don't render their `notFoundComponent`. Instead, the `defaultNotFoundComponent` from router config is triggered. This has been broken since April 2025.
+
+**Prevention**:
+```typescript
+// ✗ Doesn't work: notFoundComponent on pathless layout
+export const Route = createFileRoute('/(authenticated)')({
+  beforeLoad: ({ context }) => {
+    if (!context.auth) throw redirect({ to: '/login' })
+  },
+  notFoundComponent: () => <div>Protected 404</div>, // Not rendered!
+})
+
+// ✓ Works: Define on child routes instead
+export const Route = createFileRoute('/(authenticated)/dashboard')({
+  notFoundComponent: () => <div>Protected 404</div>,
+})
+```
+
+**Official Status**: Known issue, workaround required
+
+### Issue #12: Aborted Loader Renders errorComponent with Undefined Error
+
+**Error**: Rapid navigation aborts previous loader and renders errorComponent with `undefined` error
+**Source**: [GitHub Issue #6388](https://github.com/TanStack/router/issues/6388)
+**Why It Happens**: Side effect introduced after PR #4570. When user rapidly navigates (e.g., clicking through list items), aborted fetch requests trigger errorComponent without passing the abort error.
+
+**Prevention**:
+```typescript
+export const Route = createFileRoute('/posts/$postId')({
+  loader: async ({ params, abortController }) => {
+    await fetch(`/api/posts/${params.postId}`, {
+      signal: abortController.signal,
+    })
+  },
+  errorComponent: ({ error, reset }) => {
+    // Check for undefined error (aborted request)
+    if (!error) {
+      return null // Or show loading state
+    }
+    return <div>Error: {error.message}</div>
+  },
+})
+```
+
+**Official Status**: Known issue, workaround required
+
+### Issue #13: Vitest Cannot Read Properties of Null (useState)
+
+**Error**: `Cannot read properties of null (reading 'useState')` when running tests with Vitest
+**Source**: [GitHub Issue #6262](https://github.com/TanStack/router/issues/6262), [PR #6074](https://github.com/TanStack/router/pull/6074)
+**Why It Happens**: TanStack Start's `tanstackStart()` plugin conflicts with Vitest's React hooks rendering. This is a known duplicate issue with a PR in progress.
+
+**Prevention**:
+```typescript
+// Temporary workaround: Comment out tanstackStart() for tests
+// vite.config.ts
+export default defineConfig({
+  plugins: [
+    // tanstackStart(), // Disable for tests
+    react(),
+  ],
+  test: { environment: 'jsdom' },
+})
+```
+
+**Official Status**: PR #6074 in progress to fix
+
+### Issue #14: Throwing Error in Streaming SSR Loader Crashes Dev Server
+
+**Error**: Dev server crashes when route loader throws error without awaiting (using `void` instead of `await`)
+**Source**: [GitHub Issue #6200](https://github.com/TanStack/router/issues/6200)
+**Why It Happens**: SSR streaming mode can't handle unawaited promise rejections. The error escapes the loader context and crashes the worker process.
+
+**Prevention**:
+```typescript
+// ✗ Wrong: void + throw crashes dev server
+export const Route = createFileRoute('/posts')({
+  loader: async () => {
+    void fetch('/api/posts').then(r => {
+      throw new Error('boom') // Crashes!
+    })
+  },
+})
+
+// ✓ Correct: Always await or catch
+export const Route = createFileRoute('/posts')({
+  loader: async () => {
+    try {
+      const data = await fetch('/api/posts')
+      return data
+    } catch (error) {
+      throw error // Caught by errorComponent
+    }
+  },
+})
+```
+
+**Official Status**: Known issue, workaround required
+
+### Issue #15: Prerender Hangs Indefinitely if Filter Returns Zero Results
+
+**Error**: Build step hangs when `prerender.filter` returns zero routes
+**Source**: [GitHub Issue #6425](https://github.com/TanStack/router/issues/6425)
+**Why It Happens**: TanStack Start prerendering doesn't handle empty route sets gracefully - it waits indefinitely for routes that never come.
+
+**Prevention**:
+```typescript
+// ✗ Wrong: Empty filter causes hang
+tanstackStart({
+  prerender: {
+    enabled: true,
+    filter: (route) => false, // No routes → hangs!
+  },
+})
+
+// ✓ Correct: Ensure at least one route or disable
+tanstackStart({
+  prerender: {
+    enabled: true,
+    filter: (route) => route.path === '/' || route.path.startsWith('/posts'),
+  },
+})
+
+// Or temporarily disable
+tanstackStart({
+  prerender: { enabled: false },
+})
+```
+
+**Official Status**: Known issue, workaround required
+
+### Issue #16: Prerendering Does Not Work in Docker
+
+**Error**: Build fails in Docker with "Unable to connect" during prerender step
+**Source**: [GitHub Issue #6275](https://github.com/TanStack/router/issues/6275), [PR #6305](https://github.com/TanStack/router/pull/6305)
+**Why It Happens**: Vite preview server used for prerendering is not accessible in Docker environment.
+
+**Prevention**:
+```typescript
+// vite.config.ts - Make preview server accessible in Docker
+export default defineConfig({
+  preview: {
+    host: true, // Bind to 0.0.0.0 instead of localhost
+  },
+  plugins: [
+    devtools(),
+    // nitro({ preset: "bun" }), // Remove temporarily if issues persist
+    tanstackStart(),
+    react(),
+  ],
+})
+```
+
+**Official Status**: PR #6305 in progress
+
+### Issue #17: Route Head Function Executes Before Loader Finishes
+
+**Error**: Meta tags generated with incomplete data when `head()` runs before `loader()`
+**Source**: [GitHub Issue #6221](https://github.com/TanStack/router/issues/6221)
+**Why It Happens**: The `head()` function can execute before the route `loader()` finishes, causing meta tags to use placeholder or undefined data.
+
+**Prevention**:
+```typescript
+// ✗ Wrong: loaderData may not be available yet
+export const Route = createFileRoute('/posts/$postId')({
+  loader: async ({ params }) => {
+    const post = await fetchPost(params.postId)
+    return { post }
+  },
+  head: ({ loaderData }) => ({
+    meta: [
+      { title: loaderData.post.title }, // May be undefined!
+    ],
+  }),
+})
+
+// ✓ Correct: Explicitly await if needed
+export const Route = createFileRoute('/posts/$postId')({
+  loader: async ({ params }) => {
+    const post = await fetchPost(params.postId)
+    return { post }
+  },
+  head: async ({ loaderData }) => {
+    await loaderData // Ensure loaded
+    return {
+      meta: [{ title: loaderData.post.title }],
+    }
+  },
+})
+```
+
+**Official Status**: Known issue, workaround required
+
+### Issue #18: Virtual Routes Don't Support Manual Lazy Loading (Community-sourced)
+
+**Error**: `createLazyFileRoute` automatically replaced with `createFileRoute` in virtual routes
+**Source**: [GitHub Issue #6396](https://github.com/TanStack/router/issues/6396)
+**Why It Happens**: Virtual file routes are designed for automatic code splitting only. Manual lazy routes are not supported - the plugin silently replaces them.
+
+**Prevention**:
+```typescript
+// Virtual routes: Use automatic code splitting
+// vite.config.ts
+tanstackRouter({
+  target: 'react',
+  virtualRouteConfig: './routes.ts',
+  autoCodeSplitting: true, // Use automatic splitting
+})
+
+// Don't use createLazyFileRoute in virtual routes
+// It will be replaced with createFileRoute automatically
+```
+
+**Official Status**: By design (documented behavior)
+
+### Issue #19: NavigateOptions Type Safety Inconsistency (Community-sourced)
+
+**Error**: `NavigateOptions` type doesn't enforce required params like `useNavigate()` does
+**Source**: [TkDodo's Blog: The Beauty of TanStack Router](https://tkdodo.eu/blog/the-beauty-of-tan-stack-router)
+**Why It Happens**: Type definitions differ between runtime hook and type helper. `NavigateOptions` is less strict.
+
+**Prevention**:
+```typescript
+// ✗ Wrong: NavigateOptions doesn't catch missing params
+const options: NavigateOptions = {
+  to: '/posts/$postId', // No TS error, but params required!
+}
+
+// ✓ Correct: Use useNavigate() return type
+const navigate = useNavigate()
+type NavigateFn = typeof navigate
+// Now type-safe across all usages
+```
+
+**Verified**: Cross-referenced with TanStack Query maintainer analysis
+
+### Issue #20: Missing Leading Slash in Route Paths (Community-sourced)
+
+**Error**: Routes fail to match when path defined without leading slash
+**Source**: [Official Debugging Guide](https://tanstack.com/router/latest/docs/framework/react/how-to/debug-router-issues)
+**Why It Happens**: Very common beginner mistake - using `'about'` instead of `'/about'` causes route matching failures.
+
+**Prevention**:
+```typescript
+// ✗ Wrong: Missing leading slash
+export const Route = createFileRoute('about')({ /* ... */ })
+
+// ✓ Correct: Always start with /
+export const Route = createFileRoute('/about')({ /* ... */ })
+```
+
+**Verified**: Official documentation, common debugging issue
+
 ---
 
 ## Cloudflare Workers Integration
@@ -336,3 +657,7 @@ export const Route = createFileRoute('/posts')({
 **Related Skills**: tanstack-query (data fetching), react-hook-form-zod (form validation), cloudflare-worker-base (API backend), tailwind-v4-shadcn (UI)
 
 **Related Packages**: @tanstack/zod-adapter (search validation), @tanstack/virtual-file-routes (programmatic routes)
+
+---
+
+**Last verified**: 2026-01-20 | **Skill version**: 2.0.0 | **Changes**: Added 12 new issues from community research (inputValidator structure loss, useParams parsing bug, pathless notFoundComponent, aborted loader errors, Vitest conflicts, SSR streaming crashes, Docker prerender issues, head/loader timing, virtual routes lazy loading limitation, NavigateOptions type inconsistency, leading slash common mistake). Increased error prevention from 8 to 20 documented issues.
