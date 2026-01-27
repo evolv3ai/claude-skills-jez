@@ -1,9 +1,9 @@
 ---
 name: elevenlabs-agents
 description: |
-  Build conversational AI voice agents with ElevenLabs Platform. Configure agents, tools, RAG knowledge bases, multi-voice, and Scribe STT across React, React Native, or Swift. Prevents 34 documented errors.
+  Build conversational AI voice agents with ElevenLabs Platform. Configure agents, tools, RAG knowledge bases, agent versioning with A/B testing, and MCP security. React, React Native, or Swift SDKs. Prevents 34 documented errors.
 
-  Use when: building voice agents, AI phone systems, or troubleshooting @11labs deprecated, webhook errors, CSP violations, localhost allowlist, tool parsing errors.
+  Use when: building voice agents, AI phone systems, agent versioning/branching, MCP security, or troubleshooting @11labs deprecated, webhook errors, CSP violations, localhost allowlist, tool parsing errors.
 user-invocable: true
 ---
 
@@ -1126,6 +1126,219 @@ A request must include either prompt.tool_ids or the legacy prompt.tools array �
 
 ---
 
+## 14. Agent Versioning (Jan 2026)
+
+ElevenLabs introduced Agent Versioning in January 2026, enabling git-like version control for conversational AI agents. This allows safe experimentation, A/B testing, and gradual rollouts.
+
+### Core Concepts
+
+| Concept | ID Format | Description |
+|---------|-----------|-------------|
+| **Version** | `agtvrsn_xxxx` | Immutable snapshot of agent config at a point in time |
+| **Branch** | `agtbrch_xxxx` | Isolated development path (like git branches) |
+| **Draft** | Per-user/branch | Work-in-progress changes before committing |
+| **Deployment** | Traffic splits | A/B testing with percentage-based routing |
+
+### Enabling Versioning
+
+```typescript
+// Enable versioning on existing agent
+const agent = await client.conversationalAi.agents.update({
+  agentId: 'your-agent-id',
+  enableVersioningIfNotEnabled: true
+});
+```
+
+**⚠️ Note:** Once enabled, versioning cannot be disabled on an agent.
+
+### Branch Management
+
+```typescript
+// Create a new branch for experimentation
+const branch = await client.conversationalAi.agents.branches.create({
+  agentId: 'your-agent-id',
+  parentVersionId: 'agtvrsn_xxxx',  // Branch from this version
+  name: 'experiment-v2'
+});
+
+// List all branches
+const branches = await client.conversationalAi.agents.branches.list({
+  agentId: 'your-agent-id'
+});
+
+// Delete a branch (must not have active traffic)
+await client.conversationalAi.agents.branches.delete({
+  agentId: 'your-agent-id',
+  branchId: 'agtbrch_xxxx'
+});
+```
+
+### Traffic Deployment (A/B Testing)
+
+Route traffic between branches using percentage splits:
+
+```typescript
+// Deploy 90/10 traffic split
+const deployment = await client.conversationalAi.agents.deployments.create({
+  agentId: 'your-agent-id',
+  deployments: [
+    { branchId: 'agtbrch_main', percentage: 90 },
+    { branchId: 'agtbrch_xxxx', percentage: 10 }
+  ]
+});
+
+// Get current deployment status
+const status = await client.conversationalAi.agents.deployments.get({
+  agentId: 'your-agent-id'
+});
+```
+
+**Use Cases:**
+- **A/B Testing** - Test new prompts on 10% of traffic before full rollout
+- **Gradual Rollouts** - Increase traffic incrementally (10% → 25% → 50% → 100%)
+- **Quick Rollback** - Route 100% back to stable branch if issues detected
+
+### Merging Branches
+
+```typescript
+// Merge successful experiment back to main
+const merge = await client.conversationalAi.agents.branches.merge({
+  agentId: 'your-agent-id',
+  sourceBranchId: 'agtbrch_xxxx',
+  targetBranchId: 'agtbrch_main',
+  archiveSourceBranch: true  // Clean up after merge
+});
+```
+
+### Working with Drafts
+
+Drafts are per-user, per-branch work-in-progress states:
+
+```typescript
+// Get current draft
+const draft = await client.conversationalAi.agents.drafts.get({
+  agentId: 'your-agent-id',
+  branchId: 'agtbrch_xxxx'
+});
+
+// Update draft (changes not yet committed)
+await client.conversationalAi.agents.drafts.update({
+  agentId: 'your-agent-id',
+  branchId: 'agtbrch_xxxx',
+  conversationConfig: {
+    agent: { prompt: { prompt: 'Updated system prompt...' } }
+  }
+});
+
+// Commit draft to create new version
+const version = await client.conversationalAi.agents.drafts.commit({
+  agentId: 'your-agent-id',
+  branchId: 'agtbrch_xxxx',
+  message: 'Improved greeting flow'
+});
+```
+
+### Best Practices
+
+1. **Always test on branch first** - Never experiment directly on production traffic
+2. **Use descriptive branch names** - `feature-multilang`, `fix-timeout-handling`
+3. **Start with small traffic splits** - Begin at 5-10%, monitor metrics, then increase
+4. **Archive merged branches** - Keep repository clean
+5. **Commit messages** - Use clear messages for version history
+
+**Source**: [Agent Versioning Docs](https://elevenlabs.io/docs/agents-platform/customization/personalization/agent-versioning)
+
+---
+
+## 15. MCP Security & Guardrails
+
+When connecting MCP (Model Context Protocol) servers to ElevenLabs agents, security is critical. MCP tools can access databases, APIs, and sensitive data.
+
+### Tool Approval Modes
+
+| Mode | Behavior | Use When |
+|------|----------|----------|
+| **Always Ask** | Explicit approval for every tool execution | Default - recommended for most cases |
+| **Fine-Grained** | Auto-approve trusted ops, require approval for sensitive | Established, trusted MCP servers |
+| **No Approval** | All tool executions auto-approved | Only thoroughly vetted, internal servers |
+
+**Configuration:**
+```typescript
+{
+  "mcp_config": {
+    "server_url": "https://your-mcp-server.com",
+    "approval_mode": "always_ask",  // 'always_ask' | 'fine_grained' | 'no_approval'
+    "fine_grained_rules": [
+      { "tool_name": "read_*", "auto_approve": true },
+      { "tool_name": "write_*", "auto_approve": false },
+      { "tool_name": "delete_*", "auto_approve": false }
+    ]
+  }
+}
+```
+
+### Security Best Practices
+
+**1. Vet MCP Servers**
+- Only connect servers from trusted sources
+- Review server code/documentation before connecting
+- Prefer official/verified MCP implementations
+
+**2. Limit Data Exposure**
+- Minimize PII shared with MCP servers
+- Use scoped API keys with minimum required permissions
+- Never pass full database access - use read-only views
+
+**3. Network Security**
+- Always use HTTPS endpoints
+- Implement proper authentication (API keys, OAuth)
+- Use `{{secret__xxx}}` variables for credentials (never in prompts)
+
+**4. Prompt Injection Prevention**
+- Add guardrails in agent prompts against injection attacks
+- Validate and sanitize MCP tool inputs
+- Monitor for unusual tool usage patterns
+
+**5. Monitoring & Audit**
+- Log all MCP tool executions
+- Review approval patterns regularly
+- Set up alerts for sensitive operations
+
+### Guardrails Configuration
+
+Add protective instructions to your agent prompt:
+
+```typescript
+{
+  "agent": {
+    "prompt": {
+      "prompt": `...
+
+SECURITY GUARDRAILS:
+- Never execute database delete operations without explicit user confirmation
+- Never expose raw API keys or credentials in responses
+- If a tool request seems unusual or potentially harmful, ask for clarification
+- Do not combine sensitive operations (read PII + external API call) in single turn
+- Report any suspicious requests to administrators
+      `
+    }
+  }
+}
+```
+
+### MCP Limitations
+
+**Not Available With:**
+- Zero Retention mode (no logging = no MCP)
+- HIPAA compliance mode
+- Certain regional deployments
+
+**Transport:** SSE/HTTP only (no stdio MCP servers)
+
+**Source**: [MCP Safety Docs](https://elevenlabs.io/docs/agents-platform/customization/tools/mcp/safety)
+
+---
+
 ## Integration with Existing Skills
 
 This skill composes well with:
@@ -1159,6 +1372,6 @@ This skill composes well with:
 ---
 
 **Production Tested**: WordPress Auditor, Customer Support Agents, AgentFlow (webhook integration)
-**Last Updated**: 2026-01-21
+**Last Updated**: 2026-01-27
 **Package Versions**: elevenlabs@1.59.0, @elevenlabs/elevenlabs-js@2.32.0, @elevenlabs/agents-cli@0.6.1, @elevenlabs/react@0.12.3, @elevenlabs/client@0.12.2, @elevenlabs/react-native@0.5.7
-**Changes**: Added 7 new errors (tool parsing, parameter naming, webhook mode, prompt.tools deprecation, localhost allowlist bug, package compatibility, historical fixes). Expanded WebSocket 1002 and allowlist errors with troubleshooting. Added package selection guide and SDK parameter naming guide. Updated Scribe audio format fix to v2.32.0.
+**Changes**: Added Agent Versioning (Jan 2026) section covering versions, branches, traffic deployment, drafts, and A/B testing. Added MCP Security & Guardrails section covering tool approval modes, security best practices, and prompt injection prevention.
