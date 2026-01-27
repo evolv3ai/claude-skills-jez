@@ -52,9 +52,10 @@ if [[ -f "$SETTINGS_FILE" ]]; then
     echo "   Backup saved: ${SETTINGS_FILE}${BACKUP_SUFFIX}"
 
     # Update statusLine config using jq
+    # Use ~/ path for cross-platform compatibility (works on Mac, Linux, WSL)
     jq '.statusLine = {
         "type": "command",
-        "command": "'"$INSTALL_PATH"'",
+        "command": "~/.claude/statusline.sh",
         "padding": 0
     }' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
 
@@ -62,11 +63,12 @@ if [[ -f "$SETTINGS_FILE" ]]; then
 else
     echo "⚙️  Creating settings.json..."
     mkdir -p "$HOME/.claude"
-    cat > "$SETTINGS_FILE" <<EOF
+    # Use ~/ path for cross-platform compatibility (works on Mac, Linux, WSL)
+    cat > "$SETTINGS_FILE" <<'EOF'
 {
   "statusLine": {
     "type": "command",
-    "command": "$INSTALL_PATH",
+    "command": "~/.claude/statusline.sh",
     "padding": 0
   }
 }
