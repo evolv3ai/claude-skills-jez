@@ -1,5 +1,9 @@
 # Claude Code Skills
 
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/jezweb/claude-skills?style=social)](https://github.com/jezweb/claude-skills)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 **87 production-ready skills** for Claude Code CLI — Cloudflare, React, AI integrations, and more.
 
 ~60% token savings | 400+ errors prevented | Auto-discovered by Claude
