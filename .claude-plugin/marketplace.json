@@ -6,8 +6,8 @@
   },
   "metadata": {
     "description": "Production-tested skills for Claude Code - Cloudflare, Firebase, AI, React, Tailwind v4, and modern web development",
-    "version": "3.2.0",
-    "updated": "2026-01-25"
+    "version": "3.3.0",
+    "updated": "2026-01-31"
   },
   "plugins": [
     {
@@ -18,7 +18,8 @@
         "./skills/project-workflow",
         "./skills/docs-workflow",
         "./skills/project-planning",
-        "./skills/project-session-management"
+        "./skills/project-session-management",
+        "./skills/project-health"
       ]
     },
     {
@@ -83,7 +84,9 @@
         "./skills/motion",
         "./skills/tiptap",
         "./skills/react-native-expo",
-        "./skills/jquery-4"
+        "./skills/jquery-4",
+        "./skills/electron-base",
+        "./skills/playwright-local"
       ]
     },
     {
@@ -107,7 +110,9 @@
       "source": "./",
       "skills": [
         "./skills/clerk-auth",
-        "./skills/better-auth"
+        "./skills/better-auth",
+        "./skills/azure-auth",
+        "./skills/oauth-integrations"
       ]
     },
     {
@@ -118,7 +123,10 @@
         "./skills/drizzle-orm-d1",
         "./skills/neon-vercel-postgres",
         "./skills/vercel-kv",
-        "./skills/vercel-blob"
+        "./skills/vercel-blob",
+        "./skills/django-cloud-sql-postgres",
+        "./skills/snowflake-platform",
+        "./skills/streamlit-snowflake"
       ]
     },
     {
@@ -147,7 +155,10 @@
       "source": "./",
       "skills": [
         "./skills/fastapi",
-        "./skills/flask"
+        "./skills/flask",
+        "./skills/email-gateway",
+        "./skills/google-app-engine",
+        "./skills/firecrawl-scraper"
       ]
     },
     {
@@ -157,7 +168,11 @@
       "skills": [
         "./skills/typescript-mcp",
         "./skills/fastmcp",
-        "./skills/ts-agent-sdk"
+        "./skills/ts-agent-sdk",
+        "./skills/mcp-cli-scripts",
+        "./skills/mcp-oauth-cloudflare",
+        "./skills/agent-development",
+        "./skills/sub-agent-patterns"
       ]
     },
     {
@@ -165,7 +180,9 @@
       "description": "Office document generation - create DOCX, XLSX, and PDF documents with TypeScript. Works in Claude Code CLI, Cloudflare Workers, and browsers.",
       "source": "./",
       "skills": [
-        "./skills/office"
+        "./skills/office",
+        "./skills/google-workspace",
+        "./skills/google-spaces-updates"
       ]
     },
     {
@@ -175,7 +192,8 @@
       "skills": [
         "./skills/skill-creator",
         "./skills/skill-review",
-        "./skills/open-source-contributions"
+        "./skills/open-source-contributions",
+        "./skills/developer-toolbox"
       ]
     }
   ]

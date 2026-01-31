@@ -3,7 +3,7 @@
 **Repository**: https://github.com/jezweb/claude-skills
 **Purpose**: Production-ready skills for Claude Code CLI
 **Owner**: Jeremy Dawes (Jez) | Jezweb
-**Status**: Active Development | 87 Skills (13 archived)
+**Status**: Active Development | 95 Skills (13 archived)
 **Last Updated**: 2026-01-20
 
 ---
@@ -225,9 +225,9 @@ This repository has three types of files:
 
 ## Current Status (2025-12-15)
 
-### ✅ Active Skills (63)
+### ✅ Active Skills (95)
 
-All 63 skills are production-ready and organized by domain:
+All 95 skills are production-ready and organized by domain:
 
 **Cloudflare Platform** (20 skills):
 - cloudflare-worker-base, cloudflare-d1, cloudflare-r2, cloudflare-kv
@@ -714,6 +714,6 @@ See [planning/COMMON_MISTAKES.md](planning/COMMON_MISTAKES.md) for detailed exam
 
 ---
 
-**Last Updated**: 2025-12-15
+**Last Updated**: 2026-01-31
 **Next Review**: 2026-03-15 (Quarterly)
 **Maintainer**: Jeremy Dawes | jeremy@jezweb.net | https://jezweb.com.au
