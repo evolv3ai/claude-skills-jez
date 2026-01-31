@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # Claude Code Custom Status Line
-# v3.4.0 - Working directory display + percentage fields (Claude Code 2.1.6+)
-# Shows: Model | Path | Repo:Branch [commit] message | GitHub | git status | lines changed
-#        Context bricks | percentage | duration | cost
+# v3.5.0 - Three-line compact layout for narrower terminals
+# Line 1: Model | Repo:Branch | git status | lines changed
+# Line 2: [commit] commit message
+# Line 3: Context bricks | percentage | free | duration | cost
 #
 # Uses new percentage fields (Claude Code 2.1.6+) for accurate context display.
 # Falls back to current_usage calculation for older versions.
@@ -59,15 +60,11 @@ else
     git_status=""
 fi
 
-# Build Line 1: Git + Model + Changes
+# Build Line 1: Model + Repo:Branch + Status + Changes (compact)
 line1=""
 
 # Model in brackets
 line1+="\033[1;36m[$model]\033[0m "
-
-# Working directory (tilde-compressed)
-display_dir="${current_dir/#$HOME/\~}"
-line1+="\033[2;37m$display_dir\033[0m "
 
 # Repo:Branch
 if [[ -n "$repo_name" && "$repo_name" != "no-repo" ]]; then
@@ -75,19 +72,6 @@ if [[ -n "$repo_name" && "$repo_name" != "no-repo" ]]; then
     if [[ -n "$branch" ]]; then
         line1+=":\033[1;34m$branch\033[0m"
     fi
-fi
-
-# Commit info
-if [[ -n "$commit_short" ]]; then
-    line1+=" [\033[1;33m$commit_short\033[0m]"
-    if [[ -n "$commit_msg" ]]; then
-        line1+=" $commit_msg"
-    fi
-fi
-
-# GitHub repo
-if [[ -n "$github_repo" ]]; then
-    line1+=" | \033[0;35m$github_repo\033[0m"
 fi
 
 # Git status indicators
@@ -100,7 +84,21 @@ if [[ "$lines_added" -gt 0 || "$lines_removed" -gt 0 ]]; then
     line1+=" | \033[0;32m+$lines_added\033[0m/\033[0;31m-$lines_removed\033[0m"
 fi
 
-# Build Line 2: Context bricks + session info
+# Build Line 2: Commit hash + message (truncated to ~60 chars)
+line2=""
+if [[ -n "$commit_short" ]]; then
+    line2+="\033[1;33m[$commit_short]\033[0m"
+    if [[ -n "$commit_msg" ]]; then
+        # Truncate message to fit narrow terminal
+        truncated_msg=$(echo "$commit_msg" | cut -c1-55)
+        if [[ ${#commit_msg} -gt 55 ]]; then
+            truncated_msg="${truncated_msg}..."
+        fi
+        line2+=" $truncated_msg"
+    fi
+fi
+
+# Build Line 3: Context bricks + session info
 # Get session duration (convert ms to HHh MMm format)
 duration_ms=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
 duration_hours=$((duration_ms / 3600000))
@@ -150,8 +148,8 @@ used_k=$(( used_tokens / 1000 ))
 total_k=$(( total_tokens / 1000 ))
 free_k=$(( free_tokens / 1000 ))
 
-# Generate brick visualization (40 bricks total)
-total_bricks=40
+# Generate brick visualization (30 bricks for narrower display)
+total_bricks=30
 if [[ $total_tokens -gt 0 ]]; then
     used_bricks=$(( (used_tokens * total_bricks) / total_tokens ))
 else
@@ -174,13 +172,10 @@ done
 
 brick_line+="]"
 
-brick_line+=" \033[1m${usage_pct}%\033[0m (${used_k}k/${total_k}k)"
-
-# Add free space
+# Compact stats: percentage | free | duration
+brick_line+=" \033[1m${usage_pct}%\033[0m"
 brick_line+=" | \033[1;32m${free_k}k free\033[0m"
-
-# Add duration (HHh MMm format)
-brick_line+=" | ${duration_hours}h ${duration_min}m"
+brick_line+=" | ${duration_hours}h${duration_min}m"
 
 # Add cost only if non-zero, rounded to 2 decimal places
 if command -v bc &> /dev/null; then
@@ -195,6 +190,7 @@ else
     fi
 fi
 
-# Output both lines
+# Output all three lines
 echo -e "$line1"
+[[ -n "$line2" ]] && echo -e "$line2"
 echo -e "$brick_line"
