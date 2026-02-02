@@ -59,6 +59,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved - Context Mate Toolkit
 
+- **NEW**: `/context-mate` command - Scan any project and get tailored tool recommendations
+  - Detects CLAUDE.md, SESSION.md, phases, tests, git state
+  - Shows current phase + next action from SESSION.md
+  - Recommends relevant tools, explains what you probably don't need
+  - Works with monorepos (tested on 31-subproject repo)
 - **Quick Reference**: Added scannable list of all 9 commands, 7 agents, and 6 skills
 - **Dynamic Analysis**: Claude analyzes your project and recommends relevant tools
 - **Knifey-Spooney Philosophy**: Added laid-back Aussie personality - "If Homer Simpson can't figure it out in 30 seconds, it's too complicated"
