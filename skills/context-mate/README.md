@@ -13,6 +13,7 @@ This is the **knifey-spooney approach** to project management - laid back, pract
 This skill should be invoked when the user mentions:
 
 ### Discovery
+- /context-mate (slash command)
 - context mate, context-mate, contextmate
 - how do I start, where do I begin, getting started
 - project workflow, workflow overview

@@ -90,6 +90,7 @@ This isn't "The Correct Way To Do Things" - these tools exist because context wi
 
 | Command | What it does |
 |---------|--------------|
+| `/context-mate` | **Analyze project, recommend tools** |
 | `/explore-idea` | Start with a vague idea |
 | `/plan-project` | Plan a new project |
 | `/plan-feature` | Plan a specific feature |
