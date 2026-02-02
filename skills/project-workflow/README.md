@@ -1,6 +1,6 @@
 # project-workflow
 
-**Complete project lifecycle automation with 7 integrated slash commands**
+**Complete project lifecycle automation with 9 integrated slash commands**
 
 Automate exploration, planning, session management, and release safety for Claude Code projects. Saves **35-55 minutes per project lifecycle**.
 
@@ -14,7 +14,7 @@ Automate exploration, planning, session management, and release safety for Claud
 /plugin install project-workflow@jezweb-skills
 ```
 
-All 7 slash commands will be immediately available.
+All 9 slash commands will be immediately available.
 
 ### Verify Installation
 
@@ -23,7 +23,7 @@ All 7 slash commands will be immediately available.
 /workflow
 ```
 
-## The 7 Commands
+## The 9 Commands
 
 | Command | Purpose | Time Saved |
 |---------|---------|------------|
@@ -34,6 +34,8 @@ All 7 slash commands will be immediately available.
 | `/continue-session` | Load context at start of session | 1-2 min |
 | `/workflow` | Interactive guide to the workflow system | Instant |
 | `/release` | Pre-release safety checks and GitHub release | 10-15 min |
+| `/brief` | Preserve context for handoff to new session | 1-2 min |
+| `/reflect` | Capture lessons learned and operational knowledge | 2-3 min |
 
 ## Usage Examples
 

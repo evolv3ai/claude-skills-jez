@@ -84,6 +84,47 @@ This isn't "The Correct Way To Do Things" - these tools exist because context wi
 
 ---
 
+## Quick Reference
+
+### Commands (type these)
+
+| Command | What it does |
+|---------|--------------|
+| `/explore-idea` | Start with a vague idea |
+| `/plan-project` | Plan a new project |
+| `/plan-feature` | Plan a specific feature |
+| `/wrap-session` | End work session |
+| `/continue-session` | Resume from last session |
+| `/docs-init` | Create project docs |
+| `/docs-update` | Update docs after changes |
+| `/reflect` | Review what you've done |
+| `/release` | Prepare for deployment |
+
+### Agents (Claude uses these automatically)
+
+| Agent | What it does |
+|-------|--------------|
+| `commit-helper` | Writes commit messages |
+| `code-reviewer` | Reviews code quality |
+| `debugger` | Investigates bugs |
+| `test-runner` | Runs/writes tests |
+| `build-verifier` | Checks dist matches source |
+| `documentation-expert` | Creates/updates docs |
+| `orchestrator` | Coordinates multi-step work |
+
+### Skills (background knowledge)
+
+| Skill | What it provides |
+|-------|------------------|
+| `project-planning` | Phase-based planning templates |
+| `project-session-management` | SESSION.md patterns |
+| `docs-workflow` | Doc maintenance commands |
+| `deep-debug` | Multi-agent debugging |
+| `project-health` | AI-readability audits |
+| `developer-toolbox` | The 7 agents above |
+
+---
+
 ## The Toolkit at a Glance
 
 ```
