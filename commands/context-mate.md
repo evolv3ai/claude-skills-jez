@@ -29,7 +29,20 @@ src/ or app/                  # Source code
 
 ---
 
-## Step 2: Assess Project Maturity
+## Step 2: Read SESSION.md (if exists)
+
+If SESSION.md exists, **read it** and extract:
+
+- **Current Phase**: The phase name and number (e.g., "Phase 3 - Hosting Module")
+- **Phase Status**: In progress, blocked, or complete
+- **Next Action**: The specific next task documented
+- **Known Issues**: Any blockers or problems noted
+
+This makes recommendations much more actionable.
+
+---
+
+## Step 3: Assess Project Maturity
 
 Based on what exists, categorize:
 
@@ -47,7 +60,7 @@ Based on what exists, categorize:
 
 ---
 
-## Step 3: Check for Signals
+## Step 4: Check for Signals
 
 Look for indicators of what user might need:
 
@@ -59,7 +72,7 @@ Look for indicators of what user might need:
 
 ---
 
-## Step 4: Present Recommendations
+## Step 5: Present Recommendations
 
 Output in this format:
 
@@ -75,7 +88,23 @@ Output in this format:
 | Tests | ✓/○ [brief note] |
 
 **Project State**: [New/Active/Mature] - [one sentence description]
+```
 
+**If SESSION.md exists, add this section:**
+
+```
+---
+📍 **Where You're At**
+
+**Current Phase**: Phase [N] - [Name] ([status])
+**Next Action**: [concrete next task from SESSION.md]
+**Known Issues**: [any blockers, or "None"]
+---
+```
+
+**Then continue with:**
+
+```
 **What's useful for you right now**:
 
 | Tool | When you'd use it |
@@ -147,6 +176,7 @@ Keep it brief. Homer Simpson should understand the output.
 ## Success Criteria
 
 ✅ User knows what project state they're in
+✅ User sees current phase + next action (if SESSION.md exists)
 ✅ User gets 3-5 relevant tool recommendations
 ✅ User knows what to ignore
 ✅ Took less than 30 seconds to scan and report
