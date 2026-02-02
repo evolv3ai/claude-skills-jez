@@ -9,8 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.15.0] - 2026-02-02
 
-### Added - New Skills (8)
+### Added - New Skills (9)
 
+- `context-mate` - Toolkit entry point with dynamic project analysis ("It's all about the context, maaate!")
 - `deep-debug` - Multi-agent investigation for stubborn bugs
 - `project-health` - AI-agent readiness auditing (AI-Readability Score)
 - `electron-base` - Secure Electron apps with Vite, React, TypeScript
@@ -41,13 +42,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Collapsed 12 separate plugins into single `all` plugin (prevents 12x skill duplication)
 - Added `agents` field to all plugin manifests for agent bundling
-- Skills catalog now auto-generated (96 skills, 611+ errors prevented)
+- Skills catalog now auto-generated (97 skills, 611+ errors prevented)
 
 ### Fixed
 
 - Broken SKILLS_CATALOG.md link in README.md
 - Deprecated `install-skill.sh` references → plugin system
-- Skill counts updated from 95 to 96 across all docs
+- Skill counts updated from 95 to 97 across all docs
 - Stale "Last Updated" dates refreshed
 - Directory structure documentation now matches reality
 
