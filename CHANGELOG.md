@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.15.0] - 2026-02-02
+
+### Added - New Skills (8)
+
+- `deep-debug` - Multi-agent investigation for stubborn bugs
+- `project-health` - AI-agent readiness auditing (AI-Readability Score)
+- `electron-base` - Secure Electron apps with Vite, React, TypeScript
+- `jquery-4` - jQuery 3.x to 4.0 migration guide
+- `firebase-auth` - Firebase Authentication patterns
+- `firebase-firestore` - Firestore NoSQL database
+- `firebase-storage` - Firebase Cloud Storage
+- `django-cloud-sql-postgres` - Django on Google App Engine with Cloud SQL
+- `google-app-engine` - Python deployment to GAE Standard/Flexible
+
+### Added - Documentation
+
+- `docs/PLUGIN_INSTALLATION_GUIDE.md` - Complete local testing workflow
+- `docs/TROUBLESHOOTING.md` - Common issues and solutions
+- `planning/DOC_AUDIT_2026-02-02.md` - Full documentation audit report
+- `scripts/generate-skills-catalog.py` - Auto-generate SKILLS_CATALOG.md
+
+### Added - Agents
+
+- `project-docs-auditor` - Repo-wide documentation review with scoring
+
+### Changed - Marketplace
+
+- **BREAKING**: Marketplace renamed from `claude-skills` to `jezweb-skills`
+- Run `/plugin marketplace remove claude-skills` then re-add with new name
+
+### Changed - Plugin Architecture
+
+- Collapsed 12 separate plugins into single `all` plugin (prevents 12x skill duplication)
+- Added `agents` field to all plugin manifests for agent bundling
+- Skills catalog now auto-generated (96 skills, 611+ errors prevented)
+
+### Fixed
+
+- Broken SKILLS_CATALOG.md link in README.md
+- Deprecated `install-skill.sh` references → plugin system
+- Skill counts updated from 95 to 96 across all docs
+- Stale "Last Updated" dates refreshed
+- Directory structure documentation now matches reality
+
+### Updated
+
+- `elevenlabs-agents` - Added Agent Versioning and MCP Security sections
+- All date references updated to 2026-02-02
+
+---
+
 ## [2.12.0] - 2026-01-20
 
 ### Added - Developer Toolbox 🛠️
