@@ -43,11 +43,16 @@ Three types of things in this toolkit:
 
 | Type | What it is | Example |
 |------|------------|---------|
-| **Commands** | Slash commands you type | `/context-mate`, `/plan-project` |
-| **Skills** | Knowledge bundles Claude loads automatically | `cloudflare-worker-base`, `tailwind-v4-shadcn` |
+| **Slash Commands** | Typed invocations (`/foo`) | `/context-mate`, `/plan-project` |
+| **Skills** | Knowledge bundles Claude loads | `cloudflare-worker-base`, `tailwind-v4-shadcn` |
 | **Agents** | Sub-processes for specialized tasks | `commit-helper`, `debugger`, `test-runner` |
 
-Commands trigger actions. Skills provide knowledge. Agents do heavy lifting in the background.
+**Note**: Slash commands are now part of skills (bundled in `skills/*/commands/`). This is the [official Claude Code pattern](https://code.claude.com/docs/en/skills) - a skill can expose both background knowledge and user-invocable commands.
+
+**Decision tree**:
+- "/context-mate" → Slash command (user types it)
+- "context-mate" skill → Background knowledge (Claude loads it when relevant)
+- `commit-helper` agent → Sub-process (Claude spawns it for heavy tasks)
 
 ---
 

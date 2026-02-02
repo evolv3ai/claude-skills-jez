@@ -52,14 +52,17 @@ claude-skills/
 ├── CHANGELOG.md                  # Version history
 ├── LICENSE                       # MIT License
 │
-├── skills/                       # ← All 63 production skills
+├── skills/                       # ← All production skills
+│   ├── skill-development/        # Skill authoring tools + templates
+│   │   ├── commands/             # /create-skill, /review-skill, /audit, etc.
+│   │   └── templates/            # Skill scaffolding templates
+│   ├── project-workflow/         # Project lifecycle commands
+│   │   └── commands/             # /explore-idea, /plan-project, etc.
+│   ├── context-mate/             # Toolkit entry point
+│   │   └── commands/             # /context-mate
 │   ├── tailwind-v4-shadcn/       # Gold standard example
 │   ├── cloudflare-worker-base/   # Foundation skill
-│   └── [61 more skills...]       # Run ls skills/ for full list
-│
-├── commands/                     # Slash commands (symlinked to ~/.claude/commands/)
-│   ├── brief.md, explore-idea.md, plan-project.md, etc.
-│   └── README.md
+│   └── [90+ more skills...]      # Run ls skills/ for full list
 │
 ├── .claude/agents/               # Custom agents for managing this repo
 │   ├── content-accuracy-auditor.md  # Find missing features vs official docs
@@ -90,19 +93,6 @@ claude-skills/
 │   ├── deprecated-scripts/       # Old symlink scripts (replaced by plugin system)
 │   └── session-logs/             # Working audit logs (gitignored)
 │   # Note: 13 archived skills in separate git branch 'archive/low-priority-skills'
-│
-├── templates/                    # ← Templates for new skills
-│   ├── SKILL-TEMPLATE.md         # Copy-paste SKILL.md starter
-│   ├── README-TEMPLATE.md        # Copy-paste README starter
-│   ├── RESEARCH_FINDINGS_TEMPLATE.md  # Research findings template
-│   ├── CONTENT_AUDIT_TEMPLATE.md # Content audit checklist
-│   ├── skill-metadata-v2.yaml    # YAML frontmatter reference
-│   └── skill-skeleton/           # Complete directory to copy
-│       ├── SKILL.md
-│       ├── README.md
-│       ├── scripts/example-script.sh
-│       ├── references/example-reference.md
-│       └── assets/example-template.txt
 │
 ├── planning/                     # Planning & research docs
 │   ├── claude-code-skill-standards.md
@@ -183,14 +173,18 @@ This repository has three types of files:
 - `skills/*/assets/` - Images, diagrams
 - `skills/*/rules/` - Correction rules (copied to projects)
 
-**Commands**:
-- `commands/*.md` - Slash command definitions
-- `skills/project-workflow/commands/*.md` - Canonical workflow commands
+**Slash Commands** (bundled with skills):
+- `skills/project-workflow/commands/*.md` - Project lifecycle commands
+- `skills/context-mate/commands/*.md` - Toolkit entry point
+- `skills/skill-development/commands/*.md` - Skill authoring tools
+- `skills/docs-workflow/commands/*.md` - Documentation commands
 
 **Documentation**:
 - `*.md` files in root (README, CLAUDE, CONTRIBUTING, etc.)
 - `planning/*.md` - Standards, research, roadmaps
-- `templates/` - Skill creation templates
+
+**Templates** (in skill-development skill):
+- `skills/skill-development/templates/` - Skill scaffolding templates
 
 **Configuration**:
 - `.gitignore` - Ignore patterns
@@ -292,7 +286,8 @@ All 96 skills are production-ready and organized by domain:
    • Document in planning/research-logs/
 
 2. TEMPLATE
-   • Copy: cp -r templates/skill-skeleton/ skills/new-skill/
+   • Run /create-skill new-skill (recommended)
+   • Or: cp -r skills/skill-development/templates/skill-skeleton/ skills/new-skill/
    • Fill TODOs in SKILL.md
    • Fill TODOs in README.md
    • Add resources (scripts/, references/, assets/)
@@ -324,8 +319,9 @@ All 96 skills are production-ready and organized by domain:
 ### Quick Workflow (Experienced)
 
 ```bash
-# 1. Copy template
-cp -r templates/skill-skeleton/ skills/my-skill/
+# 1. Use /create-skill or copy template manually
+/create-skill my-skill
+# Or: cp -r skills/skill-development/templates/skill-skeleton/ skills/my-skill/
 
 # 2. Edit SKILL.md and README.md (fill TODOs)
 # 3. Add resources
@@ -496,7 +492,8 @@ ls ~/.claude/plugins/cache/jezweb-skills/
 ./scripts/check-marketplace-sync.sh --fix          # Auto-fix marketplace.json
 
 # Create new skill from template
-cp -r templates/skill-skeleton/ skills/new-skill-name/
+/create-skill new-skill-name
+# Or: cp -r skills/skill-development/templates/skill-skeleton/ skills/new-skill-name/
 ```
 
 ### Marketplace & Release
@@ -657,7 +654,7 @@ See [planning/COMMON_MISTAKES.md](planning/COMMON_MISTAKES.md) for detailed exam
 **When Package Updates**:
 1. Review `VERSIONS_REPORT.md` for breaking changes
 2. Check breaking changes in changelogs
-3. Update `templates/package.json` files
+3. Update `skills/skill-development/templates/` files if needed
 4. Update version references in `SKILL.md`
 5. Test thoroughly in example projects
 6. Document migration if needed
@@ -685,7 +682,7 @@ See [planning/COMMON_MISTAKES.md](planning/COMMON_MISTAKES.md) for detailed exam
 
 **Want to Contribute?**
 - Read [CONTRIBUTING.md](CONTRIBUTING.md)
-- Use templates in `templates/`
+- Use `/create-skill` or templates in `skills/skill-development/templates/`
 - Verify with [ONE_PAGE_CHECKLIST.md](ONE_PAGE_CHECKLIST.md)
 
 ---

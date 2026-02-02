@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing! This guide will help you create high-quality skills for the Claude Code community.
 
-**🚀 Quick Start**: Copy `templates/skill-skeleton/` to get started in minutes.
+**🚀 Quick Start**: Run `/create-skill my-skill` or copy `skills/skill-development/templates/skill-skeleton/` to get started.
 **📋 Checklist**: Verify your work with [ONE_PAGE_CHECKLIST.md](ONE_PAGE_CHECKLIST.md)
 **⚠️ Avoid Mistakes**: Read [planning/COMMON_MISTAKES.md](planning/COMMON_MISTAKES.md)
 
@@ -365,7 +365,7 @@ The repository includes comprehensive version checking tools in `scripts/`:
 
 **When Updates Are Needed**:
 1. Review `VERSIONS_REPORT.md` for breaking changes
-2. Update `templates/package.json` files
+2. Update skill template files (e.g., `skills/*/templates/package.json`)
 3. Update version references in `SKILL.md`
 4. Update `metadata.last_verified` dates
 5. Test updated skills in example projects

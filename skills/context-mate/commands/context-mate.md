@@ -126,7 +126,7 @@ What would you like to work on?
 
 ## Quick Reference (Available Tools)
 
-### Commands (user types these)
+### Slash Commands (user types these)
 | Command | What it does |
 |---------|--------------|
 | `/explore-idea` | Start with a vague idea, research and validate |

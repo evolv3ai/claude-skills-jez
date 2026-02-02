@@ -1,12 +1,13 @@
 ---
 name: context-mate
 description: |
-  Entry point to the Context Mate toolkit - skills, agents, and commands that work with Claude Code's
+  Entry point to the Context Mate toolkit - skills, agents, and slash commands that work with Claude Code's
   natural flow. Project lifecycle (/explore-idea → /plan-project → /wrap-session), session handoff
   across context windows, developer agents for specialized tasks, and quality auditing.
 
   Use when: starting new projects, understanding the toolkit, needing workflow guidance.
   "It's all about the context, maaate!"
+user-invocable: true
 ---
 
 # Context Mate
@@ -86,7 +87,7 @@ This isn't "The Correct Way To Do Things" - these tools exist because context wi
 
 ## Quick Reference
 
-### Commands (type these)
+### Slash Commands (type these)
 
 | Command | What it does |
 |---------|--------------|
