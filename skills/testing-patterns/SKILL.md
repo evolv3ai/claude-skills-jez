@@ -197,6 +197,34 @@ git add tests/results/
 git commit -m "Test results: 8/9 passed"
 ```
 
+## Parallel Test Execution
+
+Run multiple test agents simultaneously to speed up large test suites:
+
+```
+"Run these test suites in parallel:
+- Agent 1: tests/auth/*.yaml
+- Agent 2: tests/search/*.yaml
+- Agent 3: tests/api/*.yaml"
+```
+
+Each agent:
+- Has its own context (won't bloat main conversation)
+- Can run 10-50 tests independently
+- Returns a summary when done
+- Inherits MCP tools from parent session
+
+**Why parallel agents?**
+- 50 tests in main context = context exhaustion
+- 50 tests across 5 agents = clean context + faster execution
+- Each agent reports pass/fail summary, not every test detail
+
+**Batching strategy:**
+- Group tests by feature area or MCP server
+- 10-20 tests per agent is ideal
+- Too few = overhead of spawning not worth it
+- Too many = agent context fills up
+
 ## MCP Testing
 
 For MCP servers, the testing agent inherits configured MCPs:
