@@ -35,6 +35,21 @@ Running 50 tests in the main conversation would consume your entire context wind
 - Results come back as a summary
 - Failed tests get detailed investigation
 
+## Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/create-tests` | Discover project, generate test specs + testing agent |
+| `/run-tests` | Execute tests via agent(s), report results |
+
+**Quick workflow:**
+```
+/create-tests        → Generates tests/specs/*.yaml + .claude/agents/test-runner.md
+/run-tests           → Spawns agent, runs all tests, saves results
+/run-tests api       → Run only specs matching "api"
+/run-tests --failed  → Re-run only failed tests
+```
+
 ## Getting Started in a New Project
 
 This skill provides the **pattern and format**. Claude designs the actual tests based on your project context.
