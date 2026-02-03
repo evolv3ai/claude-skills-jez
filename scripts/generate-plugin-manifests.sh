@@ -91,23 +91,45 @@ for skill_dir in "$SKILLS_DIR"/*; do
   description=$(echo "$description" | sed 's/Keywords:.*$//' | tr -d '"' | tr -d "'" | sed 's/  */ /g' | sed 's/^ *//;s/ *$//' | head -c 500)
 
   # Detect agents in skill's agents/ directory
-  agents_json="[]"
+  # Per Claude Code plugin spec: agents field should be directory path, not array of names
+  agents_json=""
   agents_dir="$skill_dir/agents"
   if [ -d "$agents_dir" ]; then
-    agent_list=$(find "$agents_dir" -maxdepth 1 -name "*.md" -type f 2>/dev/null | while read -r agent_file; do
-      basename "$agent_file" .md
-    done | sort)
-    if [ -n "$agent_list" ]; then
-      agents_json=$(echo "$agent_list" | awk '
-        BEGIN { printf "[" }
-        { if (NR > 1) printf ","; printf "\"%s\"", $0 }
-        END { printf "]" }
-      ')
-      echo "  📦 Found agents: $(echo "$agent_list" | tr '\n' ' ')"
+    agent_count=$(find "$agents_dir" -maxdepth 1 -name "*.md" -type f 2>/dev/null | wc -l)
+    if [ "$agent_count" -gt 0 ]; then
+      agents_json="\"./agents/\""
+      agent_names=$(find "$agents_dir" -maxdepth 1 -name "*.md" -type f -exec basename {} .md \; | sort | tr '\n' ' ')
+      echo "  📦 Found $agent_count agent(s): $agent_names"
+    fi
+  fi
+
+  # Detect commands in skill's commands/ directory
+  # Per Claude Code plugin spec: commands field should be directory path
+  commands_json=""
+  commands_dir="$skill_dir/commands"
+  if [ -d "$commands_dir" ]; then
+    command_count=$(find "$commands_dir" -maxdepth 1 -name "*.md" -type f 2>/dev/null | wc -l)
+    if [ "$command_count" -gt 0 ]; then
+      commands_json="\"./commands/\""
+      command_names=$(find "$commands_dir" -maxdepth 1 -name "*.md" -type f -exec basename {} .md \; | sort | tr '\n' ' ')
+      echo "  📜 Found $command_count command(s): $command_names"
     fi
   fi
 
   # Generate plugin.json
+  # Build optional fields
+  agents_line=""
+  if [ -n "$agents_json" ]; then
+    agents_line=",
+  \"agents\": $agents_json"
+  fi
+
+  commands_line=""
+  if [ -n "$commands_json" ]; then
+    commands_line=",
+  \"commands\": $commands_json"
+  fi
+
   cat > "$plugin_json" << EOF
 {
   "name": "$skill_name",
@@ -119,8 +141,7 @@ for skill_dir in "$SKILLS_DIR"/*; do
   },
   "license": "MIT",
   "repository": "https://github.com/jezweb/claude-skills",
-  "keywords": $keywords_json,
-  "agents": $agents_json
+  "keywords": $keywords_json$commands_line$agents_line
 }
 EOF
 

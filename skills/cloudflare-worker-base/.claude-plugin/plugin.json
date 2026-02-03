@@ -9,5 +9,6 @@
   "license": "MIT",
   "repository": "https://github.com/jezweb/claude-skills",
   "keywords": [],
-  "agents": ["cloudflare-debug","cloudflare-deploy","d1-migration","worker-scaffold"]
+  "commands": "./commands/",
+  "agents": "./agents/"
 }
