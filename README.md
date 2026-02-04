@@ -61,16 +61,40 @@ Three types of things in this toolkit:
 ### Marketplace (Recommended)
 
 ```bash
+# Step 1: Add the marketplace (registers catalog)
 /plugin marketplace add https://github.com/jezweb/claude-skills
-/plugin install cloudflare-worker-base@jezweb-skills
+
+# Step 2: Install what you need
+/plugin install all@jezweb-skills              # All skills (background knowledge)
+
+# Step 3: Install skills with commands/agents you want to use
+/plugin install skill-development@jezweb-skills     # /scrape-api, /create-skill, etc.
+/plugin install developer-toolbox@jezweb-skills     # debugger, test-runner, commit-helper agents
+/plugin install cloudflare-worker-base@jezweb-skills # cloudflare-deploy, d1-migration agents
+
+# Step 4: Restart Claude Code to load plugins
 ```
 
-### Manual
+**Why two install steps?** The `all` bundle gives you skill knowledge, but commands/agents inside individual skills need their own install. See [PLUGIN_ARCHITECTURE.md](docs/PLUGIN_ARCHITECTURE.md) for details.
+
+### Skills with Commands/Agents
+
+These skills have bundled commands or agents - install individually to use them:
+
+| Plugin | Commands | Agents |
+|--------|----------|--------|
+| `skill-development` | `/scrape-api`, `/create-skill`, `/review-skill`, `/audit` | `api-doc-scraper` |
+| `developer-toolbox` | `/debug`, `/coverage` | `debugger`, `test-runner`, `commit-helper`, `code-reviewer`, etc. |
+| `cloudflare-worker-base` | - | `cloudflare-deploy`, `cloudflare-debug`, `d1-migration`, `worker-scaffold` |
+| `dependency-audit` | `/audit-deps` | `dep-auditor` |
+| `project-health` | - | `context-auditor`, `handoff-checker`, `workflow-validator` |
+
+### Manual/Local Development
 
 ```bash
 git clone https://github.com/jezweb/claude-skills.git ~/Documents/claude-skills
 cd ~/Documents/claude-skills
-/plugin install ./skills/cloudflare-worker-base  # Install specific skill
+/plugin install ./skills/cloudflare-worker-base  # Install specific skill locally
 ```
 
 ---
