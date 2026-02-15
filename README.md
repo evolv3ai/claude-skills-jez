@@ -24,8 +24,16 @@ Workflow skills for [Claude Code](https://claude.com/claude-code) that produce t
 # Add the marketplace
 /plugin marketplace add jezweb/claude-skills
 
-# Install skills
-/plugin install jezweb-skills
+# Install all skills
+/plugin install all@jezweb-skills
+
+# Or install by category
+/plugin install design@jezweb-skills       # colour palettes, favicons, icons
+/plugin install cloudflare@jezweb-skills   # Cloudflare Workers
+/plugin install frontend@jezweb-skills     # Tailwind + shadcn/ui
+/plugin install ai@jezweb-skills           # ElevenLabs agents
+/plugin install mcp@jezweb-skills          # MCP servers
+/plugin install development@jezweb-skills  # skill-creator + memory-manager
 ```
 
 ## Create Your Own

@@ -61,10 +61,13 @@ Key principle: **every skill must produce something.** If it's just reference ma
 /plugin marketplace add jezweb/claude-skills
 
 # Install all skills
-/plugin install jezweb-skills
+/plugin install all@jezweb-skills
 
-# Or install individual skill for local dev
-/plugin install ./skills/cloudflare-worker-builder
+# Or by category: design, cloudflare, frontend, ai, mcp, development
+/plugin install design@jezweb-skills
+
+# Local dev (loads without install)
+claude --plugin-dir ./skills/cloudflare-worker-builder
 ```
 
 After installing, restart Claude Code to load new skills.

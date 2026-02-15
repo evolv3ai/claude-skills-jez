@@ -12,62 +12,70 @@
   "plugins": [
     {
       "name": "all",
-      "description": "All workflow skills: Cloudflare Workers, Tailwind themes, favicons, icons, colour palettes, ElevenLabs agents, MCP servers.",
-      "source": "./"
+      "description": "All workflow skills: Cloudflare Workers, Tailwind themes, favicons, icons, colour palettes, ElevenLabs agents, MCP servers, memory management.",
+      "source": "./",
+      "skills": [
+        "./skills/skill-creator",
+        "./skills/cloudflare-worker-builder",
+        "./skills/tailwind-theme-builder",
+        "./skills/color-palette",
+        "./skills/favicon-gen",
+        "./skills/icon-set-generator",
+        "./skills/elevenlabs-agents",
+        "./skills/mcp-builder",
+        "./skills/memory-manager"
+      ]
     },
     {
-      "name": "skill-creator",
-      "description": "Create new skills following Anthropic's official spec.",
-      "source": "./skills/skill-creator",
-      "category": "development"
+      "name": "design",
+      "description": "Design skills: colour palettes, favicons, and custom SVG icon sets.",
+      "source": "./",
+      "skills": [
+        "./skills/color-palette",
+        "./skills/favicon-gen",
+        "./skills/icon-set-generator"
+      ]
     },
     {
-      "name": "cloudflare-worker-builder",
+      "name": "cloudflare",
       "description": "Scaffold and deploy Cloudflare Workers with Hono + Vite.",
-      "source": "./skills/cloudflare-worker-builder",
-      "category": "cloudflare"
+      "source": "./",
+      "skills": [
+        "./skills/cloudflare-worker-builder"
+      ]
     },
     {
-      "name": "tailwind-theme-builder",
+      "name": "frontend",
       "description": "Set up Tailwind v4 + shadcn/ui with dark mode theming.",
-      "source": "./skills/tailwind-theme-builder",
-      "category": "frontend"
+      "source": "./",
+      "skills": [
+        "./skills/tailwind-theme-builder"
+      ]
     },
     {
-      "name": "color-palette",
-      "description": "Generate colour palettes from brand hex.",
-      "source": "./skills/color-palette",
-      "category": "design"
-    },
-    {
-      "name": "favicon-gen",
-      "description": "Generate favicon packages from logos, text, or brand colours.",
-      "source": "./skills/favicon-gen",
-      "category": "design"
-    },
-    {
-      "name": "icon-set-generator",
-      "description": "Generate custom SVG icon sets with consistent style.",
-      "source": "./skills/icon-set-generator",
-      "category": "design"
-    },
-    {
-      "name": "elevenlabs-agents",
+      "name": "ai",
       "description": "Build ElevenLabs conversational AI voice agents.",
-      "source": "./skills/elevenlabs-agents",
-      "category": "ai"
+      "source": "./",
+      "skills": [
+        "./skills/elevenlabs-agents"
+      ]
     },
     {
-      "name": "mcp-builder",
+      "name": "mcp",
       "description": "Build MCP servers with FastMCP.",
-      "source": "./skills/mcp-builder",
-      "category": "mcp"
+      "source": "./",
+      "skills": [
+        "./skills/mcp-builder"
+      ]
     },
     {
-      "name": "memory-manager",
-      "description": "Audit and restructure CLAUDE.md memory hierarchy.",
-      "source": "./skills/memory-manager",
-      "category": "development"
+      "name": "development",
+      "description": "Skill creation and CLAUDE.md memory management.",
+      "source": "./",
+      "skills": [
+        "./skills/skill-creator",
+        "./skills/memory-manager"
+      ]
     }
   ]
 }
