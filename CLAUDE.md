@@ -15,13 +15,18 @@ Production workflow skills for Claude Code CLI. Each skill guides Claude through
 
 ```
 claude-skills/
-├── skills/                         # All skills
+├── skills/                         # All skills (14)
 │   ├── skill-creator/              # Foundation: create new skills (Anthropic official)
 │   ├── cloudflare-worker-builder/  # Scaffold Cloudflare Worker projects
+│   ├── vite-flare-starter/         # Full-stack Cloudflare app from starter template
 │   ├── tailwind-theme-builder/     # Set up Tailwind v4 + shadcn/ui themes
 │   ├── color-palette/              # Generate colour palettes from brand hex
 │   ├── favicon-gen/                # Generate favicon packages
 │   ├── icon-set-generator/         # Generate custom SVG icon sets
+│   ├── web-design-methodology/     # Universal web design implementation (BEM, responsive, a11y)
+│   ├── web-design-patterns/        # Heroes, cards, CTAs, trust signals, testimonials
+│   ├── seo-local-business/         # SEO setup for local businesses (JSON-LD, meta, sitemap)
+│   ├── google-chat-messages/       # Google Chat webhooks (text, cards, threads)
 │   ├── elevenlabs-agents/          # Build ElevenLabs voice agents
 │   ├── mcp-builder/                # Build MCP servers with FastMCP
 │   └── memory-manager/             # Audit and restructure CLAUDE.md hierarchy
@@ -63,7 +68,7 @@ Key principle: **every skill must produce something.** If it's just reference ma
 # Install all skills
 /plugin install all@jezweb-skills
 
-# Or by category: design, cloudflare, frontend, ai, mcp, development
+# Or by category: design, cloudflare, frontend, web, integrations, ai, mcp, development
 /plugin install design@jezweb-skills
 
 # Local dev (loads without install)
