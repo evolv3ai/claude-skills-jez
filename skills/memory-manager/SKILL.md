@@ -1,135 +1,169 @@
 ---
 name: memory-manager
-description: >
-  Manage CLAUDE.md memory hierarchy across repositories. Audit for bloat, split
-  oversized files into topic-specific sub-files, create directory-level CLAUDE.md
-  files, and verify the hierarchy loads correctly. Use when CLAUDE.md exceeds
-  100 lines, when a directory needs its own context, or when project memory
-  needs restructuring.
+description: "Audit, restructure, and maintain the full Claude Code memory hierarchy: CLAUDE.md files, .claude/rules/ topic files, auto-memory, and project documentation. Detects project type and suggests appropriate docs. Use when CLAUDE.md needs updating, memory needs restructuring, or a project needs its docs audited. Trigger with 'audit memory', 'update CLAUDE.md', 'restructure memory', 'session capture', 'memory cleanup', 'check project docs', or 'what docs does this project need'."
 compatibility: claude-code-only
 ---
 
 # Memory Manager
 
-Audit and restructure the CLAUDE.md memory hierarchy in a repository. Produces a clean, well-organised set of CLAUDE.md files that follow size guidelines and progressive disclosure.
+Manage the full Claude Code memory hierarchy across three layers. Produces well-organised, correctly-placed memory files that follow size guidelines and progressive disclosure.
 
-## How CLAUDE.md Loading Works
+## Three Memory Layers
 
-Claude Code loads CLAUDE.md from the current working directory AND all parent directories. Deeper files take precedence. This means:
+| Layer | Location | Purpose | Managed by this skill |
+|-------|----------|---------|----------------------|
+| CLAUDE.md hierarchy | `./CLAUDE.md`, subdirs, parent dirs | Project context, commands, architecture, rules | Yes |
+| Rules topic files | `.claude/rules/*.md` | Correction rules, patterns, technical facts | Yes |
+| Auto-memory | `~/.claude/projects/*/memory/MEMORY.md` | Session-specific patterns | No (Claude manages automatically) |
 
-- `~/CLAUDE.md` — global context (always loaded)
-- `~/project/CLAUDE.md` — project context
-- `~/project/src/CLAUDE.md` — src-specific context
-- `~/project/src/api/CLAUDE.md` — api-specific context
+## Operating Modes
 
-All four load when working in `src/api/`. Use this hierarchy to keep each file small and focused.
+### Mode 1: Session Capture
 
-## Workflow
+**When**: End of session, "capture learnings", "update CLAUDE.md with what we learned"
 
-### Step 1: Audit current state
+1. Review the conversation for discoveries worth preserving:
+   - Commands that worked (or didn't)
+   - Gotchas and workarounds found
+   - Architecture decisions made
+   - Configuration quirks discovered
+   - Patterns that would help future sessions
+2. Categorise each discovery using the placement decision tree below
+3. Draft all changes as diffs in a single batch
+4. Present the batch — apply after a single yes/no confirmation
 
-Run the audit script to get a size report:
+**Keep it concise**: one line per concept. No verbose explanations, no generic advice.
 
-```bash
-python3 skills/memory-manager/scripts/audit_memory.py [repo-path]
+### Mode 2: Full Audit
+
+**When**: "audit memory", "check project docs", periodic maintenance, working in a neglected project
+
+1. Run the audit script:
+   ```bash
+   python3 skills/memory-manager/scripts/audit_memory.py [repo-path]
+   ```
+2. Review the output: sizes, quality scores, project type, missing docs, stale references
+3. Generate changes autonomously — create, update, or flag files as needed
+4. Present all changes as a single batch for approval
+5. Apply approved changes
+
+For large repos, delegate to a sub-agent:
+```
+Task(subagent_type: "general-purpose",
+  prompt: "Run python3 skills/memory-manager/scripts/audit_memory.py /path/to/repo
+           and summarise the findings.")
 ```
 
-This reports:
-- All CLAUDE.md files with line counts
-- Files exceeding size targets
-- Directories that might benefit from their own CLAUDE.md
-- Content that could be split into topic files
+### Mode 3: Restructure
 
-### Step 2: Identify splits
+**When**: "restructure memory", root CLAUDE.md over 200 lines, first-time memory setup
 
-For each oversized CLAUDE.md, identify sections that can become:
+1. Run full audit (Mode 2) first
+2. Split oversized files:
+   - Extract topic sections from root CLAUDE.md into `.claude/rules/<topic>.md`
+   - Extract directory-specific content into sub-directory CLAUDE.md files
+3. Create missing documentation files based on project type
+4. Present the restructure plan, apply after approval
 
-1. **Directory-level CLAUDE.md** — context specific to that directory
-2. **Topic files in `.claude/rules/`** — correction rules and patterns
-3. **Deletable content** — duplicates parent, states the obvious, or Claude already knows
+## Placement Decision Tree
 
-**Size targets:**
-- Root CLAUDE.md: 50–150 lines (project identity, key commands, architecture)
-- Sub-directory CLAUDE.md: 20–50 lines (integrations, gotchas, commands)
-- Topic files in rules/: 20–80 lines each
-
-### Step 3: Create directory-level files
-
-For directories with external integrations, non-obvious config, or common gotchas, create a focused CLAUDE.md:
-
-```markdown
-# [Component Name]
-
-## Key Integrations
-- **Service X**: endpoint, auth method, secret location
-
-## Commands
-npm run deploy
-npm run test
-
-## Gotchas
-- Always run migrations before testing
+```
+Would this still apply if I switched to a completely different project?
+├── YES → ~/.claude/rules/<topic>.md
+│         (correction rules, API patterns, coding standards)
+└── NO  → Is it specific to a subdirectory?
+    ├── YES → <dir>/CLAUDE.md
+    │         (integrations, directory-specific gotchas)
+    └── NO  → ./CLAUDE.md (project root)
+              (identity, stack, commands, architecture, critical rules)
 ```
 
-**Don't create one when:**
-- Parent CLAUDE.md already covers it
-- The directory is simple/self-explanatory
-- Content would be fewer than 10 lines
+## Size Targets
 
-### Step 4: Restructure root CLAUDE.md
+| File Type | Target | Maximum |
+|-----------|--------|---------|
+| Root CLAUDE.md | 50-150 lines | 200 |
+| Sub-directory CLAUDE.md | 15-50 lines | 80 |
+| Rules topic file | 20-80 lines | 120 |
 
-The root CLAUDE.md should contain ONLY:
+## What Belongs Where
 
-- Project identity (what this is, who owns it)
-- Architecture overview (stack, key directories)
-- Essential commands (build, deploy, test)
-- Critical rules (things that break if forgotten)
-- Links to deeper docs
-
-Everything else moves to sub-directory files or `.claude/rules/`.
-
-### Step 5: Verify
-
-Re-run the audit script to confirm all files are within targets. Test by working in various directories and checking Claude has the right context.
-
-## Guidelines
-
-### What belongs in root CLAUDE.md
+### Root CLAUDE.md
 - Project name, purpose, owner
 - Tech stack summary
-- Key commands (build, deploy, test)
-- Critical "never do X" rules
+- Build/deploy/test commands (copy-paste ready)
 - Directory structure overview
+- Critical "never do X" rules
+- Key integrations and secrets locations
 
-### What belongs in sub-directory CLAUDE.md
+### Sub-directory CLAUDE.md
 - External service integrations for that component
-- Non-obvious configuration
+- Non-obvious configuration specific to this area
 - Directory-specific commands
-- Common gotchas when working in that area
+- Gotchas when working in this directory
 
-### What belongs in .claude/rules/
-- Correction rules (bridging training cutoff)
-- Coding patterns specific to this project
+**Don't create when**: parent covers it, directory is self-explanatory, content would be under 10 lines.
+
+### .claude/rules/ topic files
+- Correction rules bridging training cutoff (e.g. API changes, deprecated patterns)
+- Coding patterns and standards
+- Platform-specific formatting rules
 - Error prevention patterns
 
 ### What to delete
 - Content Claude already knows from training
-- Verbose explanations of standard tools
-- Changelogs and version history
-- Duplicated content from parent files
+- Verbose explanations of standard frameworks
+- Changelogs or version history (use git)
+- Duplicated content from parent CLAUDE.md files
+- "TODO" items that were never completed
+- Generic advice not specific to the project
 
-## Delegation
+## Project Type Detection
 
-For large repos, delegate the audit to a sub-agent to preserve main context:
+The audit script detects project type from file presence and suggests appropriate documentation:
 
-```
-Task(subagent_type: "general-purpose",
-  prompt: "Run python3 skills/memory-manager/scripts/audit_memory.py /path/to/repo
-           and summarise the findings. List files over target size and suggest splits.")
-```
+| Indicator | Type | Suggested Docs |
+|-----------|------|---------------|
+| `wrangler.jsonc` / `wrangler.toml` | Cloudflare Worker | ARCHITECTURE.md |
+| `vite.config.*` + `.tsx` files | Vite/React | ARCHITECTURE.md |
+| `next.config.*` | Next.js | ARCHITECTURE.md |
+| MCP patterns in `src/index.ts` | MCP Server | ARCHITECTURE.md, API_ENDPOINTS.md |
+| `src/routes/` or `src/api/` | API Project | API_ENDPOINTS.md, DATABASE_SCHEMA.md |
+| Drizzle/Prisma config | Database | DATABASE_SCHEMA.md |
 
-The agent absorbs the verbose output and returns only actionable recommendations.
+All projects get CLAUDE.md. Additional docs only when the project type warrants them. See [references/project-types.md](references/project-types.md) for full detection heuristics and doc templates.
+
+## Autonomy Rules
+
+- **Just do it**: Run audit, detect project type, identify gaps, draft changes
+- **Brief confirmation**: Apply changes (single batch yes/no, not item-by-item)
+- **Ask first**: Delete existing content, major restructures (moving 50+ lines), create new project docs from scratch where there's ambiguity about content
+
+## Quality Scoring
+
+The audit script scores each CLAUDE.md on 6 criteria (100 points):
+
+| Criterion | Points | What it measures |
+|-----------|--------|-----------------|
+| Commands/Workflows | 20 | Build, test, deploy documented |
+| Architecture Clarity | 20 | Structure, relationships, entry points |
+| Non-Obvious Patterns | 15 | Gotchas, quirks, warnings |
+| Conciseness | 15 | Dense content, no filler |
+| Currency | 15 | References valid, commands work |
+| Actionability | 15 | Copy-paste ready, real paths |
+
+See [references/quality-criteria.md](references/quality-criteria.md) for the full rubric.
+
+## Reference Files
+
+| When | Read |
+|------|------|
+| Scoring CLAUDE.md quality | [references/quality-criteria.md](references/quality-criteria.md) |
+| Detecting project type and expected docs | [references/project-types.md](references/project-types.md) |
+| Creating new CLAUDE.md or rules files | [references/templates.md](references/templates.md) |
 
 ## Scripts
 
-- `scripts/audit_memory.py` — Scan repo for CLAUDE.md files, report sizes, suggest improvements
+- `scripts/audit_memory.py` — Scan all three layers, score quality, detect project type, flag issues
+  - `python3 audit_memory.py [repo-path]` — human-readable report
+  - `python3 audit_memory.py [repo-path] --json` — structured JSON output
