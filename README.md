@@ -1,239 +1,82 @@
 # Claude Code Skills
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/jezweb/claude-skills?style=social)](https://github.com/jezweb/claude-skills)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-> **Marketplace Renamed (v3.4.0)**: The marketplace name changed from `claude-skills` to `jezweb-skills`.
-> If you had the old version installed, run:
-> ```bash
-> /plugin marketplace remove claude-skills
-> /plugin marketplace add jezweb/claude-skills
-> ```
+Workflow skills for [Claude Code](https://claude.com/claude-code) that produce tangible output. Each skill guides Claude through a recipe — scaffold a project, generate assets, deploy to production.
 
-**97 production-ready skills** for Claude Code CLI — Cloudflare, React, AI integrations, and more.
+## Skills
 
-~60% token savings | 400+ errors prevented | Auto-discovered by Claude
+| Skill | What it produces |
+|-------|-----------------|
+| **[skill-creator](skills/skill-creator)** | New skill directories from template |
+| **[cloudflare-worker-builder](skills/cloudflare-worker-builder)** | Deployable Cloudflare Worker projects with Hono + Vite |
+| **[vite-flare-starter](skills/vite-flare-starter)** | Full-stack Cloudflare app (React 19, Hono, D1, better-auth, shadcn/ui) |
+| **[tailwind-theme-builder](skills/tailwind-theme-builder)** | Themed Tailwind v4 + shadcn/ui setup with dark mode |
+| **[color-palette](skills/color-palette)** | Complete colour palettes from a single brand hex |
+| **[favicon-gen](skills/favicon-gen)** | Full favicon packages (SVG, ICO, PNG, manifest) |
+| **[icon-set-generator](skills/icon-set-generator)** | Custom SVG icon sets with consistent style |
+| **[web-design-methodology](skills/web-design-methodology)** | Production HTML/CSS with BEM, responsive, accessibility |
+| **[web-design-patterns](skills/web-design-patterns)** | Heroes, cards, CTAs, trust signals, testimonials |
+| **[seo-local-business](skills/seo-local-business)** | SEO setup for local businesses (JSON-LD, meta, sitemap) |
+| **[google-chat-messages](skills/google-chat-messages)** | Google Chat webhooks (text, rich cards, threads) |
+| **[google-apps-script](skills/google-apps-script)** | Google Sheets Apps Script automation (menus, triggers, dialogs) |
+| **[elevenlabs-agents](skills/elevenlabs-agents)** | Configured ElevenLabs voice agents |
+| **[mcp-builder](skills/mcp-builder)** | MCP servers with FastMCP |
+| **[memory-manager](skills/memory-manager)** | Optimised CLAUDE.md memory hierarchy |
+| **[claude-capabilities](skills/claude-capabilities)** | Current Claude AI & Code capabilities reference |
+| **[aussie-business-english](skills/aussie-business-english)** | Australian business English writing style |
+| **[d1-drizzle-schema](skills/d1-drizzle-schema)** | Drizzle ORM schemas for Cloudflare D1 |
+| **[hono-api-scaffolder](skills/hono-api-scaffolder)** | Hono API routes, middleware, endpoint documentation |
+| **[shadcn-ui](skills/shadcn-ui)** | shadcn/ui components with installation, customisation, recipes |
+| **[github-release](skills/github-release)** | Sanitized, tagged GitHub releases with safety checks |
+| **[gemini-peer-review](skills/gemini-peer-review)** | Second opinion from Gemini on code, architecture, security |
 
-### Context Mate
-
-New here? Run `/context-mate` in any project - it scans what you've got and tells you what tools might help:
-
-![Context Mate project analysis](docs/context-mate-analysis.png)
-
-*"It's all about the context, maaate!"*
-
-**The philosophy**: Use what helps, ignore what doesn't. No 47-page methodology guides. No ceremonies. Just tools that help when you need them and stay out of the way when you don't. Homer Simpson could figure this out.
-
-**Full guide**: [skills/context-mate/SKILL.md](skills/context-mate/SKILL.md)
-
-### Where to Start
-
-| You want to... | Run this |
-|----------------|----------|
-| **Analyze an existing project** | `/context-mate` |
-| **Start a brand new project** | `/plan-project` |
-| **Resume work from last session** | `/continue-session` |
-| **Debug something stubborn** | Use `deep-debug` skill |
-| **Just explore** | `/workflow` (interactive guide) |
-
-### Terminology
-
-Three types of things in this toolkit:
-
-| Type | What it is | Example |
-|------|------------|---------|
-| **Slash Commands** | Typed invocations (`/foo`) | `/context-mate`, `/plan-project` |
-| **Skills** | Knowledge bundles Claude loads | `cloudflare-worker-base`, `tailwind-v4-shadcn` |
-| **Agents** | Sub-processes for specialized tasks | `commit-helper`, `debugger`, `test-runner` |
-
-**Note**: Slash commands are now part of skills (bundled in `skills/*/commands/`). This is the [official Claude Code pattern](https://code.claude.com/docs/en/skills) - a skill can expose both background knowledge and user-invocable commands.
-
-**Decision tree**:
-- "/context-mate" → Slash command (user types it)
-- "context-mate" skill → Background knowledge (Claude loads it when relevant)
-- `commit-helper` agent → Sub-process (Claude spawns it for heavy tasks)
-
----
-
-## Quick Install
-
-### Marketplace (Recommended)
+## Install
 
 ```bash
-# Step 1: Add the marketplace (registers catalog)
-/plugin marketplace add https://github.com/jezweb/claude-skills
+# Add the marketplace
+/plugin marketplace add jezweb/claude-skills
 
-# Step 2: Install what you need
-/plugin install all@jezweb-skills              # All skills (background knowledge)
+# Install all skills
+/plugin install all@jezweb-skills
 
-# Step 3: Install skills with commands/agents you want to use
-/plugin install skill-development@jezweb-skills     # /scrape-api, /create-skill, etc.
-/plugin install developer-toolbox@jezweb-skills     # debugger, test-runner, commit-helper agents
-/plugin install cloudflare-worker-base@jezweb-skills # cloudflare-deploy, d1-migration agents
-
-# Step 4: Restart Claude Code to load plugins
+# Or install by category
+/plugin install design@jezweb-skills         # palettes, favicons, icons, web design
+/plugin install cloudflare@jezweb-skills     # Workers + vite-flare-starter
+/plugin install frontend@jezweb-skills       # Tailwind + shadcn/ui
+/plugin install web@jezweb-skills            # web design + SEO
+/plugin install integrations@jezweb-skills   # Google Chat, Apps Script
+/plugin install ai@jezweb-skills             # ElevenLabs agents
+/plugin install mcp@jezweb-skills            # MCP servers
+/plugin install writing@jezweb-skills          # Australian business English
+/plugin install development@jezweb-skills    # skill-creator, memory-manager, releases, Gemini review
 ```
 
-**Why two install steps?** The `all` bundle gives you skill knowledge, but commands/agents inside individual skills need their own install. See [PLUGIN_ARCHITECTURE.md](docs/PLUGIN_ARCHITECTURE.md) for details.
-
-### Skills with Commands/Agents
-
-These skills have bundled commands or agents - install individually to use them:
-
-| Plugin | Commands | Agents |
-|--------|----------|--------|
-| `skill-development` | `/scrape-api`, `/create-skill`, `/review-skill`, `/audit` | `api-doc-scraper` |
-| `developer-toolbox` | `/debug`, `/coverage` | `debugger`, `test-runner`, `commit-helper`, `code-reviewer`, etc. |
-| `cloudflare-worker-base` | - | `cloudflare-deploy`, `cloudflare-debug`, `d1-migration`, `worker-scaffold` |
-| `dependency-audit` | `/audit-deps` | `dep-auditor` |
-| `project-health` | - | `context-auditor`, `handoff-checker`, `workflow-validator` |
-
-### Manual/Local Development
+## Create Your Own
 
 ```bash
-git clone https://github.com/jezweb/claude-skills.git ~/Documents/claude-skills
-cd ~/Documents/claude-skills
-/plugin install ./skills/cloudflare-worker-base  # Install specific skill locally
+python3 skills/skill-creator/scripts/init_skill.py my-skill --path skills/
 ```
 
----
+Follows the [Agent Skills spec](https://agentskills.io/specification).
 
-## Skills by Category
+## Philosophy
 
-| Category | Skills | Highlights |
-|----------|--------|------------|
-| **Cloudflare** | 16 | Workers, D1, R2, KV, Agents, MCP Server, Durable Objects |
-| **AI/ML** | 12 | Vercel AI SDK, OpenAI Agents, Claude API, Gemini |
-| **Frontend** | 12 | Tailwind v4 + shadcn, TanStack (Query/Router/Table), Zustand |
-| **Python** | 2 | FastAPI, Flask |
-| **Database** | 4 | Drizzle, Neon Postgres, Vercel KV/Blob |
-| **Auth** | 2 | Clerk, Better Auth |
-| **Planning** | 5 | Project workflow, session management |
-| **MCP/Tools** | 4 | FastMCP, TypeScript MCP |
-| **CMS** | 3 | TinaCMS, Sveltia, WordPress |
-| **Developer Workflow** | 1 | Developer Toolbox (7 agents for code review, debugging, testing) |
+**Every skill must produce something.** No knowledge dumps — only workflow recipes that create files, projects, or configurations. Claude's training data handles the rest.
 
-**📋 Full list**: [SKILLS_CATALOG.md](docs/SKILLS_CATALOG.md)
+See [CLAUDE.md](CLAUDE.md) for development details.
 
----
+## History
 
-## How It Works
+This repo started as a collection of 105 skills — many were informational reference guides (CSS patterns, API docs, framework cheatsheets). With Claude Opus 4.6's expanded training data and built-in capabilities, those reference skills became redundant. Claude already knows the material.
 
-Claude Code automatically discovers skills in `~/.claude/skills/` and suggests them when relevant:
+**v2** keeps only skills that produce tangible output: files, projects, configurations, deployments. The count dropped from 105 to 22, but each one earns its place.
 
-```
-You: "Set up a Cloudflare Worker with D1"
-Claude: "Found cloudflare-worker-base and cloudflare-d1 skills. Use them?"
-You: "Yes"
-→ Production-ready setup, zero errors
-```
+The full v1 collection is preserved:
+- **Tag `v1-final`** — all 105 skills at the point of transition
+- **Branch `archive/low-priority-skills`** — 13 previously archived skills
+- **Full git history** — `git log v1-final` to browse
 
----
+## License
 
-## Bundled Agents
-
-Some skills include **sub-agents** that can be invoked via the Task tool for specialized tasks:
-
-| Bundle | Agents | Purpose |
-|--------|--------|---------|
-| **design** | `a11y-auditor`, `favicon-crafter`, `image-prompter` | Accessibility audits, favicon generation, image prompts |
-| **cloudflare** | `cloudflare-deploy`, `cloudflare-debug`, `d1-migration`, `worker-scaffold` | Deployment, debugging, migrations |
-
-**Note**: Agents require manual installation to `~/.claude/agents/`:
-
-```bash
-# List available agents
-./scripts/install-skill-agents.sh list
-
-# Install agents from a bundle
-./scripts/install-skill-agents.sh design
-./scripts/install-skill-agents.sh cloudflare
-
-# Install all agents
-./scripts/install-skill-agents.sh all
-
-# Restart Claude Code to discover new agents
-```
-
-After installation, agents appear in the Task tool's available agents.
-
----
-
-## Request a Skill
-
-**Want a skill we don't have?** [Open an issue](https://github.com/jezweb/claude-skills/issues/new?template=skill_request.md&title=Skill+Request:+) with the technology/framework and we'll build it.
-
-Popular requests get prioritized. No need to build it yourself unless you want to.
-
----
-
-## Your Own Skills Repo
-
-Want your own skills ecosystem with your own authorship? **Fork this repo** or use it as a template:
-
-1. Fork → customize skills with your preferences
-2. Use our QA agents (`content-accuracy-auditor`, `code-example-validator`, `version-checker`) to maintain currency
-3. Pull upstream updates when useful
-
-This works well if you maintain skills across multiple machines or want to publish your own collection.
-
----
-
-## Creating Skills
-
-**Quick start**:
-```bash
-cp -r templates/skill-skeleton/ skills/my-skill/
-# Edit SKILL.md and README.md
-/plugin install ./skills/my-skill  # Test locally
-```
-
-**Guides**: [CONTRIBUTING.md](CONTRIBUTING.md) | [templates/](templates/) | [ONE_PAGE_CHECKLIST.md](ONE_PAGE_CHECKLIST.md)
-
----
-
-## Token Efficiency
-
-| Metric | Manual | With Skills |
-|--------|--------|-------------|
-| Tokens | 12-15k | 4-6k (~50% less) |
-| Errors | 2-4 | 0 (prevented) |
-| Time | 2-4 hours | 15-45 min |
-
----
-
-## Documentation
-
-- [CONTRIBUTING.md](CONTRIBUTING.md) — How to contribute
-- [CLAUDE.md](CLAUDE.md) — Project context
-- [docs/SKILLS_CATALOG.md](docs/SKILLS_CATALOG.md) — Full skill details
-- [docs/MARKETPLACE.md](docs/MARKETPLACE.md) — Marketplace installation
-- [docs/PLUGIN_INSTALLATION_GUIDE.md](docs/PLUGIN_INSTALLATION_GUIDE.md) — Local testing workflow
-- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — Common issues and fixes
-
----
-
-## Tools
-
-### ContextBricks — Status Line
-
-Real-time context tracking for Claude Code.
-
-```bash
-npx contextbricks  # One-command install
-```
-
-[![npm](https://img.shields.io/npm/v/contextbricks.svg)](https://www.npmjs.com/package/contextbricks)
-
----
-
-## Links
-
-- **Issues**: [github.com/jezweb/claude-skills/issues](https://github.com/jezweb/claude-skills/issues)
-- **Claude Code**: [claude.com/claude-code](https://claude.com/claude-code)
-- **Jezweb**: [jezweb.com.au](https://jezweb.com.au)
-
----
-
-MIT License | Built by Jeremy Dawes
+MIT

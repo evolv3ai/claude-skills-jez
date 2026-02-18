@@ -5,123 +5,126 @@
     "email": "jeremy@jezweb.net"
   },
   "metadata": {
-    "description": "Production-tested skills for Claude Code - Cloudflare, Firebase, AI, React, Tailwind v4, and modern web development",
-    "version": "3.5.0",
-    "updated": "2026-02-04"
+    "description": "Workflow skills for Claude Code - each produces tangible output",
+    "version": "8.0.0",
+    "updated": "2026-02-18"
   },
   "plugins": [
     {
       "name": "all",
-      "description": "All 100 production-tested skills for Claude Code - Cloudflare Workers, Firebase, AI/LLM integrations, React, Tailwind v4, TanStack, authentication, databases, MCP servers, and more.",
-      "source": "./"
+      "description": "All 22 workflow skills: Cloudflare, Hono APIs, D1/Drizzle, web design, SEO, Google integrations, Tailwind, shadcn/ui, favicons, icons, colour palettes, ElevenLabs, MCP, memory management, GitHub releases, Gemini peer review, capabilities reference, writing style.",
+      "source": "./",
+      "skills": [
+        "./skills/skill-creator",
+        "./skills/cloudflare-worker-builder",
+        "./skills/vite-flare-starter",
+        "./skills/tailwind-theme-builder",
+        "./skills/color-palette",
+        "./skills/favicon-gen",
+        "./skills/icon-set-generator",
+        "./skills/web-design-methodology",
+        "./skills/web-design-patterns",
+        "./skills/seo-local-business",
+        "./skills/google-chat-messages",
+        "./skills/elevenlabs-agents",
+        "./skills/mcp-builder",
+        "./skills/memory-manager",
+        "./skills/google-apps-script",
+        "./skills/claude-capabilities",
+        "./skills/aussie-business-english",
+        "./skills/d1-drizzle-schema",
+        "./skills/hono-api-scaffolder",
+        "./skills/shadcn-ui",
+        "./skills/github-release",
+        "./skills/gemini-peer-review"
+      ]
     },
     {
-      "name": "skill-development",
-      "description": "Tools for creating, auditing, and maintaining Claude Code skills. Includes api-doc-scraper agent for generating skills from API docs.",
-      "source": "./skills/skill-development",
-      "category": "development"
+      "name": "design",
+      "description": "Design skills: colour palettes, favicons, custom SVG icons, web design methodology and patterns.",
+      "source": "./",
+      "skills": [
+        "./skills/color-palette",
+        "./skills/favicon-gen",
+        "./skills/icon-set-generator",
+        "./skills/web-design-methodology",
+        "./skills/web-design-patterns"
+      ]
     },
     {
-      "name": "developer-toolbox",
-      "description": "Essential development workflow agents: debugger, code-reviewer, test-runner, commit-helper, build-verifier, documentation-expert, orchestrator.",
-      "source": "./skills/developer-toolbox",
-      "category": "development"
+      "name": "cloudflare",
+      "description": "Cloudflare Workers: scaffold projects, Hono API routes, D1/Drizzle schemas.",
+      "source": "./",
+      "skills": [
+        "./skills/cloudflare-worker-builder",
+        "./skills/vite-flare-starter",
+        "./skills/hono-api-scaffolder",
+        "./skills/d1-drizzle-schema"
+      ]
     },
     {
-      "name": "cloudflare-worker-base",
-      "description": "Cloudflare Workers foundation with agents: cloudflare-deploy, cloudflare-debug, d1-migration, worker-scaffold.",
-      "source": "./skills/cloudflare-worker-base",
-      "category": "cloudflare"
+      "name": "frontend",
+      "description": "Tailwind v4 theming + shadcn/ui component installation, customisation, and recipes.",
+      "source": "./",
+      "skills": [
+        "./skills/tailwind-theme-builder",
+        "./skills/shadcn-ui"
+      ]
     },
     {
-      "name": "dependency-audit",
-      "description": "Comprehensive dependency auditing with dep-auditor agent for security vulnerabilities and outdated packages.",
-      "source": "./skills/dependency-audit",
-      "category": "development"
+      "name": "web",
+      "description": "Web design and SEO: methodology, component patterns, local business SEO.",
+      "source": "./",
+      "skills": [
+        "./skills/seo-local-business",
+        "./skills/web-design-methodology",
+        "./skills/web-design-patterns"
+      ]
     },
     {
-      "name": "fastmcp",
-      "description": "Build MCP servers in Python with FastMCP. Includes mcp-builder and mcp-developer agents.",
-      "source": "./skills/fastmcp",
-      "category": "mcp"
+      "name": "integrations",
+      "description": "Google Workspace integrations: Chat webhooks, Apps Script automation.",
+      "source": "./",
+      "skills": [
+        "./skills/google-chat-messages",
+        "./skills/google-apps-script"
+      ]
     },
     {
-      "name": "project-health",
-      "description": "AI-readability auditing with context-auditor, handoff-checker, workflow-validator agents.",
-      "source": "./skills/project-health",
-      "category": "development"
+      "name": "ai",
+      "description": "Build ElevenLabs conversational AI voice agents.",
+      "source": "./",
+      "skills": [
+        "./skills/elevenlabs-agents"
+      ]
     },
     {
-      "name": "accessibility",
-      "description": "WCAG 2.1 AA compliance with a11y-auditor agent for accessibility audits.",
-      "source": "./skills/accessibility",
-      "category": "frontend"
+      "name": "mcp",
+      "description": "Build MCP servers with FastMCP.",
+      "source": "./",
+      "skills": [
+        "./skills/mcp-builder"
+      ]
     },
     {
-      "name": "clerk-auth",
-      "description": "Clerk authentication with clerk-setup agent for project configuration.",
-      "source": "./skills/clerk-auth",
-      "category": "auth"
+      "name": "development",
+      "description": "Skill creation, CLAUDE.md memory management, GitHub releases, Gemini peer review, and Claude capabilities reference.",
+      "source": "./",
+      "skills": [
+        "./skills/skill-creator",
+        "./skills/memory-manager",
+        "./skills/claude-capabilities",
+        "./skills/github-release",
+        "./skills/gemini-peer-review"
+      ]
     },
     {
-      "name": "color-palette",
-      "description": "Color palette generation with palette-generator agent.",
-      "source": "./skills/color-palette",
-      "category": "design"
-    },
-    {
-      "name": "drizzle-orm-d1",
-      "description": "Type-safe D1 databases with Drizzle ORM. Includes drizzle-migrate agent.",
-      "source": "./skills/drizzle-orm-d1",
-      "category": "database"
-    },
-    {
-      "name": "favicon-gen",
-      "description": "Favicon generation with favicon-crafter agent.",
-      "source": "./skills/favicon-gen",
-      "category": "design"
-    },
-    {
-      "name": "icon-design",
-      "description": "Icon selection with icon-selector agent for Lucide, Heroicons, Phosphor.",
-      "source": "./skills/icon-design",
-      "category": "design"
-    },
-    {
-      "name": "image-gen",
-      "description": "Image generation with image-prompter agent for Gemini image prompts.",
-      "source": "./skills/image-gen",
-      "category": "ai"
-    },
-    {
-      "name": "office",
-      "description": "Office document generation with office-docs agent for DOCX, XLSX, PDF, PPTX.",
-      "source": "./skills/office",
-      "category": "productivity"
-    },
-    {
-      "name": "open-source-contributions",
-      "description": "Create maintainer-friendly PRs with pr-prepare agent.",
-      "source": "./skills/open-source-contributions",
-      "category": "development"
-    },
-    {
-      "name": "react-native-expo",
-      "description": "React Native with Expo SDK. Includes expo-build agent.",
-      "source": "./skills/react-native-expo",
-      "category": "mobile"
-    },
-    {
-      "name": "seo-meta",
-      "description": "SEO meta tag generation with seo-generator agent.",
-      "source": "./skills/seo-meta",
-      "category": "seo"
-    },
-    {
-      "name": "snowflake-platform",
-      "description": "Snowflake AI Data Cloud with snowflake-deploy agent.",
-      "source": "./skills/snowflake-platform",
-      "category": "database"
+      "name": "writing",
+      "description": "Australian business English writing style for professional communications.",
+      "source": "./",
+      "skills": [
+        "./skills/aussie-business-english"
+      ]
     }
   ]
 }

@@ -1,0 +1,5 @@
+{
+  "name": "jezweb-skills",
+  "description": "Workflow skills for Claude Code - each produces tangible output",
+  "skills": "./skills/"
+}
