@@ -6,13 +6,13 @@
   },
   "metadata": {
     "description": "Workflow skills for Claude Code - each produces tangible output",
-    "version": "8.0.0",
+    "version": "9.0.0",
     "updated": "2026-02-18"
   },
   "plugins": [
     {
       "name": "all",
-      "description": "All 22 workflow skills: Cloudflare, Hono APIs, D1/Drizzle, web design, SEO, Google integrations, Tailwind, shadcn/ui, favicons, icons, colour palettes, ElevenLabs, MCP, memory management, GitHub releases, Gemini peer review, capabilities reference, writing style.",
+      "description": "All 23 workflow skills: Cloudflare, Hono APIs, D1/Drizzle, web design, SEO, Google integrations, Tailwind, shadcn/ui, favicons, icons, colour palettes, ElevenLabs, MCP, memory management, dev sessions, GitHub releases, Gemini peer review, capabilities reference, writing style.",
       "source": "./",
       "skills": [
         "./skills/skill-creator",
@@ -36,7 +36,8 @@
         "./skills/hono-api-scaffolder",
         "./skills/shadcn-ui",
         "./skills/github-release",
-        "./skills/gemini-peer-review"
+        "./skills/gemini-peer-review",
+        "./skills/dev-session"
       ]
     },
     {
@@ -108,14 +109,15 @@
     },
     {
       "name": "development",
-      "description": "Skill creation, CLAUDE.md memory management, GitHub releases, Gemini peer review, and Claude capabilities reference.",
+      "description": "Skill creation, CLAUDE.md memory management, dev session tracking, GitHub releases, Gemini peer review, and Claude capabilities reference.",
       "source": "./",
       "skills": [
         "./skills/skill-creator",
         "./skills/memory-manager",
         "./skills/claude-capabilities",
         "./skills/github-release",
-        "./skills/gemini-peer-review"
+        "./skills/gemini-peer-review",
+        "./skills/dev-session"
       ]
     },
     {

@@ -30,6 +30,7 @@ Workflow skills for [Claude Code](https://claude.com/claude-code) that produce t
 | **[shadcn-ui](skills/shadcn-ui)** | shadcn/ui components with installation, customisation, recipes |
 | **[github-release](skills/github-release)** | Sanitized, tagged GitHub releases with safety checks |
 | **[gemini-peer-review](skills/gemini-peer-review)** | Second opinion from Gemini on code, architecture, security |
+| **[dev-session](skills/dev-session)** | SESSION.md progress tracking, checkpoints, multi-session handoff |
 
 ## Install
 
@@ -49,7 +50,7 @@ Workflow skills for [Claude Code](https://claude.com/claude-code) that produce t
 /plugin install ai@jezweb-skills             # ElevenLabs agents
 /plugin install mcp@jezweb-skills            # MCP servers
 /plugin install writing@jezweb-skills          # Australian business English
-/plugin install development@jezweb-skills    # skill-creator, memory-manager, releases, Gemini review
+/plugin install development@jezweb-skills    # skill-creator, memory-manager, sessions, releases, Gemini review
 ```
 
 ## Create Your Own
@@ -70,7 +71,7 @@ See [CLAUDE.md](CLAUDE.md) for development details.
 
 This repo started as a collection of 105 skills — many were informational reference guides (CSS patterns, API docs, framework cheatsheets). With Claude Opus 4.6's expanded training data and built-in capabilities, those reference skills became redundant. Claude already knows the material.
 
-**v2** keeps only skills that produce tangible output: files, projects, configurations, deployments. The count dropped from 105 to 22, but each one earns its place.
+**v2** keeps only skills that produce tangible output: files, projects, configurations, deployments. The count dropped from 105 to 23, but each one earns its place.
 
 The full v1 collection is preserved and usable:
 

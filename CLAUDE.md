@@ -15,7 +15,7 @@ Production workflow skills for Claude Code CLI. Each skill guides Claude through
 
 ```
 claude-skills/
-├── skills/                         # All skills (22)
+├── skills/                         # All skills (23)
 │   ├── skill-creator/              # Foundation: create new skills (Anthropic official)
 │   ├── cloudflare-worker-builder/  # Scaffold Cloudflare Worker projects
 │   ├── vite-flare-starter/         # Full-stack Cloudflare app from starter template
@@ -34,6 +34,7 @@ claude-skills/
 │   ├── elevenlabs-agents/          # Build ElevenLabs voice agents
 │   ├── mcp-builder/                # Build MCP servers with FastMCP
 │   ├── memory-manager/             # Audit and restructure CLAUDE.md hierarchy
+│   ├── dev-session/                # Multi-session progress tracking and handoff
 │   ├── github-release/             # Sanitize and publish GitHub releases
 │   ├── gemini-peer-review/         # Second opinion from Gemini on code/architecture
 │   ├── claude-capabilities/        # Current Claude AI & Code capabilities reference
