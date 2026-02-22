@@ -9,83 +9,135 @@ Production workflow skills for Claude Code CLI. Each skill guides Claude through
 
 - Every skill must produce visible output (files, configurations, deployable projects)
 - "The context window is a public good" — only include what Claude doesn't already know
-- Follow the Agent Skills spec: https://agentskills.io/specification
+- Follows the official Claude Code plugin spec
 
 ## Directory Structure
 
 ```
 claude-skills/
-├── skills/                         # All skills (24)
-│   ├── skill-creator/              # Foundation: create new skills (Anthropic official)
-│   ├── cloudflare-worker-builder/  # Scaffold Cloudflare Worker projects
-│   ├── vite-flare-starter/         # Full-stack Cloudflare app from starter template
-│   ├── hono-api-scaffolder/        # Scaffold Hono API routes, middleware, endpoint docs
-│   ├── d1-drizzle-schema/          # Drizzle ORM schemas for Cloudflare D1
-│   ├── tailwind-theme-builder/     # Set up Tailwind v4 + shadcn/ui themes
-│   ├── shadcn-ui/                  # shadcn/ui component installation, recipes, customisation
-│   ├── color-palette/              # Generate colour palettes from brand hex
-│   ├── favicon-gen/                # Generate favicon packages
-│   ├── icon-set-generator/         # Generate custom SVG icon sets
-│   ├── web-design-methodology/     # Universal web design implementation (BEM, responsive, a11y)
-│   ├── web-design-patterns/        # Heroes, cards, CTAs, trust signals, testimonials
-│   ├── seo-local-business/         # SEO setup for local businesses (JSON-LD, meta, sitemap)
-│   ├── google-chat-messages/       # Google Chat webhooks (text, cards, threads)
-│   ├── google-apps-script/         # Google Sheets Apps Script automation
-│   ├── elevenlabs-agents/          # Build ElevenLabs voice agents
-│   ├── mcp-builder/                # Build MCP servers with FastMCP
-│   ├── context-manager/             # Audit project context: memory, docs, footprint, overlap
-│   ├── dev-session/                # Multi-session progress tracking and handoff
-│   ├── ux-audit/                   # UX walkthroughs and QA sweeps via browser automation
-│   ├── github-release/             # Sanitize and publish GitHub releases
-│   ├── gemini-peer-review/         # Second opinion from Gemini on code/architecture
-│   ├── claude-capabilities/        # Current Claude AI & Code capabilities reference
-│   └── aussie-business-english/    # Australian business English writing style
-├── CLAUDE.md                       # This file
-├── README.md                       # Public-facing overview
-└── LICENSE                         # MIT
+├── plugins/                                # 8 installable plugins (27 skills)
+│   ├── cloudflare/                         # Cloudflare Workers, Hono, D1/Drizzle, Vite
+│   │   └── skills/
+│   │       ├── cloudflare-worker-builder/
+│   │       ├── vite-flare-starter/
+│   │       ├── hono-api-scaffolder/
+│   │       └── d1-drizzle-schema/
+│   ├── web-design/                         # Web design methodology, patterns, SEO
+│   │   └── skills/
+│   │       ├── web-design-methodology/
+│   │       ├── web-design-patterns/
+│   │       └── seo-local-business/
+│   ├── frontend/                           # Tailwind v4 + shadcn/ui
+│   │   └── skills/
+│   │       ├── tailwind-theme-builder/
+│   │       └── shadcn-ui/
+│   ├── design-assets/                      # Colour palettes, favicons, icons
+│   │   └── skills/
+│   │       ├── color-palette/
+│   │       ├── favicon-gen/
+│   │       └── icon-set-generator/
+│   ├── integrations/                       # Google, ElevenLabs, MCP
+│   │   └── skills/
+│   │       ├── google-chat-messages/
+│   │       ├── google-apps-script/
+│   │       ├── elevenlabs-agents/
+│   │       └── mcp-builder/
+│   ├── dev-tools/                          # Skill creation, context, sessions, releases
+│   │   └── skills/
+│   │       ├── skill-creator/
+│   │       ├── context-manager/
+│   │       ├── dev-session/
+│   │       ├── github-release/
+│   │       ├── gemini-peer-review/
+│   │       ├── claude-capabilities/
+│   │       └── ux-audit/
+│   ├── shopify/                            # Shopify store management
+│   │   └── skills/
+│   │       ├── shopify-setup/
+│   │       ├── shopify-products/
+│   │       └── shopify-content/
+│   └── writing/                            # Australian business English
+│       └── skills/
+│           └── aussie-business-english/
+├── .claude-plugin/                         # Marketplace + plugin config
+│   ├── marketplace.json
+│   └── plugin.json
+├── CLAUDE.md                               # This file
+├── README.md                               # Public-facing overview
+└── LICENSE                                 # MIT
 ```
 
-## Skill Anatomy (Anthropic Spec)
+## Plugin Anatomy (Anthropic Spec)
+
+Each plugin contains one or more skills, auto-discovered from `skills/`:
 
 ```
-skill-name/
-├── SKILL.md (required)     # Frontmatter + instructions, under 500 lines
-├── scripts/                # Executable code (run directly)
-├── references/             # Docs loaded on demand by Claude
-└── assets/                 # Files used in output (templates, images)
+plugin-name/
+├── .claude-plugin/
+│   └── plugin.json        # name, description, author
+└── skills/
+    └── skill-name/
+        ├── SKILL.md       # Frontmatter + instructions, under 500 lines
+        ├── scripts/       # Executable code (run directly)
+        ├── references/    # Docs loaded on demand by Claude
+        └── assets/        # Files used in output (templates, images)
 ```
 
-No README.md, no CHANGELOG.md, no rules/ — just what the AI agent needs.
+## Adding a New Plugin
+
+1. Create the plugin directory:
+   ```bash
+   mkdir -p plugins/my-plugin/{.claude-plugin,skills}
+   ```
+
+2. Create `.claude-plugin/plugin.json`:
+   ```json
+   {
+     "name": "my-plugin",
+     "description": "What this plugin does.",
+     "author": { "name": "Jeremy Dawes / Jezweb", "email": "jeremy@jezweb.net" }
+   }
+   ```
+
+3. Add skills inside `plugins/my-plugin/skills/` (each with SKILL.md)
+
+4. Add an entry to `.claude-plugin/marketplace.json`:
+   ```json
+   { "name": "my-plugin", "description": "...", "source": "./plugins/my-plugin", "category": "development" }
+   ```
+
+5. Update the directory tree in this file and the table in README.md
+
+**Categories**: `development`, `design`, `productivity`, `testing`, `security`, `database`, `monitoring`, `deployment`
 
 ## Creating a Skill
 
 Use the skill-creator skill:
 
 ```bash
-python3 skills/skill-creator/scripts/init_skill.py my-skill --path skills/
+python3 plugins/dev-tools/skills/skill-creator/scripts/init_skill.py my-skill --path plugins/my-plugin/skills/
 ```
 
 Or ask Claude: "Create a new skill for [use case]"
 
 Key principle: **every skill must produce something.** If it's just reference material Claude already knows, it doesn't earn a place here.
 
-## Installing Skills
+## Installing Plugins
 
 ```bash
 # Add marketplace (one-time)
 /plugin marketplace add jezweb/claude-skills
 
-# Install all skills
-/plugin install all@jezweb-skills
+# Install individual plugins
+/plugin install cloudflare@jezweb-skills
+/plugin install dev-tools@jezweb-skills
+/plugin install frontend@jezweb-skills
 
-# Or by category: design, cloudflare, frontend, web, integrations, ai, mcp, development, testing, writing
-/plugin install design@jezweb-skills
-
-# Local dev (loads without install)
-claude --plugin-dir ./skills/cloudflare-worker-builder
+# Local dev (loads a single plugin without install)
+claude --plugin-dir ./plugins/cloudflare
 ```
 
-After installing, restart Claude Code to load new skills.
+After installing, restart Claude Code to load new plugins.
 
 ## Quality Bar
 
@@ -93,7 +145,7 @@ Before committing a skill:
 - [ ] SKILL.md has valid YAML frontmatter (name + description)
 - [ ] Under 500 lines
 - [ ] Produces tangible output (not just reference material)
-- [ ] Passes validation: `python3 skills/skill-creator/scripts/quick_validate.py skills/my-skill`
+- [ ] Passes validation: `python3 plugins/dev-tools/skills/skill-creator/scripts/quick_validate.py plugins/category/skills/my-skill`
 - [ ] Tested by actually using it on a real task
 
 ## Git History

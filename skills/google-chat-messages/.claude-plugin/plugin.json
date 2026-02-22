@@ -1,5 +1,0 @@
-{
-  "name": "google-chat-messages",
-  "description": "Send Google Chat messages via webhook — text, cards, threaded replies.",
-  "skills": "./"
-}

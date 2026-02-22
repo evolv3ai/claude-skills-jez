@@ -1,141 +1,59 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "jezweb-skills",
+  "description": "Workflow skills for Claude Code — each produces tangible output",
   "owner": {
     "name": "Jeremy Dawes / Jezweb",
     "email": "jeremy@jezweb.net"
   },
-  "metadata": {
-    "description": "Workflow skills for Claude Code - each produces tangible output",
-    "version": "11.0.0",
-    "updated": "2026-02-19"
-  },
   "plugins": [
     {
-      "name": "all",
-      "description": "All 24 workflow skills: Cloudflare, Hono APIs, D1/Drizzle, web design, SEO, Google integrations, Tailwind, shadcn/ui, favicons, icons, colour palettes, ElevenLabs, MCP, memory management, dev sessions, UX audits, GitHub releases, Gemini peer review, capabilities reference, writing style.",
-      "source": "./",
-      "skills": [
-        "./skills/skill-creator",
-        "./skills/cloudflare-worker-builder",
-        "./skills/vite-flare-starter",
-        "./skills/tailwind-theme-builder",
-        "./skills/color-palette",
-        "./skills/favicon-gen",
-        "./skills/icon-set-generator",
-        "./skills/web-design-methodology",
-        "./skills/web-design-patterns",
-        "./skills/seo-local-business",
-        "./skills/google-chat-messages",
-        "./skills/elevenlabs-agents",
-        "./skills/mcp-builder",
-        "./skills/context-manager",
-        "./skills/google-apps-script",
-        "./skills/claude-capabilities",
-        "./skills/aussie-business-english",
-        "./skills/d1-drizzle-schema",
-        "./skills/hono-api-scaffolder",
-        "./skills/shadcn-ui",
-        "./skills/github-release",
-        "./skills/gemini-peer-review",
-        "./skills/dev-session",
-        "./skills/ux-audit"
-      ]
-    },
-    {
-      "name": "design",
-      "description": "Design skills: colour palettes, favicons, custom SVG icons, web design methodology and patterns.",
-      "source": "./",
-      "skills": [
-        "./skills/color-palette",
-        "./skills/favicon-gen",
-        "./skills/icon-set-generator",
-        "./skills/web-design-methodology",
-        "./skills/web-design-patterns"
-      ]
-    },
-    {
       "name": "cloudflare",
-      "description": "Cloudflare Workers: scaffold projects, Hono API routes, D1/Drizzle schemas.",
-      "source": "./",
-      "skills": [
-        "./skills/cloudflare-worker-builder",
-        "./skills/vite-flare-starter",
-        "./skills/hono-api-scaffolder",
-        "./skills/d1-drizzle-schema"
-      ]
+      "description": "Scaffold Cloudflare Workers, Hono APIs, D1/Drizzle schemas, and full-stack Vite+Workers apps.",
+      "source": "./plugins/cloudflare",
+      "category": "development"
+    },
+    {
+      "name": "web-design",
+      "description": "Web design methodology, component patterns (heroes, cards, CTAs), and local business SEO.",
+      "source": "./plugins/web-design",
+      "category": "design"
     },
     {
       "name": "frontend",
-      "description": "Tailwind v4 theming + shadcn/ui component installation, customisation, and recipes.",
-      "source": "./",
-      "skills": [
-        "./skills/tailwind-theme-builder",
-        "./skills/shadcn-ui"
-      ]
+      "description": "Tailwind v4 theming and shadcn/ui component installation, customisation, and recipes.",
+      "source": "./plugins/frontend",
+      "category": "design"
     },
     {
-      "name": "web",
-      "description": "Web design and SEO: methodology, component patterns, local business SEO.",
-      "source": "./",
-      "skills": [
-        "./skills/seo-local-business",
-        "./skills/web-design-methodology",
-        "./skills/web-design-patterns"
-      ]
+      "name": "design-assets",
+      "description": "Generate colour palettes, favicon packages, and custom SVG icon sets from brand colours.",
+      "source": "./plugins/design-assets",
+      "category": "design"
     },
     {
       "name": "integrations",
-      "description": "Google Workspace integrations: Chat webhooks, Apps Script automation.",
-      "source": "./",
-      "skills": [
-        "./skills/google-chat-messages",
-        "./skills/google-apps-script"
-      ]
+      "description": "Google Chat webhooks, Google Apps Script automation, ElevenLabs voice agents, and MCP server building.",
+      "source": "./plugins/integrations",
+      "category": "productivity"
     },
     {
-      "name": "ai",
-      "description": "Build ElevenLabs conversational AI voice agents.",
-      "source": "./",
-      "skills": [
-        "./skills/elevenlabs-agents"
-      ]
-    },
-    {
-      "name": "mcp",
-      "description": "Build MCP servers with FastMCP.",
-      "source": "./",
-      "skills": [
-        "./skills/mcp-builder"
-      ]
-    },
-    {
-      "name": "development",
-      "description": "Skill creation, project context management, dev session tracking, GitHub releases, Gemini peer review, and Claude capabilities reference.",
-      "source": "./",
-      "skills": [
-        "./skills/skill-creator",
-        "./skills/context-manager",
-        "./skills/claude-capabilities",
-        "./skills/github-release",
-        "./skills/gemini-peer-review",
-        "./skills/dev-session"
-      ]
+      "name": "dev-tools",
+      "description": "Skill creation, project context management, dev sessions, GitHub releases, Gemini peer review, capabilities reference, and UX audits.",
+      "source": "./plugins/dev-tools",
+      "category": "development"
     },
     {
       "name": "writing",
       "description": "Australian business English writing style for professional communications.",
-      "source": "./",
-      "skills": [
-        "./skills/aussie-business-english"
-      ]
+      "source": "./plugins/writing",
+      "category": "productivity"
     },
     {
-      "name": "testing",
-      "description": "UX walkthroughs and QA sweeps using browser automation (Chrome MCP, Playwright).",
-      "source": "./",
-      "skills": [
-        "./skills/ux-audit"
-      ]
+      "name": "shopify",
+      "description": "Manage Shopify stores: product creation, bulk imports, content pages, blog posts, and SEO metadata.",
+      "source": "./plugins/shopify",
+      "category": "productivity"
     }
   ]
 }

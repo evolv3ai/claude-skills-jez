@@ -1,5 +1,0 @@
-{
-  "name": "cloudflare-worker-builder",
-  "description": "Scaffold and deploy Cloudflare Workers with Hono + Vite.",
-  "skills": "./"
-}
