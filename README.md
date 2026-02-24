@@ -8,14 +8,14 @@ Workflow skills for [Claude Code](https://claude.com/claude-code) that produce t
 
 | Plugin | Skills | What it produces |
 |--------|--------|-----------------|
-| **admin** | admin | Local machine tool installation, profile management, MCP server configuration |
-| **devops** | devops, oci, hetzner, linode, digital-ocean, contabo, vultr, coolify, kasm | Remote server provisioning, cloud infrastructure, application deployment |
-| **cloudflare** | cloudflare-worker-builder, vite-flare-starter, hono-api-scaffolder, d1-drizzle-schema | Deployable Cloudflare Workers, full-stack apps, Hono APIs, D1 schemas |
+| **admin** | admin, session-scout | Local machine tool installation, profile management, MCP server configuration, AI session discovery |
+| **devops** | devops, oci, hetzner, linode, digital-ocean, contabo, vultr, coolify, coolify-cli, kasm, openclaw | Remote server provisioning, cloud infrastructure, application deployment, Coolify CLI management, OpenClaw AI gateway |
+| **cloudflare** | cloudflare-worker-builder, cloudflare-cli, vite-flare-starter, hono-api-scaffolder, d1-drizzle-schema | Deployable Cloudflare Workers, full-stack apps, Hono APIs, D1 schemas, DNS CLI management |
 | **web-design** | web-design-methodology, web-design-patterns, seo-local-business | Production HTML/CSS, component patterns, local business SEO |
 | **frontend** | tailwind-theme-builder, shadcn-ui | Themed Tailwind v4 + shadcn/ui setup with dark mode |
 | **design-assets** | color-palette, favicon-gen, icon-set-generator | Colour palettes, favicon packages, custom SVG icon sets |
-| **integrations** | google-chat-messages, google-apps-script, elevenlabs-agents, mcp-builder | Google Chat webhooks, Apps Script, ElevenLabs agents, MCP servers |
-| **dev-tools** | skill-creator, context-manager, dev-session, github-release, gemini-peer-review, claude-capabilities, ux-audit | Skill creation, context audits, session tracking, releases, peer review, UX audits |
+| **integrations** | google-chat-messages, google-apps-script, elevenlabs-agents, mcp-builder, iii, simplemem, obsidian-rlm | Google Chat webhooks, Apps Script, ElevenLabs agents, MCP servers, iii engine, SimpleMem agent memory, RLM large file processing |
+| **dev-tools** | skill-creator, context-manager, dev-session, github-release, gemini-peer-review, claude-capabilities, ux-audit, deckmate, mockoon-cli, ralphban, pi-agent-rust | Skill creation, context audits, session tracking, releases, peer review, UX audits, Stream Deck profiles, mock APIs, Kanban tasks |
 | **shopify** | shopify-setup, shopify-products, shopify-content | Shopify API setup, product management, content pages, blog posts |
 | **wordpress** | wordpress-setup, wordpress-content, wordpress-elementor | WordPress WP-CLI access, content management, Elementor page editing |
 | **writing** | aussie-business-english | Australian business English writing style |
@@ -56,7 +56,7 @@ See [CLAUDE.md](CLAUDE.md) for development details.
 
 This repo started as a collection of 105 skills — many were informational reference guides (CSS patterns, API docs, framework cheatsheets). With Claude's expanded training data and built-in capabilities, those reference skills became redundant.
 
-**v2** restructured into 11 installable plugins containing 40 skills that produce tangible output. Each one earns its place.
+**v2** restructured into 11 installable plugins containing 51 skills that produce tangible output. Each one earns its place.
 
 The full v1 collection is preserved and usable:
 
