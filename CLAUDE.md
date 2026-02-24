@@ -15,7 +15,25 @@ Production workflow skills for Claude Code CLI. Each skill guides Claude through
 
 ```
 claude-skills/
-├── plugins/                                # 9 installable plugins (30 skills)
+├── plugins/                                # 11 installable plugins (40 skills)
+│   ├── admin/                              # Local machine administration
+│   │   ├── agents/                         # 6 agents (mcp-bot, ops-bot, etc.)
+│   │   ├── commands/                       # 5 commands (install, mcp-bot, etc.)
+│   │   └── skills/
+│   │       └── admin/
+│   ├── devops/                             # Remote infrastructure + providers
+│   │   ├── agents/                         # 2 agents (deployment-coordinator, server-provisioner)
+│   │   ├── commands/                       # 3 commands (deploy, provision, server-status)
+│   │   └── skills/
+│   │       ├── devops/                     # Orchestrator
+│   │       ├── coolify/
+│   │       ├── kasm/
+│   │       ├── oci/
+│   │       ├── hetzner/
+│   │       ├── vultr/
+│   │       ├── contabo/
+│   │       ├── linode/
+│   │       └── digital-ocean/
 │   ├── cloudflare/                         # Cloudflare Workers, Hono, D1/Drizzle, Vite
 │   │   └── skills/
 │   │       ├── cloudflare-worker-builder/

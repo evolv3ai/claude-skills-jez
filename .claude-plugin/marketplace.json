@@ -60,6 +60,18 @@
       "description": "Manage WordPress sites: content creation, blog posts, media, Elementor page editing, and WP-CLI workflows.",
       "source": "./plugins/wordpress",
       "category": "productivity"
+    },
+    {
+      "name": "admin",
+      "description": "Local machine administration for Windows, WSL, macOS, Linux with profile-aware tool installation and MCP server management.",
+      "source": "./plugins/admin",
+      "category": "productivity"
+    },
+    {
+      "name": "devops",
+      "description": "Remote infrastructure provisioning (OCI, Hetzner, Linode, DigitalOcean, Contabo, Vultr) and application deployment (Coolify, KASM).",
+      "source": "./plugins/devops",
+      "category": "deployment"
     }
   ]
 }

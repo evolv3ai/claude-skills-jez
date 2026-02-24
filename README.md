@@ -8,6 +8,8 @@ Workflow skills for [Claude Code](https://claude.com/claude-code) that produce t
 
 | Plugin | Skills | What it produces |
 |--------|--------|-----------------|
+| **admin** | admin | Local machine tool installation, profile management, MCP server configuration |
+| **devops** | devops, oci, hetzner, linode, digital-ocean, contabo, vultr, coolify, kasm | Remote server provisioning, cloud infrastructure, application deployment |
 | **cloudflare** | cloudflare-worker-builder, vite-flare-starter, hono-api-scaffolder, d1-drizzle-schema | Deployable Cloudflare Workers, full-stack apps, Hono APIs, D1 schemas |
 | **web-design** | web-design-methodology, web-design-patterns, seo-local-business | Production HTML/CSS, component patterns, local business SEO |
 | **frontend** | tailwind-theme-builder, shadcn-ui | Themed Tailwind v4 + shadcn/ui setup with dark mode |
@@ -25,6 +27,8 @@ Workflow skills for [Claude Code](https://claude.com/claude-code) that produce t
 /plugin marketplace add jezweb/claude-skills
 
 # Install individual plugins
+/plugin install admin@jezweb-skills
+/plugin install devops@jezweb-skills
 /plugin install cloudflare@jezweb-skills
 /plugin install frontend@jezweb-skills
 /plugin install dev-tools@jezweb-skills
@@ -52,7 +56,7 @@ See [CLAUDE.md](CLAUDE.md) for development details.
 
 This repo started as a collection of 105 skills — many were informational reference guides (CSS patterns, API docs, framework cheatsheets). With Claude's expanded training data and built-in capabilities, those reference skills became redundant.
 
-**v2** restructured into 7 installable plugins containing 24 skills that produce tangible output. Each one earns its place.
+**v2** restructured into 11 installable plugins containing 40 skills that produce tangible output. Each one earns its place.
 
 The full v1 collection is preserved and usable:
 
